@@ -1,0 +1,9 @@
+inputs = ["index.dlt","./chapters/chapter_1/chapter_1.dlt"]
+out = "dist"
+packages = ["regression"]
+
+[document]
+theme="theme.css"
+theme-accent="red"
+theme-mode="light"
+lang="pt"

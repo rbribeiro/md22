@@ -1,0 +1,6 @@
+delta-chapter > h1 > span.num {
+  color: var(--delta-mute);
+}
+delta-chapter > h1 > span.num::after {
+  content: "."
+}

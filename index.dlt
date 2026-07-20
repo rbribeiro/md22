@@ -1,0 +1,180 @@
+<document>
+  <title>Aprendizado de Máquina I (MD22)</title>
+  <meta>
+    <meta-item key="Autor"> Rodrigo Ribeiro</meta-item>
+    <meta-item key="Instituição"> IMPA Tech </meta-item>
+    <meta-item key="Período"> 2026.2 </meta-item>
+  </meta>
+ 
+  <toc scope="project" depth="4"/>
+
+  <chapter numbered="false">
+    <title>O que significa aprender?</title>
+    <intro>
+    Antes de pensarmos em algoritmos, matemática e pacotes <i>python</i>, é útil tentarmos responder a uma pergunta mais filosófica: <b>o que significa aprender?</b> É claro que a resposta a esta pergunta depende e uma infinidade de fatores, como o contexto, a cultura, a sociedade, a história, etc. Existem diversas áreas e estudos que tentam responder a esta pergunta, como a psicologia, a pedagogia, a filosofia, a neurociência, etc. 
+    </intro>
+    No entanto, para os nossos propósitos, vamos nos concentrar em uma definição mais prática e objetiva de aprendizado. Para tal, vamos investigar um pouco mais de perto o nosso próprio processo de aprendizado. Note que esse processo consiste em uma espécie de <i>loop</i> que envolve mais ou menos três etapas:
+    <list marker="number">
+      <item><em>Os dados.</em> Primeiramente, precisamos coletar informações a respeito do tópico que queremos aprender. Essas informações podem vir de diversas fontes, como <hint show-icon="false"><title>livros</title>feitos me <b>Delta</b> 🤎</hint>, artigos, vídeos, etc..
+      </item>
+      <item><em>O método.</em> Em seguida, processamos essa informação. Cada um possui uma forma diferente de processar a informação (anotação, experimentação, discussão, etc.), mas o objetivo é sempre o mesmo: <i>transformar a informação em conhecimento.</i>
+      </item>
+      <item><em>A medida de performance.</em> Por fim, precisamos aplicar o resultado da etapa anterior a alguma tarefa concreta, como exercícios, provas, projetos, etc. Essas são as medidas de performance que nos permitem avaliar se houve aprendizado ou não e se ele foi satisfatório.
+
+      Se a performance não for satisfatória, podemos voltar à etapa 1 e coletar mais informações (talvez o livro que estamos utilizando não tenha a melhor exposição), ou à etapa 2 e processar a informação de uma forma diferente (trocar vídeos no YouTube por artigos, por exemplo). Esse "loop" é o que nos permite aprender de forma contínua.
+      </item>
+    </list>
+
+    Podemos então resumir as estapas acima em uma única equação:
+    <box>
+      $$
+      \text{Dados} + \text{Método} + \text{Medida de performance} = \text{Aprendizado}
+      $$
+    </box>
+    Sem entrar em todos os aspectos filosóficos do que significa aprender, a definição acima tem a vantagem de ser prática, objetiva e, principalmente, implementável. O que significa que a nossa definição se estende naturalmente para computadores. Veja o exemplo a seguir:
+
+    <example numbered="false">
+        <title>Um Simples Sistema de Recomendação</title>
+        Imagine que você quer ensinar o computador a recomendar filmes que você possa gostar. Inicialmente, você poderia simplesmente implementar um sistema que recomenda filmes aleatoriamente.
+        <i>(clique no ambiente de código para exibir)</i>
+        <code lang="python" collapsed="true" numbered="false">
+            import random
+
+            class Recommender:
+                def __init__(self):
+                    self.likes = set()
+                    self.watched = set()
+
+                def like(self, movie):
+                    self.likes.add(movie)
+                    self.watched.add(movie)
+
+                def watch(self, movie):
+                    self.watched.add(movie)
+
+                # Recomendação aleatória de filmes que você ainda não assistiu
+                def recommend(self):
+                    all_movies = {"Movie A", "Movie B", "Movie C", "Movie D"}
+                    return random.choice(list(all_movies - self.watched))
+        </code>
+
+      Esse sistema não tem informação alguma. No entanto, se você começar a <i>curtir</i> alguns filmes, assistir a outros e avaliar o que você gostou ou não, o sistema pode começar a coletar informações sobre o seu perfil.
+
+      De posse dessa informação (dados), o algoritmo/sistema pode analisar a distribuição dos gêneros, atores e diretoras (método) e, por fim, recomendar novos filmes com base nesse conhecimento. 
+
+      O código abaixo implementa um sistema que faz um sorteio dando mais peso para os gêneros, atores e diretoras que você mais gosta. A ideia é bem básica: repetir os filmes que você mais gosta na lista de recomendação, aumentando assim a probabilidade de serem recomendados.
+
+      <code lang="python" collapsed="true" numbered="false">
+        class Recommender:
+            def __init__(self):
+                self.likes = set()
+                self.watched = set()
+                self.genre_preferences = {}
+                self.actor_preferences = {}
+                self.director_preferences = {}
+
+            def like(self, movie):
+                self.likes.add(movie)
+                self.watched.add(movie)
+                # Atualizar preferências com base no filme curtido
+                self.update_preferences(movie)
+
+            def watch(self, movie):
+                self.watched.add(movie)
+
+            def update_preferences(self, movie):
+                # Suponha que cada filme tenha atributos de gênero, ator e diretor
+                genre, actor, director = movie.get_attributes()
+                self.genre_preferences[genre] = self.genre_preferences.get(genre, 0) + 1
+                self.actor_preferences[actor] = self.actor_preferences.get(actor, 0) + 1
+                self.director_preferences[director] = self.director_preferences.get(director, 0) + 1
+
+            def recommend(self):
+                # Recomendação baseada nas preferências aprendidas
+                recommended_movies = self.get_recommended_movies()
+                return random.choice(recommended_movies)
+
+            def get_recommended_movies(self):
+                # recomenda filmes dado mais peso para o gênero, ator e diretor que você mais gosta
+                all_movies = [Movie("Movie A"), Movie("Movie B"), Movie("Movie C"), Movie("Movie D")]
+                unseen_movies = [movie for movie in all_movies if movie not in self.watched]
+                # sorteando com peso para os gêneros que você mais gosta
+                weighted_movies = []
+                for movie in unseen_movies:
+                    genre, actor, director = movie.get_attributes()
+                    weight = self.genre_preferences.get(genre, 0) + self.actor_preferences.get(actor, 0) + self.director_preferences.get(director, 0)
+                    weighted_movies.extend([movie] * weight)
+                # Note que um filme é repetido na lista de recomendação de acordo com o peso calculado, aumentando assim a probabilidade de ser recomendado.
+                return weighted_movies
+
+      </code>
+
+      E note que esse processo é mensurável. Podemos medir o sucesso do sistema de recomendação através de métricas como a taxa de cliques, a duração média de visualização ou o número de <i>likes</i>. Se o sistema melhorar nessas métricas ao longo do tempo, podemos concluir que ele <b>aprendeu</b> o seu perfil.
+    </example>
+
+    O exemplo acima ilustra pontos muito importantes para se ter em mente durante o nosso curso de aprendizado de máquina:
+    <list marker="number">
+        <item>
+            Os dados constituem a base do aprendizado, a experiência que o método tem do "mundo".
+        </item>
+        <item>
+            O método é o que transforma os dados em conhecimento, ou seja, é o que permite ao sistema aprender. Você pode criar seus próprios métodos!
+        </item>
+        <item>
+            A medida de performance é indispensável para avaliarmos se houve aprendizado e/ou se ele foi satisfatório. A medida de performance depende do contexto e da tarefa que queremos realizar. E você é livre para definir a sua própria medida de performance!
+        </item>
+    </list>
+    <box type="note">
+        <title>O modelo mental é importante!</title>
+        Se você assimila esse modelo mental do que significa aprender, você terá uma boa base para não só aprender os conceitos de aprendizado de máquina, mas também para criar seus próprios métodos e algoritmos.
+    </box>
+
+    <section numbered="false">
+        <title>Exercícios</title>
+        
+        <exercise>
+            <title>Seu método de aprendizado</title>
+            <meta>
+                <meta-item key="Habilidades">Pensamento crítico</meta-item>
+                <meta-item key="Uso de IA">Não permitido</meta-item>
+            </meta>
+            Descreva o seu próprio método de aprendizado, especificando onde ficam os dados, o método e a medida de performance.
+
+            Seria possível implementar o seu método de aprendizado em um computador? Se sim, como você faria isso? Se não, por quê?
+
+        </exercise>
+
+        <exercise>
+            <title>SPAM ou Não SPAM</title>
+            <meta>
+                <meta-item key="Habilidades">Pensamento crítico</meta-item>
+                <meta-item key="Uso de IA">Não permitido</meta-item>
+            </meta>
+            De modo geral, como você implementaria um sistema de classificação de e-mails em SPAM ou NÃO SPAM? Quais seriam os dados, o método e a medida de performance? Você pode utilizar um conjunto de dados fictício ou real.
+        </exercise>
+
+        <exercise>
+            <title>Sistema de Recomendação</title>
+            <meta>
+                <meta-item key="Habilidades">Programação, Pensamento crítico</meta-item>
+                <meta-item key="Uso de IA">Permitido</meta-item>
+
+            </meta>
+            Crie um conjunto de dados fictício de filmes, incluindo atributos como gênero, atores e diretoras. E outro conjunto de dados com os filmes e <i>likes</i> e <i>dislikes</i> de usuários fictícios. Com esses conjunto de dados, faça o seguinte:
+            <list marker="a">           
+                <item>
+                    Implemente um sistema de recomendação simples, como o do exemplo acima, que recomenda filmes com base nos gêneros, atores e diretoras que você mais gosta. Você pode utilizar uma lista de filmes fictícios ou reais.
+                </item>
+                <item>
+                    Crie uma medida de performance para avaliar o sucesso do seu sistema de recomendação. 
+                </item>
+                <item>
+                    Teste o seu sistema de recomendação com diferentes conjuntos de dados e métodos. Observe como a performance muda com base nas suas escolhas.
+                </item>
+            </list>
+        </exercise>
+    </section>
+
+  </chapter>
+
+</document>

@@ -1,0 +1,82 @@
+<document>
+
+ 
+  <floating>
+    <toc scope="project" depth="4" />
+  </floating>
+
+  <chapter>
+    <title>Uma visão geral de <em>Aprendizado de Máquina</em></title>
+    <meta>
+      <meta-item key="Autor"> Rodrigo Ribeiro</meta-item>
+      <meta-item key="Instituição"> IMPA Tech </meta-item>
+      <meta-item key="Período"> 2026.2 </meta-item>
+    </meta>
+    <intro>
+      Neste capítulo vamos introduzir de maneira natural os principais conceitos de aprendizado de máquina. Vamos introduzir a área do ponto de vista computacional, estatístico e matemático. Esse primeiro capítulo, de certa maneira, irá introduzir o modelo mental que será importante para entendimento não somente da área de Aprendizado de Máquina, mas como dos métodos que a constituem.
+    </intro>
+   
+
+    <include src="ch_1_supervised_learning.dlt" />
+
+    <section id="sec:notsup">
+      <title>Aprendizado não-supervisionado</title>
+      
+      <subsection id="subsec:clustering"><title>Clustering</title>
+        
+      </subsection>
+    
+      <subsection id="subsec:latent"><title>Descobrindo fatores latentes</title>
+        
+      </subsection>
+
+    </section>
+
+    <section id="sec:data">
+      <title>Os Dados</title>
+      <subsection id="subsec:preproc"><title>A necessidade do pré-processamento</title>
+        
+      </subsection>
+
+      <subsection id="subsec:imputation">
+        <title>Dados faltantes e imputação</title>
+        
+      </subsection>
+    </section>
+
+    <section id="sec:pipeline">
+      <title>O <em>pipeline</em> de aprendizado de máquina</title>
+
+      <subsection id="subsec:scraping">
+        <title>Coletando os dados</title>
+
+      </subsection>
+      
+      <subsection id="subsec:pipepre">
+        <title>Pré-processamento</title>
+        
+      </subsection>
+
+      <subsection id="subsec:method">
+        <title>A escolha do método</title>
+        
+      </subsection>
+
+      <subsection id="subsec:training">
+        <title>Treinamento</title>
+        
+      </subsection>
+
+      <subsection id="subsec:test">
+        <title>Validação &amp; Teste</title>
+        
+      </subsection>
+
+      <subsection id="subsec:deploy">
+        <title>Deploy</title>
+        
+      </subsection>
+    </section>
+
+  </chapter>
+</document>
