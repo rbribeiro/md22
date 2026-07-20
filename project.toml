@@ -1,5 +1,5 @@
 inputs = ["index.dlt","./chapters/chapter_1/chapter_1.dlt"]
-out = "dist"
+out = "docs"
 packages = ["regression"]
 
 [document]
