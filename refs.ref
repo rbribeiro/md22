@@ -1,0 +1,83 @@
+<bibliography>
+
+  <!-- O <paper> do Delta renderiza apenas author, title, journal e year, nessa
+       ordem, mais um <link> final. Não há campos de volume, página ou DOI: esses
+       detalhes vão dentro de <journal>. -->
+
+  <!-- ===================== IGAM: o programa e os dados ===================== -->
+
+  <paper id="igam-aguas-minas">
+    <author>Instituto Mineiro de Gestão das Águas (IGAM)</author>
+    <title>Monitoramento da qualidade das águas superficiais — Programa Águas de Minas</title>
+    <journal>Belo Horizonte: IGAM</journal>
+    <year>2024</year>
+    <link to="https://igam.mg.gov.br/monitoramento-da-qualidade-das-aguas">igam.mg.gov.br</link>
+  </paper>
+
+  <paper id="igam-series">
+    <author>Instituto Mineiro de Gestão das Águas (IGAM)</author>
+    <title>Séries históricas de monitoramento da qualidade das águas superficiais no estado de Minas Gerais</title>
+    <journal>Repositório institucional do IGAM. Planilhas por trimestre, série iniciada em 1997</journal>
+    <year>1997–2023</year>
+    <link to="https://igam.mg.gov.br/acessar-dados-e-boletins-de-qualidade-das-aguas-em-minas-gerais">Acesso aos dados e boletins</link>
+  </paper>
+
+  <paper id="igam-anual">
+    <author>Instituto Mineiro de Gestão das Águas (IGAM)</author>
+    <title>Avaliação da qualidade das águas superficiais de Minas Gerais em 2022: resumo executivo anual</title>
+    <journal>Belo Horizonte: IGAM, 249 p.</journal>
+    <year>2023</year>
+  </paper>
+
+  <paper id="igam-velhas">
+    <author>Instituto Mineiro de Gestão das Águas (IGAM)</author>
+    <title>Plano diretor de recursos hídricos da bacia hidrográfica do rio das Velhas: relatório de qualidade das águas</title>
+    <journal>Belo Horizonte: IGAM. Descrição e localização das estações de amostragem BV</journal>
+    <year>2004</year>
+  </paper>
+
+  <!-- ============ Arsênio no Quadrilátero Ferrífero: o problema ============ -->
+
+  <paper id="borba2004">
+    <author>BORBA, R. P.; FIGUEIREDO, B. R.; CAVALCANTI, J. A.</author>
+    <title>Arsênio na água subterrânea em Ouro Preto e Mariana, Quadrilátero Ferrífero (MG)</title>
+    <journal>Rem: Revista Escola de Minas, v. 57, n. 1, p. 45–51</journal>
+    <year>2004</year>
+    <link to="https://www.scielo.br/j/rem/a/GSvNhwrsHVwRKrPmpxLyX4s/?lang=pt">SciELO</link>
+  </paper>
+
+  <paper id="christofaro2009">
+    <author>CHRISTOFARO, C.; LEÃO, M. M. D.</author>
+    <title>Caracterização temporal do arsênio nas águas superficiais da bacia hidrográfica do rio das Velhas, MG</title>
+    <journal>Revista Ambiente &amp; Água, v. 4, n. 3, p. 54–66. Análise de tendência sobre a série do próprio Programa Águas de Minas</journal>
+    <year>2009</year>
+    <link to="https://www.redalyc.org/pdf/928/92812346004.pdf">Texto completo</link>
+  </paper>
+
+  <paper id="manuelzao2025">
+    <author>Projeto Manuelzão / UFMG</author>
+    <title>Arsênio 13 vezes acima do limite legal contamina córregos no Alto Rio das Velhas</title>
+    <journal>Belo Horizonte: UFMG. Coletas de agosto de 2024, resultados divulgados em julho de 2025</journal>
+    <year>2025</year>
+    <link to="https://manuelzao.ufmg.br/arsenio-13-vezes-acima-do-limite-legal-contamina-corregos-no-alto-rio-das-velhas/">manuelzao.ufmg.br</link>
+  </paper>
+
+  <!-- ========================= Limites regulatórios ======================== -->
+
+  <paper id="conama357">
+    <author>CONSELHO NACIONAL DO MEIO AMBIENTE (CONAMA)</author>
+    <title>Resolução nº 357, de 17 de março de 2005</title>
+    <journal>Classificação dos corpos de água e diretrizes ambientais para o seu enquadramento. Arsênio total: 0,01 mg/L em águas doces de classes 1 e 2</journal>
+    <year>2005</year>
+    <link to="https://conama.mma.gov.br/atos-normativos-sistema">CONAMA</link>
+  </paper>
+
+  <paper id="portaria888">
+    <author>BRASIL. Ministério da Saúde</author>
+    <title>Portaria GM/MS nº 888, de 4 de maio de 2021</title>
+    <journal>Padrão de potabilidade da água para consumo humano. Arsênio: 0,01 mg/L</journal>
+    <year>2021</year>
+    <link to="https://bvsms.saude.gov.br/bvs/saudelegis/gm/2021/prt0888_07_05_2021.html">Texto oficial</link>
+  </paper>
+
+</bibliography>

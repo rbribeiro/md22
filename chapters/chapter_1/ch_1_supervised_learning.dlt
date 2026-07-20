@@ -2,48 +2,84 @@
  <section id="s-visao-geral">
       <title>Aprendizado supervisionado</title>
       <subsection id="sec:um_problema_concreto"><title>Um problema concreto</title>
-        O instituto de controle das águas do estado de Minas Gerais, <strong>IGAM</strong>, faz medições regulares da qualidade da água e do solo em diversos pontos de várias bácias hidrográficas do estado. As análises medem caractéristicas da água tais como: <i>pH</i>, <i>turbidez</i>, <i>concentração de arsênio</i> entre outras.
-        Os resultados são compilados  <em>dados tabulares</em> e disponibilizados para acesso público em arquivos de formato <i>xlsx</i> como mostra a tabela abaixo.
-        <table max-height="200px">
+        O <strong>IGAM</strong> — Instituto Mineiro de Gestão das Águas, autarquia responsável pela gestão dos recursos hídricos de Minas Gerais — mantém, desde 1997, o <em>Programa Águas de Minas</em>: cerca de <b>660 estações de amostragem</b> distribuídas pelas bacias hidrográficas do estado, com coletas majoritariamente <i>trimestrais</i>, que medem a qualidade da água <cite papers="igam-aguas-minas,igam-anual"/>. Cada campanha registra dezenas de parâmetros, dos quais nos interessam dois grupos bem distintos:
+        <list marker="a">
+          <item><em>Medidos em campo</em>, com uma sonda multiparamétrica, em segundos e a custo marginal quase nulo: <i>pH</i>, <i>turbidez</i>, <i>condutividade elétrica</i>, <i>temperatura</i>, <i>oxigênio dissolvido</i>.</item>
+          <item><em>Medidos em laboratório</em>, a partir de amostras coletadas, preservadas e transportadas: nutrientes, coliformes e o painel de <i>metais</i> — entre eles o <b>arsênio total</b>.</item>
+        </list>
+        Os resultados são compilados em <em>dados tabulares</em> e disponibilizados para acesso público em arquivos de formato <i>xlsx</i> <cite paper="igam-series"/>, como ilustra a tabela abaixo.
+        <table>
           <header>
+              <column>Estação</column>
               <column>Data</column>
-              <column>Lat</column>
-              <column>Long</column>
-              <column>pH</column>
+              <column align="right" mono="true">pH</column>
+              <column align="right" mono="true">Turbidez (UNT)</column>
+              <column align="right" mono="true">Cond. (µS/cm)</column>
+              <column align="right" mono="true">OD (mg/L)</column>
+              <column align="right" mono="true">Ferro tot. (mg/L)</column>
+              <column align="right" mono="true">Arsênio tot. (mg/L)</column>
           </header>
           <row>
-            <column>25/11/2026</column>
-            <column>-0.12321</column>
-            <column>1.231</column>
-            <column>2</column>
-            <column>7</column>
-            <column>10</column>
+            <column>BV035</column>
+            <column>12/03/2024</column>
+            <column>7,1</column>
+            <column>18</column>
+            <column>88</column>
+            <column>7,4</column>
+            <column>0,42</column>
+            <column>&lt; 0,003</column>
           </row>
           <row>
-            <column>25/11/2026</column>
-            <column>-0.12321</column>
-            <column>1.231</column>
-            <column>2</column>
-            <column>7</column>
-            <column>10</column>
+            <column>BV062</column>
+            <column>12/03/2024</column>
+            <column>6,8</column>
+            <column>141</column>
+            <column>320</column>
+            <column>5,1</column>
+            <column>4,23</column>
+            <column>0,133</column>
           </row>
           <row>
-            <column>25/11/2026</column>
-            <column>-0.12321</column>
-            <column>1.231</column>
-            <column>--</column>
-            <column>7</column>
-            <column>10</column>
+            <column>BV083</column>
+            <column>13/03/2024</column>
+            <column>7,3</column>
+            <column>62</column>
+            <column>210</column>
+            <column>4,2</column>
+            <column>1,85</column>
+            <column>0,012</column>
           </row>
           <row>
-            <column>25/11/2026</column>
-            <column>-0.12321</column>
-            <column>1.231</column>
-            <column>2</column>
-            <column>7</column>
-            <column>10</column>
+            <column>BV105</column>
+            <column>13/03/2024</column>
+            <column>7,0</column>
+            <column>35</column>
+            <column>175</column>
+            <column>6,0</column>
+            <column>0,97</column>
+            <column></column>
           </row>
-          <caption>Exemplo de dados divulgados</caption>
+          <row>
+            <column>BV137</column>
+            <column>14/03/2024</column>
+            <column>6,4</column>
+            <column>24</column>
+            <column>116</column>
+            <column>7,3</column>
+            <column>0,55</column>
+            <column>0,004</column>
+          </row>
+          <row>
+            <column>BV153</column>
+            <column>14/03/2024</column>
+            <column>7,6</column>
+            <column>9</column>
+            <column>45</column>
+            <column>7,9</column>
+            <column>0,31</column>
+            <column>&lt; 0,003</column>
+          </row>
+          <caption>Estrutura dos dados do <em>Programa Águas de Minas</em>. As estações <c>BV###</c> são reais e pertencem à bacia do rio das Velhas <cite paper="igam-velhas"/>; os valores são <b>ilustrativos</b>, na ordem de grandeza observada na região. Repare em duas particularidades dos dados reais: <c>< 0,003</c> indica resultado <em>abaixo do limite de quantificação</em> do laboratório (no arquivo original isso ocupa uma coluna <c>Sinal</c> separada), e a célula vazia indica parâmetro <em>não medido</em> naquela campanha. Voltaremos a esses dois problemas na <ref to="subsec:imputation" />.</caption>
         </table>
 
 
@@ -54,7 +90,9 @@
           Dadas as outras características medidas da água, é possível estimar a concentração de arsênio a partir delas? Se sim, como? E qual seria o conjunto mínimo de características que precisamos levar em consideração para uma boa estimativa?
         </problem>
 
-        Note a seriedade do problema. O arsênio em quantidades elevadas pode ser altamente tóxico. Subestimar a concentração de arsênio pode ser perigoso!
+        Note a seriedade do problema. O arsênio em quantidades elevadas pode ser altamente tóxico — o limite legal, tanto para águas doces de classes 1 e 2 quanto para a água distribuída à população, é de apenas <c>0,01 mg/L</c> <cite papers="conama357,portaria888"/>. Subestimar a concentração de arsênio pode ser perigoso!
+
+        E não se trata de um cenário hipotético. No <em>Quadrilátero Ferrífero</em>, a oxidação da arsenopirita associada à mineração de ouro libera arsênio nas águas há décadas: medições em Ouro Preto e Mariana já encontraram concentrações centenas de vezes acima do limite de potabilidade <cite paper="borba2004"/>, e o próprio Programa Águas de Minas registra, na bacia do rio das Velhas, estações com arsênio acima do padrão ambiental <cite paper="christofaro2009"/>. Em 2024, coletas no ribeirão Água Suja, em Nova Lima, mediram arsênio <b>treze vezes acima do limite</b> — em uma bacia que abastece boa parte da região metropolitana de Belo Horizonte <cite paper="manuelzao2025"/>.
 
         Por outro lado, note também que se existir uma resposta positiva às questões acima, teremos um modo mais barato e mais rápido de medir (estimar) a concentração de uma substância tóxica na água que é servida a milhões de pessoas. A companhia poupa dinheiro, que pode ser investido na infraestrutura de água do estado, e pode responder de maneira mais ágil caso haja contaminação por arsênio, já que não seria mais necessário enviar amostras ao laboratório para medir o arsênio (processo que pode ser mais demorado que de outras substâncias).
 
@@ -361,20 +399,21 @@
             $$
               Y = \beta X + \varepsilon
             $$
-            onde $\varepsilon$ é uma variável aleatório independente de $X$. 
+            onde $\varepsilon$ é uma variável aleatória independente de $X$ e de média zero.
             Considere também o conjunto de dados descritos na tabela abaixo.
             <table>
               <header>
-                <column>$X$</column>
-                <column>$Y$</column>
+                <column>$i$</column>
+                <column align="right" mono="true">$x_i$</column>
+                <column align="right" mono="true">$y_i$</column>
               </header>
-              <row>
-                <column>0.5</column>
-                <column>1</column>
-              </row>
-              <caption>Tabela</caption>
+              <row><column>1</column><column>1</column><column>3</column></row>
+              <row><column>2</column><column>2</column><column>4</column></row>
+              <row><column>3</column><column>3</column><column>8</column></row>
+              <row><column>4</column><column>4</column><column>10</column></row>
+              <caption>Quatro observações $(x_i, y_i)$.</caption>
             </table>
-            Encontre o valor de $\beta$ que minimiza o risco empírico com função perda 
+            Encontre o valor de $\beta$ que minimiza o risco empírico com função perda
             $$
               \ell(y,\hat{y})= (y-\hat{y})^2.
             $$
