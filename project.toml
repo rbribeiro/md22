@@ -1,4 +1,4 @@
-inputs = ["index.dlt","./chapters/chapter_0/ch_0_aprender.dlt","./chapters/chapter_1/chapter_1.dlt"]
+inputs = ["index.dlt","./chapters/chapter_0/ch_0_aprender.dlt","./chapters/chapter_1/chapter_1.dlt", "./chapters/chapter_2/chapter_2.dlt", "./chapters/chapter_3/chapter_3.dlt"]
 out = "docs"
 packages = ["regression"]
 

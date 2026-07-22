@@ -6,77 +6,814 @@
   </floating>
 
   <chapter>
-    <title>Uma visão geral de <em>Aprendizado de Máquina</em></title>
+    <title>Visão geral de Aprendizado de Máquina <em> supervisionado</em> </title>
     <meta>
       <meta-item key="Autor"> Rodrigo Ribeiro</meta-item>
       <meta-item key="Instituição"> IMPA Tech </meta-item>
       <meta-item key="Período"> 2026.2 </meta-item>
     </meta>
     <intro>
-      Neste capítulo vamos introduzir de maneira natural os principais conceitos de aprendizado de máquina. Vamos introduzir a área do ponto de vista computacional, estatístico e matemático. Esse primeiro capítulo, de certa maneira, irá introduzir o modelo mental que será importante para entendimento não somente da área de Aprendizado de Máquina, mas como dos métodos que a constituem.
+      Neste capítulo vamos introduzir de maneira natural os principais conceitos de aprendizado de máquina supervisionado. Vamos introduzir a área do ponto de vista computacional, estatístico e matemático. Esse primeiro capítulo, de certa maneira, irá introduzir o modelo mental que será importante para entendimento não somente da área de Aprendizado de Máquina, mas como dos métodos que a constituem.
     </intro>
    
 
-    <include src="ch_1_supervised_learning.dlt" />
+    <!-- include src="ch_1_supervised_learning.dlt" -->
 
-    <section id="sec:notsup">
-      <title>Aprendizado não-supervisionado</title>
+
+      <section id="sec:um_problema_concreto"><title>Um problema concreto</title>
+        O <strong>IGAM</strong> — Instituto Mineiro de Gestão das Águas, autarquia responsável pela gestão dos recursos hídricos de Minas Gerais — mantém, desde 1997, o <em>Programa Águas de Minas</em>: cerca de <b>660 estações de amostragem</b> distribuídas pelas bacias hidrográficas do estado, com coletas majoritariamente <i>trimestrais</i>, que medem a qualidade da água <cite papers="igam-aguas-minas,igam-anual"/>. Cada campanha registra dezenas de parâmetros, dos quais nos interessam dois grupos bem distintos:
+        <list marker="a">
+          <item><em>Medidos em campo</em>, com uma sonda multiparamétrica, em segundos e a custo marginal quase nulo: <i>pH</i>, <i>turbidez</i>, <i>condutividade elétrica</i>, <i>temperatura</i>, <i>oxigênio dissolvido</i>.</item>
+          <item><em>Medidos em laboratório</em>, a partir de amostras coletadas, preservadas e transportadas: nutrientes, coliformes e o painel de <i>metais</i> — entre eles o <b>arsênio total</b>.</item>
+        </list>
+        Os resultados são compilados em <em>dados tabulares</em> e disponibilizados para acesso público em arquivos de formato <i>xlsx</i> <cite paper="igam-series"/>, como ilustra a tabela abaixo.
+        <table>
+          <header>
+              <column>Estação</column>
+              <column>Data</column>
+              <column align="right" mono="true">pH</column>
+              <column align="right" mono="true">Turbidez (UNT)</column>
+              <column align="right" mono="true">Cond. (µS/cm)</column>
+              <column align="right" mono="true">OD (mg/L)</column>
+              <column align="right" mono="true">Ferro tot. (mg/L)</column>
+              <column align="right" mono="true">Arsênio tot. (mg/L)</column>
+          </header>
+          <row>
+            <column>BV035</column>
+            <column>12/03/2024</column>
+            <column>7,1</column>
+            <column>18</column>
+            <column>88</column>
+            <column>7,4</column>
+            <column>0,42</column>
+            <column>&lt; 0,003</column>
+          </row>
+          <row>
+            <column>BV062</column>
+            <column>12/03/2024</column>
+            <column>6,8</column>
+            <column>141</column>
+            <column>320</column>
+            <column>5,1</column>
+            <column>4,23</column>
+            <column>0,133</column>
+          </row>
+          <row>
+            <column>BV083</column>
+            <column>13/03/2024</column>
+            <column>7,3</column>
+            <column>62</column>
+            <column>210</column>
+            <column>4,2</column>
+            <column>1,85</column>
+            <column>0,012</column>
+          </row>
+          <row>
+            <column>BV105</column>
+            <column>13/03/2024</column>
+            <column>7,0</column>
+            <column>35</column>
+            <column>175</column>
+            <column>6,0</column>
+            <column>0,97</column>
+            <column></column>
+          </row>
+          <row>
+            <column>BV137</column>
+            <column>14/03/2024</column>
+            <column>6,4</column>
+            <column>24</column>
+            <column>116</column>
+            <column>7,3</column>
+            <column>0,55</column>
+            <column>0,004</column>
+          </row>
+          <row>
+            <column>BV153</column>
+            <column>14/03/2024</column>
+            <column>7,6</column>
+            <column>9</column>
+            <column>45</column>
+            <column>7,9</column>
+            <column>0,31</column>
+            <column>&lt; 0,003</column>
+          </row>
+          <caption>Estrutura dos dados do <em>Programa Águas de Minas</em>. As estações <c>BV###</c> são reais e pertencem à bacia do rio das Velhas <cite paper="igam-velhas"/>; os valores são <b>ilustrativos</b>, na ordem de grandeza observada na região. Repare em duas particularidades dos dados reais: <c>< 0,003</c> indica resultado <em>abaixo do limite de quantificação</em> do laboratório (no arquivo original isso ocupa uma coluna <c>Sinal</c> separada), e a célula vazia indica parâmetro <em>não medido</em> naquela campanha. Voltaremos a esses dois problemas na <ref to="subsec:imputation" />.</caption>
+        </table>
+
+
+        Quando se trata de medições de características da água, algumas delas são mais fáceis e/ou mais baratas de se medir. O que <b>não</b> é o caso do <em>arsênio</em>. Medir a concentração de arsênio na água pode ser demorado e/ou caro. O que leva a companhia estatal ao seguinte problema:
+
+        <problem id="p:concrete_problem">
+          <title>Como estimar o arsênio sem medi-lo?</title>
+          Dadas as outras características medidas da água, é possível estimar a concentração de arsênio a partir delas? Se sim, como? E qual seria o conjunto mínimo de características que precisamos levar em consideração para uma boa estimativa?
+        </problem>
+
+        Note a seriedade do problema. O arsênio em quantidades elevadas pode ser altamente tóxico — o limite legal, tanto para águas doces de classes 1 e 2 quanto para a água distribuída à população, é de apenas <c>0,01 mg/L</c> <cite papers="conama357,portaria888"/>. Subestimar a concentração de arsênio pode ser perigoso!
+
+        E não se trata de um cenário hipotético. No <em>Quadrilátero Ferrífero</em>, a oxidação da arsenopirita associada à mineração de ouro libera arsênio nas águas há décadas: medições em Ouro Preto e Mariana já encontraram concentrações centenas de vezes acima do limite de potabilidade <cite paper="borba2004"/>, e o próprio Programa Águas de Minas registra, na bacia do rio das Velhas, estações com arsênio acima do padrão ambiental <cite paper="christofaro2009"/>. Em 2024, coletas no ribeirão Água Suja, em Nova Lima, mediram arsênio <b>treze vezes acima do limite</b> — em uma bacia que abastece boa parte da região metropolitana de Belo Horizonte <cite paper="manuelzao2025"/>.
+
+        Por outro lado, note também que se existir uma resposta positiva às questões acima, teremos um modo mais barato e mais rápido de medir (estimar) a concentração de uma substância tóxica na água que é servida a milhões de pessoas. A companhia poupa dinheiro, que pode ser investido na infraestrutura de água do estado, e pode responder de maneira mais ágil caso haja contaminação por arsênio, já que não seria mais necessário enviar amostras ao laboratório para medir o arsênio (processo que pode ser mais demorado que de outras substâncias).
+
+        O <ref to="p:concrete_problem" /> é um problema típico de <b>aprendizado de máquina</b> <em>supervisionado</em>. Em problemas de aprendizado supervisionado, temos um conjunto de dados de entrada (as características da água) e um conjunto de dados de saída (a concentração de arsênio). O objetivo é aprender, a partir dos dados de <em>entrada</em> e <em>saída</em>, como mapear os dados de entrada para os dados de saída. 
+
+        As características da água podem ser chamadas de entrada, <em>features</em>, <em>variáveis independentes</em> ou <em>preditores </em>, enquanto a concentração de arsênio pode ser chamada de saída, <em>resposta</em>, <em>target</em> ou <em>variável dependente</em>, já que assumimos que ela <b>depende</b> das outras características. Esse tipo de problema é chamado de supervisionado porque temos um conjunto de dados com as "respostas", observamos alguns exemplos da saída (concentração de arsênio) para alguns exemplos da entrada (características da água). É importante ressaltar que esse nem sempre é o caso em problemas de aprendizado de máquina, como veremos mais adiante quando discutirmos <em>aprendizado não-supervisionado</em> na <ref to="ch:notsup" />.
+
+        Além disso, dizemos que trata-se de um problema de <em>regressão</em> porque a variável dependente (concentração de arsênio) é contínua. Se a variável dependente fosse discreta, por exemplo, se quiséssemos classificar a água como "potável" ou "não potável", o problema seria chamado de <em>classificação</em>, veja <ref to="subsec:classi" /> para mais detalhes.
+
+      </section>
+
+      <section><title>Um problema matemático</title>
+
+        Vamos mudar um pouco a perspectiva e pensar no <ref to="p:concrete_problem" /> de uma maneira mais matemática. Contudo, antes mesmo de tentarmos reformular o problema matematicamente, vamos pensar em dois problemas puramente matemáticos que são muito próximos do problema de aprendizado de máquina que queremos resolver.
+
+        <problem numbered="false">
+          <title>Função desconhecida</title>
+          Considere um conjunto de pontos 
+          $$S = \{ (x_1,y_1),\dots, (x_N,y_N) \} \subset \mathbb{R}^p\times \mathbb{R}$$ com $x_i \neq x_j$ para $i \neq j$, obtido como amostras da seguinte relação $Y = f(X)$, sendo $f:\mathbb{R}^p \to \mathbb{R}$ desconhecida. Como encontrar $f$ a partir de $S$?
+        </problem>
+        Geometricamente, o problema acima é equivalente a encontrar uma curva (ou (hiper,su)perfície) que passe por todos os pontos de $S$. É claro que enunciado com esse grau de generalidade, o problema acima não tem solução já que existem infinitas curvas passando por $S$.
+
+        Se adicionarmos a restrição de que $f$ deva ser um polinômio de grau no máximo $N-1$, então o problema acima tem uma solução única! Podemos reescrever o problema anterior para o caso $p=1$ da seguinte maneira:
+
+        <problem id="p:poly">
+          <title>Interpolação polinomial</title>
+          Considere um conjunto de pontos 
+          $$S = \{ (x_1,y_1),\dots, (x_N,y_N) \} \subset \mathbb{R}\times \mathbb{R}$$ com $x_i \neq x_j$ para $i \neq j$, obtido como amostras da seguinte relação $Y = f(X)$, sendo $f:\mathbb{R} \to \mathbb{R}$ um polinômio de grau no máximo $N-1$ desconhecido. Como encontrar $f$ a partir de $S$?
+        </problem>
+
+        Em outras palavras, temos $N$ pontos distintos no plano e queremos encontrar um polinômio de grau no máximo $N-1$ que passe por todos eles. O ambiente <ref to="in:poly" /> abaixo permite que você experimente com a <em>interpolação polinomial</em>. Arraste os pontos para movê-los, clique no plano para adicionar e dê um duplo-clique para remover. 
+
+        <interactive id="in:poly">
+          <polynomial-interpolation runge="false" points="0,1;-0.5,0;0.5,0.2" controls="false" />
+          <caption>Interpolação polinomial</caption>
+        </interactive>
+
+        Caso você tenha interesse em ver prova da unicidade da solução do problema de interpolação polinomial e em saber como encontrar o polinômio interpolador, expanda a solução abaixo.
+        <solution of="p:poly" collapsed="true">
+          Começamos escrevendo $f$ como um polinômio de grau no máximo $N-1$:
+          $$
+          f(x) = a_0 + a_1 x + a_2 x^2 + \dots + a_{N-1} x^{N-1}.
+          $$
+          O problema de interpolação polinomial consiste em encontrar os coeficientes $a_0,\dots,a_{N-1}$ de tal forma que $f(x_i) = y_i$ para $i=1,\dots,N$. Isso nos dá um sistema de equações lineares com $N$ equações (uma para cada ponto) e $N$ incógnitas (as variáveis são os coeficientes $a_0,\dots,a_{N-1}$).
+
+          O sistema linear pode ser escrito na forma matricial como
+          <sidenote>
+            A matriz de Vandermonde é invertível se e somente se os $x_i$ são distintos. Prove.
+          </sidenote>
+          $$
+          \begin{bmatrix}
+          1 & x_1 & x_1^2 & \dots & x_1^{N-1} \\
+          1 & x_2 & x_2^2 & \dots & x_2^{N-1} \\
+          \vdots & \vdots & \vdots & \ddots & \vdots \\
+          1 & x_N & x_N^2 & \dots & x_N^{N-1}
+          \end{bmatrix}
+          \begin{bmatrix}
+          a_0 \\
+          a_1 \\
+          \vdots \\
+          a_{N-1}
+          \end{bmatrix}
+          =
+          \begin{bmatrix}
+          y_1 \\
+          y_2 \\
+          \vdots \\
+          y_N
+          \end{bmatrix}.
+          $$
+
+          A matriz do lado esquerdo é conhecida como matriz de <em>Vandermonde</em> e é invertível se e somente se os $x_i$ são distintos. Como assumimos que $x_i \neq x_j$ para $i \neq j$, a matriz é invertível e o sistema linear tem uma solução única. Portanto, existe um único polinômio de grau no máximo $N-1$ que passa por todos os pontos de $S$.
+
+          Os coeficientes podem ser encontrados invertendo a matriz de Vandermonde e multiplicando pelo vetor de $y_i$. Isto é,
+           $$
+            \begin{bmatrix}
+          a_0 \\
+          a_1 \\
+          \vdots \\
+          a_{N-1}
+          \end{bmatrix} = 
+           \left(
+          \begin{bmatrix}
+          1 & x_1 & x_1^2 & \dots & x_1^{N-1} \\
+          1 & x_2 & x_2^2 & \dots & x_2^{N-1} \\
+          \vdots & \vdots & \vdots & \ddots & \vdots \\
+          1 & x_N & x_N^2 & \dots & x_N^{N-1}
+          \end{bmatrix}
+          \right)^{-1}
+          \begin{bmatrix}
+          y_1 \\
+          y_2 \\
+          \vdots \\
+          y_N
+          \end{bmatrix}.
+          $$
+
+          O <em>polinômio interpolador de Lagrange</em> é uma forma alternativa de escrever o polinômio interpolador que não requer a inversão da matriz de Vandermonde. Ele é dado por:
+          $$
+          f(x) = \sum_{i=1}^{N} y_i L_i(x),
+          $$
+          onde $L_i(x)$ são os polinômios de Lagrange definidos como
+          $$
+          L_i(x) = \prod_{\stackrel{j=1}{j\neq i}}^N \frac{x-x_j}{x_i-x_j}.
+          $$
+          Note que $L_i(x_i) = 1$ e $L_i(x_j) = 0$ para $j \neq i$. Logo, $f(x_i) = y_i$ como desejado.
+
+          O componente <ref to="in:poly" /> implementa o polinômio interpolador de Lagrange para calcular o polinômio que passa pelos pontos dados e portanto não precisa calcular a inversa de nenhuma matriz!
+        </solution>
+
+        Agora vamos deixar o problema inicial um pouco mais desafiador. Suponha que os pontos de $S$ não estejam exatamente na curva de $f$, mas sim próximos dela. Em outras palavras, associado a cada ponto $(x_i,y_i)$, temos um erro $\varepsilon_i$ tal que $y_i = f(x_i) + \varepsilon_i$. Como encontrar $f$? Mais formalmente, propomos a seguinte modificação do <ref to="p:poly" />
+        <problem id="p:approx">
+          Considere um conjunto de pontos 
+          $$S = \{ (x_1,y_1),\dots, (x_N,y_N) \} \subset \mathbb{R}^p\times \mathbb{R}$$ 
+          com $x_i \neq x_j$ para $i \neq j$, obtido como amostras da seguinte relação 
+          $$
+          Y = f(X) + \varepsilon,
+          $$ sendo $f:\mathbb{R}^p \to \mathbb{R}$ desconhecida e $\varepsilon$ um erro aleatório de média zero e independente do argumento $X$. Como encontrar $f$ a partir de $S$?
+        </problem>
+        Mesmo que assumamos que $f$ seja um polinômio, o problema acima é mais difícil que o problema inicial já que os pontos em $S$ podem se desviar um pouco da curva (ou superfície) de $f$. Logo, interpolar os pontos de $S$ pode não ser uma boa ideia uma vez que sabemos que a solução obtida não é a verdadedeira função $f$. 
+        
+        Diante de um problema tão complicado, podemos esquecer encontrar $f$ e pensar em encontrar uma função $\hat{f}$ que seja uma boa <hint show-icon="false"><title>aproximação</title> <b>Aproximação</b> exige naturalmente um conceito de proximidade/qualidade que não estamos definindo aqui.</hint> de $f$. 
+
+        O ambiente <ref to="in:runge" /> abaixo permite que você experimente com a interpolação polinomial nesse caso mais complexo. A ordenada ($y$) de cada ponto é obtido como $y_i = f(x_i) + \varepsilon_i$, onde $\varepsilon_i$ é um ruído aleatório de média zero. Logo, cada ponto possui um pequeno desvio da curva real de $f$ representada pela linha tracejada. 
+        
+        
+        Note que a medida que o número de pontos cresce, o polinômio interpolador começa a oscilar muito e se afastar da curva real de $f$. Esse fenômeno é conhecido como <hint show-icon="false">
+          <title>fenômeno de Runge</title>
+          O fênomeno de Runge pode ser provado analisando as derivadas nos pontos de interpolação. É possível mostrar que a derivada do polinômio interpolador de grau $N-1$ cresce rapidamente com $N$, o que leva a oscilações cada vez maiores entre os pontos de interpolação.
+          
+          Além disso, a escolha dos pontos de interpolação também influencia o fenômeno de Runge. Se os pontos forem escolhidos uniformemente, o fenômeno de Runge é mais pronunciado. 
+
+          </hint>. O fenômeno de Runge é a tendência de um polinômio interpolador de grau elevado a oscilar muito entre os pontos de interpolação, mesmo que a função original seja suave.
+
+        Além disso, observe também que se novos pontos próximos da curva de $f$ forem adicionados, esses pontos podem estar muito longe do polinômio interpolador. O que indica que o polinômio interpolador pode não ser uma boa aproximação de $f$ (pelo menos não quando os pontos de interpolação estão uniformemente espaçados). E também, se um novo polinômio interpolador for calculado com os novos pontos, o polinômio resultante pode ser muito diferente do polinômio anterior. O que sugere que o polinômio interpolador não é estável ou possui <b>variância</b> alta.
+
+        <interactive id="in:runge">
+          <polynomial-interpolation />
+          <caption>Interpolação polinomial e o fenômeno de Runge.</caption>
+        </interactive>
+
+        </section>
+
+        <section><title>O problema concreto e o problema matemático</title>
+
+          Talvez você já tenha notado, mas o <ref to="p:concrete_problem">problema</ref> de aprendizado de máquina que introduzimos é um caso particular do <ref to="p:approx">problema</ref> matemático que acabamos de discutir! 
+          
+          No <ref to="p:concrete_problem" />, a função $f$ é a função que mapeia as demais características da água medida pelo IGAM para a concentração de arsênio. O conjunto de pontos $S$ é o conjunto de medições feitas pelo IGAM, em que cada ponto $(x_i,y_i)$ corresponde a uma medição das características da água e da concentração de arsênio em um determinado ponto e tempo. O erro $\varepsilon$ representa a <i>variabilidade natural</i> das medições e <i>outros fatores</i> que podem influenciar a concentração de arsênio na água além das características que estamos fixando.
+
+          Em outras palavras, podemos assumir que a concentração de arsênio na água (denotado por $Y$) é uma função das demais características da água (denotado por $X$) mais um termo $\varepsilon$ que pode representar algum possível erro na medição, alguma imprecisão dos equipamentos de medição, ou mesmo algum fator que influencia a concentração de arsênio na água, mas que não estamos levando em consideração. Logo, podemos escrever:
+          $$
+          Y = f(X) + \varepsilon,
+          $$
+          onde $f$ é a função que queremos estimar. Que é exatamente o problema matemático que discutimos acima.
+
+          Uma vez estimada a função $f$, isto é, encontramos uma função $\hat{f}$ que aproxima $f$, podemos usá-la para estimar a concentração de arsênio na água a partir das demais características da água sem precisar medir o arsênio diretamente. Isso nos permite economizar tempo e dinheiro, além de permitir uma resposta mais rápida em caso de contaminação por arsênio. 
+
+          Se temos uma medição particular $x$ das características da água, podemos estimar a concentração de arsênio simplesmente calculando $\hat{f}(x)$. Se confiamos na estimativa $\hat{f}$, podemos usar esse valor como uma estimativa da concentração de arsênio na água, sem precisar medir o arsênio diretamente.
+
+      </section>
+
+      <section id="subsec:pq"><title><em>Por que</em> estimar $f$?</title>
+        A esta altura, você já deve ter percebido que estimar $f$ nos permite economizar tempo e dinheiro (coisas bem preciosas em uma sociedade capitalista).
+        <sidenote>
+          Você consegue pensar em outras situações concretas em que estimar $f$ seria útil?
+        </sidenote>
+        De modo mais geral, estimar $f$ nos permite fazer previsões sobre a variável dependente a partir das variáveis independentes. 
+        
+
+        Contudo, podemos ser um pouco mais específicos no que queremos da estimativa $\hat{f}$. No caso em queremos somente fazer <em>previsões</em> com $\hat{f}$, não precisamos nos preocupar muito com a forma de $\hat{f}$, desde que ela seja uma boa aproximação de $f$. Isto é, $\hat{f}$ pode ser uma função bem complicada, desde que ela seja uma boa aproximação e que saibamos como computar $\hat{f}(x)$.
+
+        Por outro lado, se queremos entender e <em>inferir</em> a relação entre as variáveis independentes e a variável dependente, precisamos que $\hat{f}$ seja uma função mais simples e que possua uma forma que possamos <i>interpretar</i>. Por exemplo, se $\hat{f}$ é da forma
+        $$
+        \hat{f}(x) = 15.2 \times \text{pH} - 2.1 \times \text{turbidez} - 5,
+        $$
+        podemos inferir que o <i>pH</i> tem um alto impacto na concentração de arsênio, enquanto a <i>turbidez</i> tem um impacto negativo.
+
+        O fato é que se $\hat{f}$ depende das variáveis independentes de uma maneira complicada, não conseguimos inferir nada sobre a relação entre as variáveis independentes e a variável dependente. 
+
+        Resumindo, podemos estimar $f$ por duas razões principais: 
+        <list marker="roman">
+          <item>Para fazer <em>previsões</em> sobre a variável dependente a partir das variáveis independentes. <b>Logo, $\hat{f}$ pode ser complicada;</b> </item>
+          <item>Para <em>inferir</em> a relação entre as variáveis independentes e a variável dependente. <b>Logo, $\hat{f}$ deve ser simples o suficiente para ser <em>interpretável</em>.</b> </item>
+        </list>
+      </section>
+
+      <section id="subsec:como"><title><em>Como</em> estimar $f$?</title>
+        Agora que nos convencemos de que o problema de estimar $f$ a partir de um conjunto de dados é interessante e útil, o próximo passo mais natural é pensar: <b>certo, mas como estimar $f$</b>? 
+
+        Este curso tem como objetivo central responder a essa pergunta. Vamos discutir diversos métodos de aprendizado de máquina que fornecem diferentes maneiras de estimar $f$. Por ora, vamos apenas discutir alguns aspectos gerais que são comuns a grande parte dos métodos de aprendizado de máquina.
+
+        <subsection id="sss:erm">
+          <title>Minimização do Risco Empírico</title>
+          Seja no problema puramente matemático ou dentro de algum contexto específico, queremos que nossa estimativa de $f$ seja boa. Em outras palavras, queremos que $\hat{f}$ esteja próxima de $f$.
+
+          É claro que as noções de <i>"boa"</i> e <i>"próxima"</i> precisam ser bem especificadas. No caso da abordagem de <em>minimização do risco empírico</em> (<i>empirical risk minimization</i>, em inglês), introduzimos uma <em>função perda</em> <i>(ou função custo)</i> $\ell$ cujo objetivo é quantificar a proximidade entre o <b>observado</b> ($y$) e o <b>previsto</b> ($\hat{y} = \hat{f}(x)$). Isto é, $\ell(y,\hat{y})$ retorna um número que é usado para dizer se $\hat{y}$ é uma boa previsão de $y$ ou não.
+
+          Por fim, escolhemos $\hat{f}$ que minimiza o <b>risco empírico</b> definido como
+          <equation id="eq:er">
+            \frac{1}{N}\sum_{i=1}^N\ell(y_i,\hat{y}_i),
+          </equation>
+          onde $N$ é o tamanho da nossa amostra (quantos pontos temos) e $\hat{y}_i$ é a previsão feita para a $i$-ésima entrada $x_i$. Mais formalmente, escolhemos $\hat{f}$ da seguinte forma 
+          <equation id="eq:erm">
+            \hat{f}_{\text{ERM}} \in \arg\min_{g \in \mathcal{G}} \frac{1}{N} \sum_{i=1}^N \ell(y_i,g(x_i)),
+          </equation>
+          em que $\mathcal{G}$ é uma classe de funções candidatas a aproximar $f$. Logo, a mensagem da <ref to="eq:erm" /> é que escolhemos como modelo $\hat{f}$ qualquer função que tem <b>menor perda média</b>. Nesse contexto, o processo de <em>ajustar</em> ou <em>treinar</em> o modelo significa encontrar $\hat{f}$ que minimiza o risco médio a partir de um conjunto de dados $S=\{(x_1,y_1),\dots,(x_N,y_N)\}$.
+
+          A título de ilustração, o código abaixo implementa uma função <i>Python</i> que retorna a melhor $\hat{f}$ a partir de uma lista finita de funções e uma função perda para um certo conjunto de dados.
+          <code lang="python">
+           def empirical_risk_minimization(X,y,G,l):
+              N = len(X)
+              m = math.inf
+              f_hat = G[0]
+              for g in G:
+                  e_risk = sum([l(y[i], g(X[i])) for i in range(N)])/N
+                  if e_risk < m:
+                      m = e_risk
+                      f_hat = g
+
+              return f_hat
+          </code>
+
+          <exercise>
+            <meta>
+              <meta-item key="Habilidades">Pensamento crítico, Programação</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+            </meta>
+            Com relação ao código acima, faça o seguinte:
+            <list marker="a">
+              <item>Reescreva o código comentando o propósito de cada linha.</item>
+              <item>Qual o objetivo da cláusula <c>if e_risk < m</c>? Como ela está associada à performance do código?</item>
+              <item>Comente a limitação prática do código no contexto do problema do arsênio. Qual o problema com <c>G</c> ser uma lista finita?</item>
+              <item>Qual função é retornada pelo código se em <c>G</c> tivermos duas funções com o mesmo risco empírico?</item>
+              <item>Escreva um código que use a função <c>empirical_risk_minimization</c> para uma função perda da sua preferência.</item>
+            </list>
+          </exercise>
+        </subsection>
+
+        <!-- REVER ESTAR SUBSUBSECAO-->
+        <subsection>
+          <title>Estimador de Máxima Verossimilhança</title>
+          Uma outra abordagem para se estimar $f$ adota um framework probabilístico. Ao contrário do minimizador do risco empírico que se preocupa apenas com a performance de $\hat{f}$, o estimador de máxima verossimilhança (<i>MLE</i>, sigla em inglês) propõe trabalhar com a natureza probabilística dos dados e tentar a maximizar a probabilidade de observá-los.
+          
+          Para simplificar a exposição, suponhamos que $X \in \mathbb{R}$ e que a distribuição do erro $\varepsilon$ seja uma normal padrão $\mathcal{N}(0,1)$. Como $Y= f(X)+\varepsilon$, temos que
+          $$
+            Y| X \sim \mathcal{N}(f(X),1).
+          $$
+          Assumindo que os dados em $S$ são independentes, podemos tentar escolher $f$ que maximize a probabilidade condicional
+          <equation id="eq:mle_example">
+            \begin{split}
+            p\left(Y_1 = y_1,\dots, Y_N = y_N\middle | X_1 =x_1,\dots X_N = x_N ; f\right) \\
+            = \frac{1}{(2\pi)^{N/2}}\prod_{i=1}^N e^{-(y_i-f(x_i))^2/2}.
+            \end{split}
+          </equation>
+          O objetivo então é escolher como estimativa para $f$ uma função que maximize a <ref to="eq:mle_example" />. Em símbolos, queremos
+          <equation id="eq:MLE">
+            \hat{f}_{\text{MLE}} \in \arg\max_{g\in \mathcal{G}}\frac{1}{(2\pi)^{N/2}}\prod_{i=1}^N e^{-(y_i-g(x_i))^2/2}.
+          </equation>
+          Note que a ideia é bastante intuitiva. Escolhemos como densidade da distribuição de $Y|X$ aquela que nos dá a maior probabilidade de observar os dados que temos em $S$. Ora, se estamos observando aqueles dados, então eles não deve ser raros não é mesmo?
+
+          <exercise>
+            <title>MLE como ERM</title>
+            <meta>
+              <meta-item key="Habilidades">Demonstração</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+              <meta-item key="Dica"><hint show-icon="false"><title>💡</title>A função perda nesse caso envolve um $\log$.</hint></meta-item>
+            </meta>
+            Mostre que no caso de normalidade dos erros o estimador de verossimilhança é um caso particular de minimização de risco empírico.
+          </exercise>
+        </subsection>
+
+        <subsection>
+          <title>Modelos paramétricos</title>
+          Do ponto de vista matemático, maximizar ou minimizar expressões como as dada pela <ref to="eq:erm" /> e <ref to="eq:MLE" /> é uma tarefa difícil no grau de generalidade em que as apresentamos. Parte da dificuldade reside no fato de que o domínio do problema pode ser uma família de funções muito grande e complexa. 
+
+          Uma maneira muito frutífera de simplificar o problema de <i>otimização</i> definido por <ref to="eq:erm" /> e <ref to="eq:MLE" /> é introduzir <em>parâmetros</em>. Isso muda o domínio do problema para algum subconjunto de $\mathbb{R}^n$.
+
+          O exemplo clássico é a <em>regressão linear</em> que discutiremos com mais detalhes. Por ora, descrevemos a ideia geral no exemplo abaixo.
+          <example>
+            <title>Regressão Linear</title>
+            Considere o caso da minimização do risco empírico (<ref to="eq:erm" />). Suponha que queiramos simplificar a família $\mathcal{G}$ e que temos razões para acreditar que $f$ seja uma função linear. Podemos então tomar
+            $$
+              \mathcal{G} = \left \lbrace g \, : \, g(X_1,\dots,X_p) = \beta_0 + \sum_{i=1}^p\beta_iX_i \right \rbrace.
+            $$
+            Tomando como <b>função perda</b>, $\ell(y,\hat{y}) = (y-\hat{y})^2$, a <ref to="eq:erm" /> se reduz ao problema de encontrar o vetor de coeficientes $\hat{\beta} = (\beta_0,\beta_1,\dots,\beta_p)$ que minimiza o risco empírico cuja forma como função de $\beta_0,\beta_1,\dots,\beta_p$ é
+            <equation id="eq:ols" numbered="false">
+               \text{ER}(\beta_0,\beta_1,\dots,\beta_p) = \frac{1}{N}\sum_{i=1}^N(y_i - \beta_0 - \beta_1x_{1i} - \dots - \beta_p x_{pi})^2.
+            </equation>
+            Note que agora temos um problema clássico de otimização. Queremos minimizar a função $\text{ER}:\mathbb{R}^{p+1} \to \mathbb{R}$. Agora estamos em terreno conhecido. A função <b>ER</b> é um polinômio de $p+1$ variáveis, logo, podemos minimizá-la usando ferramentas clássicas do cálculo!
+          </example>
+          De modo geral, modelos paramétricos assumem alguma informação a respeito da forma funcional de $f$ que passa a depender de parâmetros numéricos. Por exemplo, $f$ pode ser uma família de exponenciais parametrizadas pela taxa, isto é,
+          $f$ é da forma
+          $$
+            f(x) = e^{-\beta X}.
+          $$
+          Logo, <em>ajustar</em> o modelo aos dados, pode significar encontrar o (um) valor de $\beta$ que minimize o risco empírico. Essa abordagem automaticamente transforma o problema de <b>treinar</b> o modelo em um problema de otimização de funções reais.
+          <exercise>
+            <title>Regressão linear simples</title> 
+            <meta>
+              <meta-item key="Habilidades">Cálculo</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+            </meta>
+            Considere a situação em que
+            $$
+              Y = \beta X + \varepsilon
+            $$
+            onde $\varepsilon$ é uma variável aleatória independente de $X$ e de média zero.
+            Considere também o conjunto de dados descritos na tabela abaixo.
+            <table>
+              <header>
+                <column>$i$</column>
+                <column align="right" mono="true">$x_i$</column>
+                <column align="right" mono="true">$y_i$</column>
+              </header>
+              <row><column>1</column><column>1</column><column>3</column></row>
+              <row><column>2</column><column>2</column><column>4</column></row>
+              <row><column>3</column><column>3</column><column>8</column></row>
+              <row><column>4</column><column>4</column><column>10</column></row>
+              <caption>Quatro observações $(x_i, y_i)$.</caption>
+            </table>
+            Encontre o valor de $\beta$ que minimiza o risco empírico com função perda
+            $$
+              \ell(y,\hat{y})= (y-\hat{y})^2.
+            $$
+          </exercise>
+          <exercise>
+            <title>Implementando regressão linear</title>
+            <meta>
+              <meta-item key="Habilidades">Demonstração, Programação</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+            </meta>
+              <list marker="a">
+                <item>
+                  Generalize o exercício anterior para qualquer conjunto de dados e implemente uma função <i>Python</i> que receba os dados e retorne o $\hat{\beta}$ ótimo.
+                </item>
+                <item>
+                  Mostre que $\hat{\beta}$ é dado pela projeção ortogonal de $y = (y_1,\dots,y_N)$ sobre $x = (x_1,\dots,x_N)$.
+                </item>
+              </list>
+          </exercise>
+        </subsection>
+
+        <subsection>
+          <title>Modelos não-paramétricos</title>
+        </subsection>
+
+        <subsection>
+          <title>Não há almoço grátis</title>
+          Até aqui, vimos que há uma infinidade de maneiras de estimar $f$. Há uma infinidade de funções perda que podem ser escolhidas, podemos minimizar o risco empírico ou maximizar a verossimilhança. Podemos também parametrizar $f$ de uma infinidade de maneiras diferentes. Logo, a pergunta que surge naturalmente é:
+          <box type="warn">
+            <title>O melhor método entre todos!</title>
+            Por que não aplicar apenas o melhor método, com a melhor perda e a melhor escolha entre paramétrico e não-paramétrico?
+          </box>
+          A resposta é simples: <b>porque não há o melhor método</b>.
+
+          A escolha do método, da função perda e até dos parâmetros depende muito do contexto. Veremos que às vezes é melhor sacrificar a performance em nome de estabilidade e vice-versa.
+
+          Por exemplo, a escolha da perda no risco empírico depende do contexto. A perda quadrática, $\ell_2(y,\hat{y}) = (y-\hat{y})^2$, penaliza mais erros grandes (acima de $1$) do que a perda absoluta, $\ell_1(y,\hat{y}) = |y-\hat{y}|$. Logo, se, por exemplo, acreditamos que há a presença de <i>outliers</i> em nosso conjunto de dados, usar a perda quadrática pode não ser uma boa ideia, já que o erro entre $y$ e $\hat{y}$ é elevado ao quadrado.
+
+          Por outro lado, a perda quadrática pode nos dar um risco empírico diferenciável, e consequentemente, um problema de otimização mais tratável.
+
+          <box>
+            <i>O importante é ter o modelo mental do que é aprendizado e a ideia geral de como os métodos funcionam. As escolhas dos métodos dependem do contexto em que estamos trabalhando!</i>
+          </box>
+        </subsection>
+
+      </section>
+
+      <section id="subsec:accuracy"><title><em>Quão precisa</em> é a estimativa de $f$?</title>
+
+        Uma vez discutida a ideia geral de <b>como</b> estimar $f$. A próxima pergunta que surge diz respeito à qualidade dessa estimativa. Antes de iniciarmos a discussão, vamos relembrar o que de fato queremos da estimativa $\hat{f}$. 
+        
+        Em problemas de previsão, principalmente, queremos usar $\hat{f}$ em valores dos preditores que não foram usados para computá-la. Isto é, o mais importante é medir a precisão de $\hat{f}$ em valores <b>futuros.</b> Por exemplo, se $\hat{f}$ prevê o preço de uma ação, não é lá muito útil saber que $\hat{f}$ ficou muito próxima do valor observado em nosso conjunto de dados, pois trata-se de valores antigos. A utilidade da estimativa, nesse caso, reside na sua capacidade de prevê os valores posteriores.
+
+        Uma das métricas mais usadas para se medir tanto a <em>qualidade do ajuste</em> quanto a <em>performance</em> do modelo é o <em>erro quadrático médio</em> (<hint show-icon="false"><title>MSE</title> Mean Squared Error, <i>em inglês</i></hint>)
+        <equation id="eq:mse">
+          \text{MSE}(\hat{f}) = \frac{1}{N}\sum_{i=1}^N(y_i - \hat{f}(x_i))^2.
+        </equation>
+        Observe que um MSE calculado no dados usados para se determinar $\hat{f}$ possui natureza completamente diferente de um MSE calculado em dados distintos dos dados usados no treinamento do modelo. O primeiro calcula a qualidade do ajuste. Um MSE pequeno nos diz que $\hat{f}$ está próxima dos nossos dados. Enquanto um MSE calculado em um conjunto <b>completamente novo</b> de dados calcula a <b>performance</b> de $\hat{f}$, isto é, a capacidade de $\hat{f}$ de <em>generalizar</em>.
+
+
+        <subsection>
+          <title>Dados de treino e dados de teste</title>
+          A discussão anterior motiva o seguinte procedimento comumente adotado em aprendizado de máquina: <b>particionar</b> o nosso conjunto de dados entre <em>treino</em> e <em>teste</em>. Em geral, antes de computarmos $\hat{f}$, dividimos nosso conjunto de dados $S$ em dois subconjuntos disjuntos (treino e teste) na proporção $70/30$ (ou $80/20$). O objetivo é calcularmos $\hat{f}$ usando apenas os dados de treino e avaliarmos sua performance no conjunto de teste, o qual nunca foi "visto" por $\hat{f}$.
+
+          O código abaixo implementa uma função que faz essa partição.
+          <code lang="python">
+            import random
+
+            def particao_dados(dados: list, p_treino: float) -> tuple:
+                N = len(dados)
+                t_treino = round(N * p_treino)
+                idx_treino = random.sample(range(0, N), t_treino)
+                idx_teste = set(range(0, N)) - set(idx_treino)
+
+                treino = [dados[i] for i in idx_treino]
+                teste = [dados[i] for i in idx_teste]
+
+                return treino, teste
+          </code> 
+          <exercise>
+            <title>Data Split</title>
+            <meta>
+              <meta-item key="Habilidades">Programação, Pensamento crítico</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+            </meta>
+            Com relação ao código acima, responda:
+            <list marker="a">
+              <item>Qual a importância da linha <c>6</c>? Por que simplesmente não pegamos os $70\%$ primeiros dados do conjunto como treino e definimos o restante como teste?</item>
+              <item>Qual a função da linha <c>7</c>?</item>
+              <item>Reescreva o código assumindo que os dados são uma <c>nd.array</c> do pacote <i>Numpy</i>.</item>
+            </list>
+          </exercise>
+          Uma vez que particionamos nossos dados nos dois subconjuntos <b>treino</b> e <b>teste</b>, podemos calcular o MSE em cada um desses conjuntos de dados. Logo, temos as seguintes métricas
+          $$
+            \text{MSE}_{\text{treino}}(\hat{f}) = \frac{1}{|\text{treino}|}\sum_{(x,y)\in \text{treino}} (y-\hat{f}(x))^2,
+          $$
+          que mede a qualidade do ajuste, e também
+          $$
+            \text{MSE}_{\text{teste}}(\hat{f}) = \frac{1}{|\text{teste}|}\sum_{(x,y)\in \text{teste}} (y-\hat{f}(x))^2
+          $$
+          que mede a performance ou, em outras palavras, a <em>capacidade de generalização</em> do nosso modelo, uma vez que estamos medindo a proximidade da previsão aos novos dados observados.
+          <remark>
+            <title>Dividir ou não dividir?</title>
+            É importante ressaltar que a divisão $70/30$ ou mesmo $80/20$ nem sempre é possível. A razão é que dados são matéria-prima preciosa e em certos contextos simplesmente não podemos nos dar ao luxo de abrir mão de $30\%$ ou $20\%$ dos nossos dados no processo de treinamento. Certos métodos, como as <em>redes neurais</em>, necessitam de muitos dados para se ajustarem satisfatoriamente.
+            
+            Essa é a principal razão para que o processo de medir/estimar a performance de um modelo em dados novos se torne mais difícil. Com poucos dados, a nossa estimativa de performance pode ter variância alta.
+          </remark>
+        </subsection>
+
       
-      <subsection id="subsec:clustering"><title>Clustering</title>
+        <subsection>
+          <title>A natureza dos erros</title>
+          Em aprendizado de máquina, é sempre importante lembrar que estamos tratando de estimativas/aproximações. Ninguém espera cravar $f$ perfeitamente. Erros existem. A questão importante é a natureza dos erros associados à aproximação de $f$. Alguns erros podem ser reduzidos melhorando o método de treinamento ou mesmo adotando um novo método. Porém, existem também os erros que são completamente alheios à escolha do método. Quanto a esses, não há o que fazer. 😿
+
+          Para entender a natureza dos erros associados à tarefa de estimar $f$, é fundamental entender qual a fonte de aleatoriedade no problema. Como comentamos antes, o problema é estimar $f$ a partir das observações de $Y$, dado por
+          $$
+            Y = f(X) + \varepsilon
+          $$
+          onde $\varepsilon$ é uma variável aleatória de média zero e independente do preditor $X$. Portanto, as observações de resposta $Y$ a um conjunto de entrada possuem um erro de natureza aleatória e independente de $X$ representado por $\varepsilon$.
+
+         Além disso, há um detalhe importante quanto ao conjunto de treino. Para fins de determinar $\hat{f}$, ele é fixo. Porém, se coletarmos os dados novamente, muito provavelmente teremos outro conjunto de treino em mãos e logo $\hat{f}$ pode ser diferente. Isso quer dizer que se fixarmos uma entrada $x$, $\hat{f}(x)$ é uma função do conjunto de treino. Novos dados podem nos dar outra $\hat{f}$. Portanto, para $x$ fixo, faz sentido calcular a seguinte esperança
+         $$
+            \text{Risco}(\hat{f}(x)):= \mathbb{E}\left[ \left( Y(x) - \hat{f}(x)\right)^2\right],
+         $$
+         em que a esperança é calculada sobre a distribuição de um conjunto de treino de tamanho $N$. Uma maneira de encarar a esperança acima é pensar que trata-se do <b>erro quadrático esperado</b> na previsão de $Y(x)$, onde a média é feita ponderando os possíveis dados de treino.
+
+         Usando que $Y(x) = f(x) + \varepsilon$, com $\varepsilon$ de média zero e independente do conjunto de treino, podemos reescrever o risco na previsão de $Y(x)$ como
+        <equations id="eq:risk_yx">
+          \text{Risco}(\hat{f}(x)) & = \mathbb{E}\left[ \left( f(x) + \varepsilon - \hat{f}(x)\right)^2\right] \\
+          & = \mathbb{E}\left[ \left( f(x) - \hat{f}(x)\right)^2\right] + 2 \underbrace{\mathbb{E}\left[ \left( f(x) - \hat{f}(x)\right)\varepsilon\right]}_{= 0} + {\rm Var}(\varepsilon) \\
+          & = \underbrace{\mathbb{E}\left[ \left( f(x) - \hat{f}(x)\right)^2\right]}_{\text{redutível}}  + \underbrace{{\rm Var}(\varepsilon)}_{\text{irredutível}}.
+        </equations>
+          Note que cada termo da expressão acima possui uma natureza distinta. O primeiro termo é chamo de erro <em>redutível</em>, pois depende de quão boa é a aproximação $\hat{f}$. É uma incerteza do modelo. Métodos melhores podem reduzi-lo. Por outro lado, ${\rm Var}(\varepsilon)$ é o chamado erro <em>irredutível</em>, pois está intrinsecamente embutido nos dados. Ele independe de como encontramos $\hat{f}$ e da própria entrada $x$.
+
+        </subsection>
         
-      </subsection>
-    
-      <subsection id="subsec:latent"><title>Descobrindo fatores latentes</title>
+
+
+        <subsection>
+          <title>Trade-off <em>Viés-Variância</em></title>
+          
+          Podemos reescrever o termo <b>redutível</b> nas <ref to="eq:risk_yx" /> da seguinte forma
+          <equation id="eq:vies_var">
+            \mathbb{E}\left[ \left( f(x) - \hat{f}(x)\right)^2\right] = \underbrace{\left(f(x) - \mathbb{E}[\hat{f}(x)]\right)^2 }_{\text{viés}^2}+ {\rm Var}(\hat{f}(x))
+          </equation>
+          A Equação acima é conhecida como <em>decomposição viés-variância</em>.
+          <exercise>
+            Prove a <ref to="eq:vies_var" />.
+          </exercise>
+          Logo, podemos decompor o risco $\text{Risco}(\hat{f}(x))$ como
+          <equation id="eq:vies_var_2">
+            \text{Risco}(\hat{f}(x)) = \left(f(x) - \mathbb{E}[\hat{f}(x)]\right)^2 + {\rm Var}(\hat{f}(x)) + {\rm Var}(\varepsilon)
+          </equation>
+          
+          É importante entendermos o que cada um dos termos na <ref to="eq:vies_var" /> significa. O que significa a varância de um modelo? Uma maneira de pensar no termo ${\rm Var}(\hat{f}(x))$ é no cenário hipotético em que temos muitos dados! Se pudéssemos coletar diferentes dados de treino de maneira independente, calcular $\hat{f}$ e $\hat{f}(x)$, poderíamos estimar a variância de $\hat{f}(x)$. Um modelo com variância alta significa que $\hat{f}$ muda muito quando é calculada com um conjunto diferente de treino.
+
+          O víes contabiliza a capacidade do modelo de prever $f(x)$ corretamente, em média. Um modelo com viés baixo, em média, tem $\hat{f}(x)$ próximo do valor real $f(x)$. Enquanto um modelo de viés alto, em média, tem $\hat{f}(x)$ longe de $f(x)$. Pensando em termos de dados de treino, se treinássemos o modelo com diversos conjuntos de treino diferentes e independentes e calculássemos a média entre os valres de $\hat{f}(x)$ obtidos, essa média converigia para $f(x)$ em um modelo de viés zero.
+
+          Idealmente, gostaríamos de encontrar um modelo com viés e variância baixos. Contudo, o trade-off <em>viés-variância</em> nos diz que, na prática, reduzimos um às custas do outro. Logo, um modelo de viés zero pode ter risco maior que um modelo enviesado, pois o viés zero foi atingido aumentando-se a variância.
+
+          Veja o ambiente <ref to="in:overfitting" /> abaixo para entender melhor esse trade-off. Use o <i>slider</i> para aumentar o grau do polinômio de regressão e acompanhe a performance do modelo pela evolução do ${\rm MSE}_{\text{treino}}$ e ${\rm MSE}_{\text{teste}}$. 
+        </subsection>
+        <subsection>
+          <title>Sobreajuste/subajuste e Regularização</title>
+          A decomposição viés-variância descrita na <ref to="eq:vies_var" /> nos dá a linguagem para descrever as duas possíveis deficiências de um modelo. Um modelo <b>simples demais</b> (por exemplo, um polinômio de grau baixo) não tem flexibilidade para capturar o padrão de $f$: ele possui <em>alto viés</em> e dizemos que há <b>subajuste</b> (<i>underfitting</i>). Já um modelo <b>complexo demais</b> (grau alto) tem flexibilidade/complexidade de sobra e acaba ajustando não apenas o sinal, mas também o <em>ruído</em> $\varepsilon$ do conjunto de treino: ele possui <em>alta variância</em> e dizemos que há <b>sobreajuste</b> (<i>overfitting</i>).
+
+          Mais concretamente, a presença do sobreajuste aparece quando comparamos as duas métricas da <ref to="eq:mse" />. À medida que aumentamos a complexidade do modelo, o $\text{MSE}_{\text{treino}}$ <b>sempre diminui</b>, com grau suficiente, a curva ajustada pode passar arbitrariamente perto de cada ponto de treino. O $\text{MSE}_{\text{teste}}$, por outro lado, exibe o comportamento em forma de <b>"U"</b>: primeiro cai (saímos do subajuste), atinge um mínimo no ponto de complexidade ideal e então <b>volta a subir</b>, pois o modelo passa a generalizar mal.
+
+          No ambiente <ref to="in:overfitting" />, a função desconhecida $f$ é a de Runge (curva tracejada). Arraste o controle de <b>grau</b> e observe a curva ajustada por <hint show-icon="false"><title>mínimos quadrados</title> Quando minimizamos o risco empírico escolhendo como função perda o erro quadrático $\ell(y, \hat{y}) := (y-\hat{y})^2$.</hint> deixar de subajustar, encontrar um bom ponto de equilíbrio e depois se contorcer para perseguir o ruído dos pontos de treino. Ao mesmo tempo, os erros de treino e de teste vão sendo acumulados no gráfico inferior, revelando o característico "U" do erro de teste.
+          <interactive id="in:overfitting">
+            <overfitting xfixed="0"/>
+            <caption>Sobreajuste em regressão polinomial. Aumente o grau e observe a curva ajustada se contorcer para perseguir o ruído, enquanto o MSE de teste volta a subir. Use "novo conjunto" para reamostrar os dados e perceber a variância do modelo.</caption>
+          </interactive>
+
+          Note que à medida que a complexidade do modelo aumenta (quando aumentamos o grau do polinômio), a curva oscila cada vez mais. Além disso, se sortearmos novos conjuntos de treino/teste é possível notar a mudança brusca de comportamento. Essa sensibilidade do modelo à mudança do conjunto de treino se dá devido à alta variância do modelo, isto é, a variável aleatória $\hat{f}(x)$ possui variância alta. Contudo, o viés diminui pois a curva é complexa o suficiente para se aproximar de todos os pontos.
+
+          Uma maneira um pouco mais formal de entender a razão pela qual o aumento do grau se traduz em aumento de variância é a seguinte: com o aumento do grau, a quantidade de coeficientes a serem estimados também aumenta. Contudo, o conjunto de treino continua fixo, logo, temos os mesmos $N$ pontos para estimar mais variáveis, o que poderia não ser suficiente e consequentemente impactar na qualidade da previsão. Um exemplo extremal seria, por exemplo, o caso onde os dados não possuem erro irredutível. Logo, se temos $N$ pontos para tentarmos encontrar o polinômio de grau $N+10$ que passa por aqueles pontos não teremos solução única. Por outro lado, $N$ pontos são suficientes para determinar o polinômio de grau no máximo $N-1$ que passa por esses pontos.
+
+          A variância do modelo está relacionada à "rugosidade" da curva. Uma curva que se contorce demais tende a ter variância alta. Uma maneira de reduzir essa "contorção" é chamada de <em>regularzição</em>. O objetivo da regularização é <b>penalizar</b> modelos "rugosos" demais.
+
+          Por exemplo, o método dos <em>mínimos quadrados</em> ajusta um polinômio de grau no máximo $d$ aos dados selecionando aquele polinômio que minimiza a <em>soma dos quadrados dos resíduos</em>. Mais formalmente, escolhemos o polinômio $\hat{f}(X) = \hat{\beta}_0 + \sum_{i=1}^d\hat{\beta}_iX^i$ cujos coeficientes $\hat{\beta} = (\hat{\beta}_0,\hat{\beta}_1,\dots,\hat{\beta}_d)$ satisfazem
+          $$
+            \hat{\beta} \in  \arg\min_{\beta} \left\lbrace \sum_{i=1}^N(y_i - \beta_0 - \beta_1x_{i} -\dots - \beta_dx_i^d)^2 \right \rbrace.
+          $$
+          O método de regularização <em>lasso</em>, por exemplo, propõe a seguinte modificação. Introduzimos um <em>hiperparâmetro</em> $\lambda > 0$ e então escolhemos $\hat{\beta}$ que minimiza
+           $$
+            \hat{\beta} \in  \arg\min_{\beta} \left\lbrace \sum_{i=1}^N(y_i - \beta_0 - \beta_1x_{i} -\dots - \beta_dx_i^d)^2  + \lambda\sum_{i=1}^d|\beta_i|\right \rbrace.
+          $$
+          Note que se inicialmente temos $\beta$ que minimiza a soma dos quadrados dos resíduos mas produzindo coeficientes muito grandes, então o termo com $\lambda$ aumenta, logo descartamos tal $\beta$. O lasso propõe minimizar os erros quadráticos, mas sem aumentar demais os coeficientes. O efeito prático é que um polinômio ajustado via lasso tem coeficientes menores, logo temo curvaturas <hint show-icon="false"><title>menos acentuadas</title> Pense em termos de uma expansão de <b>Taylor</b> de ordem $2$ em torno de um ponto. O tamanho dos coeficientes se relaciona com quão acentuada é a parábola que aproxima o polinômio.</hint>.
+
+        </subsection>
+        Se você gostaria entender parte desta introdução ao aprendizado supervisionado, fique à vontade para expandir a <ref to="ss:sl_deep" /> (clicando no título) para uma visão mais formal do assunto.
+      </section>
+
+      <section id="subsec:classi">
+        <title>Problemas de Classificação</title>
+        O problema de estimar a concentração de arsênio é um problema de <b>regressão</b>, como dissemos anteriormente. Trata-se de um problema de estimar uma saída númerica e contínua. Contudo, há problemas de aprendizado supervisionado em que $Y$ é categórico, isto é, a saída é um conjunto de rótulos/categorias. Uma boa maneira de visualizar os dados $S = \{(x_1,y_1),\dots, (x_N,y_N) \} \subset \mathbb{R}^p\times \mathbb{R}$, quando $p \le 3$, em problemas de classificação é plotar os pontos $\{x_1,\dots,x_N\} \subset \mathbb{R}^p$ e associar aos pontos cores diferentes de acordo com seus respectivos rótulos $y$.
+
+        A grande vantagem de operar em alto nível de abstração como fizemos até aqui é que nossas ideias se estendem naturalmente a essa situação (desde que façamos as escolhas certas). Por exemplo, devemos ajustar nossa função perda já que a resposta $y$ pode sequer ser um número. No problema do arsênio, podemos ter $y \in \{ \text{não-contaminada},\text{contaminada}\}$. Logo, expressões como $y_i - \hat{y}_i$ não fazem sentido. 
+
+        Uma das maneiras mais naturais de medir a qualidade de um modelo (no dados de treino ou teste) é computar a <em>taxa de erro</em>. Trata-se de escolher como função perda, $\ell(y,\hat{y})$, a função indicadora
+        <equation id="eq:ind">
+          \ell(y,\hat{y}) := \mathbb{1}\{y \neq \hat{y}\}.
+        </equation>
+        Em palavras, $\ell(y,\hat{y})$ é $1$ se a previsão é diferente da resposta observada e zero caso contrário. Logo, a taxa de erro trata-se do risco empírico com a função perda $\ell$
+        $$
+          \frac{1}{N}\sum_{i=1}^N \mathbb{1}\{y_i \neq \hat{f}(x_i)\}.
+        $$
+        A função acima conta a média de erros feita pelo modelo.
+
+        Uma observação importante é que em certas situações os erros pode não ser iguais. Por exemplo, prever que a água é <i>não-contaminada</i>, quando na verdade é <i>contaminada</i> é um erro que deveria ser mais penalizado que o erro de prever <i>contaminada</i>, quando na verdade a água é <i>não-contaminada</i>. Podemos redefinir a perda para acomodar essa situação pondo, $\ell(\text{não-contaminada}, \text{contaminada}) = 1$,
+        $
+          \ell(\text{contaminada}, \text{não-contaminada}) =  2
+        $
+        e zero na diagonal. Desse modo, penalizamos o erro de prever não-contaminação quando há contaminação com um peso duas vezes maior.
+
+        <subsection id="sss:bayes_classifier">
+          <title>O Classificador de Bayes</title>
+          O <em>classificador de Bayes</em> é o classificador <b>teórico</b> que, dada a entrada $x$, associa a essa entrada a classe $j_*$ que maximiza a probabilidade de $Y$ ser $j_*$ dada a entrada $x$. Mais formalmente,
+          $$
+            \hat{Y}_{\text{Bayes}}(x) = \arg\max_{j \in \mathcal{C}}P(Y=j \, | \, X=x).
+          $$
+          No caso em que mais de um $j_*$ maximize a probabilidade, qualquer regra de escolha serve.
+          <example>
+            Considere a situação em que $X \in [0,1]$ e 
+            $$
+              Y\, |\, X \sim {\rm bin}(K,x).
+            $$
+            Nesse caso, temos, por exemplo, que
+            $$
+              \hat{Y}_{\text{Bayes}}(0.5) = \left \lfloor\frac{K}{2} \right\rfloor,
+            $$
+            já que 
+            $$
+              P(Y=j \, | \, X=0.5) = \binom{K}{j}\frac{1}{2^K},
+            $$
+            é máxima quando $ j = \lfloor K/2 \rfloor$.
+
+          </example>
+          <exercise>
+            <meta>
+              <meta-item key="Habilidades">Programação</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+            </meta>
+            Implemente em <i>Python</i> o classificador de Bayes do exemplo anterior. <hint>Seu classificador deve ser uma função que recebe a entrada $x$ e retorna um rótulo $j \in \{0,1,\dots, K \}$.</hint>
+          </exercise>
+          <exercise id="exerc:bayes_optimal">
+            <title>Classificador de Bayes é ótimo</title>
+            <meta>
+              <meta-item key="Habilidades">Demonstração</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+              <meta-item key="Nível"> Médio/Difícil </meta-item>
+            </meta>
+            Dado um classificador $\hat{Y}$, defina o seu risco como
+            <equation id="eq:risk_classifier">
+              \text{Risco}(\hat{Y}) = P\left( Y \neq \hat{Y} \right).
+            </equation>
+            Mostre que, segundo essa medida, o classificador de Bayes é o melhor classificador possível, isto é, é o classificador de menor risco.
+          </exercise>
+          O risco definido no exercício acima é chamada de <em>missclassification risk</em> ou <em>risco de classificação equivocada</em>. Ela mede a probabilidade do classificador não ter o mesmo rótulo que o valor observado. 
+
+          O exercício acima é o que torna o classificador de Bayes especial. Segundo uma medida de qualidade bastante natural e importante, ele é o melhor que podemos conseguir!
+        </subsection>
+
+        <subsection id="sss:knn">
+          <title>Os <i>K</i> vizinhos mais próximos (<em>KNN</em>)</title>
+          O classificador de Bayes é dito <i>teórico</i>, porque na prática dificilmente conhecemos a distribuição condicional de $Y$. Contudo, o <ref to="exerc:bayes_optimal" /> nos garante que ele é o melhor possível. Portanto, ele serve como uma base de excelência terórica, no sentido de que muitos dos métodos buscam tentar aproximar a distribuição condicional $P(Y=j|X=x)$. Em outras palavras, eles buscam se aproximar do classificador de Bayes.
+          <sidenote>
+            Expanda a <ref to="ss:sl_deep" /> para uma discussão mais formal sobre o papel das distribuições de $X$ e $Y$ no contexto de aprendizado de máquina.
+          </sidenote>
+
+          O método dos <em><i>K</i> vizinhos mais próximos</em> (<hint show-icon="false"><title>KNN</title><i>k-nearest neighbors</i></hint>) é um exemplo de método que adota essa estratégia. Para introduzi-lo, vamos primeiro descrevê-lo e em seguida discutir o porquê do <i>KNN</i> aproximar o classificador de Bayes.
+
+          <list marker="1">
+            <item>Calcule a distância entre a <b>entrada</b> $x$ e <b>todos</b> os pontos no conjunto de dados observados;</item>
+            <item>Fixe os <i>k</i> pontos no conjunto de dados observados mais próximos da entrada $x$;</item>
+            <item>Classifique $x$ como o rótulo da maioria entre o $k$ pontos mais próximos.</item>
+          </list>
+          O ambiente <ref to="in:knn" /> abaixo nos permite usar o método <i>KNN</i> para classificar pontos. O plot representa os dados de treino com dois preditores. Cada ponto recebe uma cor de acordo com seu rótulo. Os pontos adicionados são então classificados de acordo com o algoritmo acima. Os <i>K</i> vizinhos mais próximos são conectados ao novo dado. Você pode mover o ponto e ver como sua classificação muda de acordo com sua posição.
+          <interactive id="in:knn">
+            <knn-example k="3" />
+            <caption>Exemplo de funcionamento do <em>KNN</em>. Arraste o controle para mudar o <b>hiperparâmetro</b> <i>K</i>. A linha tracejada aponta para os <i>K</i> vizinhos mais próximos.
+            </caption>
+          </interactive>
+          <exercise>
+            <meta>
+              <meta-item key="Habilidades">Programação</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+            </meta>
+            <title>Implementando o KNN</title>
+            Implemente o método <i>KNN</i> em <i>Python</i> sem importar nenhuma biblioteca. Você precisa pensar na estrutura de dados que irá salvar os dados observados. Além disso, você também pode generalizar a distância utilizada para se determinar os <i>K</i> vizinhos mais próximos.
+          </exercise>
+          
+          <equation numbered="false">
+            P(Y = j \, | \, X=x_0) = \frac{P(Y=j,X=x_0)}{P(X=x_0)}.
+          </equation>
+          Denotando nosso conjunto de dados por $S$, pela Lei dos Grandes Números, podemos aproximar ambas as probabilidades da seguinte maneira
+          <equations id="eq:approx_knn">
+            P(Y=j,X=x_0) &\approx \frac{|\{(x,y) \in S \, : \, x=x_0 \text{ e }y= j\}|}{N},\\
+            P(X=x_0) &\approx \frac{|\{(x,y) \in S \, : \, x=x_0 \}|}{N}.
+          </equations>
+          O que nos fornece a seguinte aproximação para a probabilidade condicional
+          <equation id="eq:prob_cond_knn">
+            P(Y = j \, | \, X=x_0) \approx \frac{|\{(x,y) \in S \, : \, x=x_0 \text{ e }y= j\}|}{|\{(x,y) \in S \, : \, x=x_0\}|}.
+          </equation>
+          Isto é, calculamos a proporção de pontos em $S$ com entrada igual a $x_0$ e de classe $j$ considerando o novo conjunto formado apenas pelos pontos de entrada $x_0$. 
+          
+          Contudo, dependendo do tamanho de $S$ e/ou da distribuição da entrada $X$, nosso conjunto $S$ pode não ter nenhum ponto satisfazendo a propriedade de ter entrada <b>exatamente</b> $x_0$. Logo, uma maneira de aproximarmos $P(Y=j|X=x_0)$ é consideramos <i>K</i> pontos $x$ próximos de $x_0$ e calcularmos a proporção de pontos cujo rótulo é de fato $j$. Em símbolos, seja $N_k(x_0) \subset \{x_1,x_2,\dots,x_N \}$ o conjunto formado pelos <i>K</i> vizinhos mais próximos de $x_0$
+          <equation id="eq:prop_k">
+            P(Y = j \, | \, X=x_0) \approx \frac{\left | \left \lbrace \right (x,y) \in S \, : \, x\in N_K(x_0) \text{ e } y=j\rbrace \right| }{K}.
+          </equation>
+          E então classificamos $x_0$ com o $j$ que maximiza o lado direito da aproximação acima. Note que, sendo $K$ fixo para todos os $j$, $x_0$ ganha o rótulo da maioria dos pontos em $N_K(x_0)$. Ou seja, esta reformulação do <i>KNN</i> é equivalente à inicial.
+
+          Por outro lado, essa formulação mais rigorosa deixa claro que o <i>KNN</i> busca imitar o classificador de Bayes ao associar a $x_0$ o rótulo que (quase!) maximiza a probabilidade condicional. Porém, o <i>KNN</i> é mais pragmático e lida apenas com aproximações.
+        </subsection>
+
+
         
-      </subsection>
-
-    </section>
-
-    <section id="sec:data">
-      <title>Os Dados</title>
-      <subsection id="subsec:preproc"><title>A necessidade do pré-processamento</title>
         
-      </subsection>
+      </section>
 
-      <subsection id="subsec:imputation">
-        <title>Dados faltantes e imputação</title>
-        
-      </subsection>
-    </section>
+      <section collapsed="true" id="ss:sl_deep">
+        <title>Uma Discussão mais <b>profunda</b>*</title>
+        <intro>Esta parte é destinada àqueles alunos que já fizeram um curso de probabilidade avançada ou que dominam bem certos conceitos da teoria, como <i>esperança condicional, lei dos grandes números</i> e tipos de convergência. Ela é opcional e não prejudica a leitura do restante destas notas.</intro>
 
-    <section id="sec:pipeline">
-      <title>O <em>pipeline</em> de aprendizado de máquina</title>
 
-      <subsection id="subsec:scraping">
-        <title>Coletando os dados</title>
+        Voltando ao <ref to="p:approx" />, suponha que exista uma distribuição conjunta de $(X,Y)$ denotada por $p_{X,Y}$. A primeira observação é que se $f$ é desconhecida, então $p_{X,Y}$ também, pois se conhecemos $p_{X,Y}$ podemos encontrar $f$.
 
-      </subsection>
-      
-      <subsection id="subsec:pipepre">
-        <title>Pré-processamento</title>
-        
-      </subsection>
+        Veja, se conhecemos a distribuição conjunta de $(X,Y)$, podemos teoricamente calcular $\mathbb{E}[Y\,|\,X]$. Como o erro $\varepsilon$ é independente de $X$ e tem média zero, pela linearidade da esperança condicional, temos que
+        <equation id="eq:cond_expec">
+          \mathbb{E}[Y\,|\,X] = \mathbb{E}[f(X)+\varepsilon\,|\,X] = f(X) +  \mathbb{E}[\varepsilon] = f(X).
+        </equation>
+        Logo, conhecer a distribuição conjunta de $(X,Y)$ é suficiente para resolver o <ref to="p:approx" />.
 
-      <subsection id="subsec:method">
-        <title>A escolha do método</title>
-        
-      </subsection>
+        Como vimos na <ref to="subsec:accuracy" />, um dos métodos mais utilizados consiste em minimizar o erro quadrático médio 
+        $$
+          \hat{f} \in \arg\min_{g \in \mathcal{G}} \frac{1}{N} \sum_{i=1}^N(y_i - g(x_i))^2.
+        $$ 
+        Pela Lei dos Grandes Números (assumindo independência das amostras $(x_i,y_i)$)
+        $$
+          \lim_{N\to \infty} \frac{1}{N} \sum_{i=1}^N(y_i - g(x_i))^2 = \mathbb{E}\left[ (Y - g(X))^2\right]
+        $$
+        que pode ser chamado de <em>risco (quadrático) populacional</em>. Uma das razões que fazem o $\text{MSE}$ ser uma das principais métricas de ajuste é a proposição abaixo
+        <proposition id="p:risk">
+          Considere o risco populacional de uma função definido como
+          <equation id="eq:pop_risk">
+            \text{Risco}(g) =  \mathbb{E}\left[ (Y - g(X))^2\right].
+          </equation>
+          Então, $g$ tem risco mínimo se, e somente se, $g = f$ quase certamente.
+        </proposition>
+        <proof>
+          Vimos na <ref to="eq:cond_expec" /> que $f(X) = \mathbb{E}[Y|X]$. Logo, é suficiente mostrar que $\text{Risco}(g)$ é mínimo se e somente se $g$ coincide com a esperança condicional (q.c).
 
-      <subsection id="subsec:training">
-        <title>Treinamento</title>
-        
-      </subsection>
+          Para tal, primeiro observe que para qualquer função some de $X$, $h$, temos que
+          <sidenote>
+            <ref to="eq:mean_zero" /> mostra que $Y-\mathbb{E}[Y|X]$ é ortogonal ao espaço de funções de $X$.
+          </sidenote>
+          <equation id="eq:mean_zero">
+            \begin{split}
+            \mathbb{E}\left[ (Y  - \mathbb{E}[Y|X])h(X)\right] &= \mathbb{E}\left[\mathbb{E} \left[ (Y  - \mathbb{E}[Y|X])h(X)\, | \, X \right]\right]\\
+            & = \mathbb{E}\left[\underbrace{\mathbb{E} \left[ (Y  - \mathbb{E}[Y|X])\, | \, X \right]}_{=0}h(X)\right]\\
+            & = 0.
+            \end{split}
+          </equation>
+          Consequentemente
+          <equations id="eq:risk">
+            \text{Risco}(g) & = \mathbb{E}\left[ (Y - g(X))^2\right] \\
+                            &= \mathbb{E}\left[ (Y  - \mathbb{E}[Y|X] + \mathbb{E}[Y|X] - g(X))^2\right]\\
+                            & = \text{Risco}(f) + 2\mathbb{E}\left[ (Y  - \mathbb{E}[Y|X])( \mathbb{E}[Y|X] - g(X))\right] \\
+                            & \quad + \mathbb{E}\left[ (\mathbb{E}[Y|X] - g(X))^2\right] \\
+                            & \stackrel{\eqref{eq:mean_zero}}{=} \text{Risco}(f) + \mathbb{E}\left[ (\mathbb{E}[Y|X] - g(X))^2\right].
+          </equations>
+          Como o segundo termo é não-negativo, segue que risco de $f$ é sempre menor ou igual ao risco de $g$. Além disso, a igualdade ocorre se, e somente se, 
+          $$\mathbb{E}\left[ (\mathbb{E}[Y|X] - g(X))^2\right] = 0$$ 
+          o que ocorre se as funções são iguais quase certamente.
+        </proof>
+        A <ref to="p:risk" /> nos diz que a função desconhecida $f$ minimiza o risco populacional. Enquanto a Lei dos Grandes Números nos diz que o MSE converge para o risco populacional. Logo, não é nenhuma loucura tentar minimizar o MSE, né?
 
-      <subsection id="subsec:test">
-        <title>Validação &amp; Teste</title>
-        
-      </subsection>
+        <!-- VISAO GEOMÉTRICA -->
+      </section>
 
-      <subsection id="subsec:deploy">
-        <title>Deploy</title>
-        
-      </subsection>
-    </section>
 
   </chapter>
 

@@ -1,0 +1,40 @@
+<document>
+<chapter>
+      <title>O <em>pipeline</em> de aprendizado de máquina</title>
+
+      <section id="subsec:scraping">
+        <title>Coletando os dados</title>
+
+      </section>
+      <section id="subsec:pipepre">
+        <title>Pré-processamento</title>
+        
+      <subsection id="subsec:imputation">
+        <title>Dados faltantes e imputação</title>
+        
+      </subsection>
+      </section>
+
+
+      <section id="subsec:method">
+        <title>A escolha do método</title>
+        
+      </section>
+
+      <section id="subsec:training">
+        <title>Treinamento</title>
+        
+      </section>
+
+      <section id="subsec:test">
+        <title>Validação &amp; Teste</title>
+        
+      </section>
+
+      <section id="subsec:deploy">
+        <title>Deploy</title>
+        
+      </section>
+
+</chapter>
+</document>
