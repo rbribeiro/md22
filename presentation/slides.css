@@ -1,0 +1,28 @@
+/* Deck-local theme for presentation/chapter_1.dlt.
+   The built-in presentation theme sizes a slide for prose; a slide clips whatever
+   overflows it (height: 100dvh; overflow: hidden), so the two things that don't fit
+   on their own — the plotting widgets and the cover block — are capped here.
+   Every rule is scoped to the deck, so nothing leaks into the chapter build. */
+
+/* Widgets. The plots are SVGs with a viewBox and width: 100%, so their height
+   follows their width: capping the width in `vh` is what keeps plot + controls +
+   caption inside one slide. The multiples below are the aspect ratio of each
+   widget's panel stack (640x400 for one panel, 640x(340+208) for overfitting),
+   tuned so the whole block fits a 16:9 slide down to 720p. */
+:root[data-type="presentation"] delta-interactive {
+  display: block;
+  margin-inline: auto;
+}
+:root[data-type="presentation"] delta-interactive:has(delta-polynomial-interpolation),
+:root[data-type="presentation"] delta-interactive:has(delta-knn-example) {
+  max-width: min(100%, 64vh);
+}
+:root[data-type="presentation"] delta-interactive:has(delta-overfitting) {
+  max-width: min(100%, 46vh);
+}
+
+/* Cover. The default cover type scale overflows a 720p slide once the deck carries
+   a subtitle, an author, an affiliation, an event and a date. */
+:root[data-type="presentation"] delta-slide[cover="true"] .slide-title {
+  font-size: clamp(38px, 5.4vw, 76px);
+}

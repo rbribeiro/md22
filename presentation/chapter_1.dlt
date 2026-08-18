@@ -1,0 +1,790 @@
+<document type="presentation" lang="pt" theme-accent="red" theme="slides.css">
+  <title>MD22 — Capítulo 1: Aprendizado de Máquina supervisionado</title>
+
+  <import src="regression" />
+
+  <progress/>
+
+  <floating>
+    <toc>
+      <title>Roteiro</title>
+    </toc>
+  </floating>
+
+  <cover>
+    <title>Aprendizado de Máquina <em>supervisionado</em></title>
+    <subtitle>Capítulo 1 — uma visão geral</subtitle>
+    <author>Rodrigo Ribeiro</author>
+    <affiliation>IMPA Tech</affiliation>
+    <event>Aprendizado de Máquina I (MD22)</event>
+    <date>2026.2</date>
+  </cover>
+
+  <slide>
+    <toc depth="1">
+      <title>Roteiro</title>
+    </toc>
+  </slide>
+
+  <!-- ==================================================================== -->
+  <section id="sec:concreto">
+    <title>Um problema concreto</title>
+
+    <slide>
+      <title>Programa Águas de Minas (IGAM)</title>
+      Desde 1997: cerca de <b>660 estações</b>, coletas <em>trimestrais</em>, dezenas de parâmetros por campanha.
+      <columns>
+        <column reveal="true">
+          <b>Em campo:</b> sonda multiparamétrica; segundos, custo quase nulo.
+          <list animated="true">
+            <item>pH, turbidez</item>
+            <item>condutividade, temperatura</item>
+            <item>oxigênio dissolvido</item>
+          </list>
+        </column>
+        <column reveal="true">
+          <b>Em laboratório:</b> coleta, preservação, transporte.
+          <list animated="true">
+            <item>nutrientes, coliformes</item>
+            <item>metais</item>
+            <item><em>arsênio total</em></item>
+          </list>
+        </column>
+      </columns>
+    </slide>
+
+    <slide>
+      <title>Os dados</title>
+      <table id="tab:igam">
+        <header>
+          <column>Estação</column>
+          <column align="right" mono="true">pH</column>
+          <column align="right" mono="true">Turb. (UNT)</column>
+          <column align="right" mono="true">Cond. (µS/cm)</column>
+          <column align="right" mono="true">OD (mg/L)</column>
+          <column align="right" mono="true">Fe (mg/L)</column>
+          <column align="right" mono="true">As (mg/L)</column>
+        </header>
+        <row>
+          <column>BV035</column><column>7,1</column><column>18</column><column>88</column><column>7,4</column><column>0,42</column><column>&lt; 0,003</column>
+        </row>
+        <row>
+          <column>BV062</column><column>6,8</column><column>141</column><column>320</column><column>5,1</column><column>4,23</column><column>0,133</column>
+        </row>
+        <row>
+          <column>BV083</column><column>7,3</column><column>62</column><column>210</column><column>4,2</column><column>1,85</column><column>0,012</column>
+        </row>
+        <row>
+          <column>BV105</column><column>7,0</column><column>35</column><column>175</column><column>6,0</column><column>0,97</column><column></column>
+        </row>
+        <row>
+          <column>BV137</column><column>6,4</column><column>24</column><column>116</column><column>7,3</column><column>0,55</column><column>0,004</column>
+        </row>
+        <caption>Dados <em>tabulares</em>, valores ilustrativos. <c>< 0,003</c>: abaixo do limite de quantificação; célula vazia: parâmetro não medido.</caption>
+      </table>
+    </slide>
+
+    <slide>
+      <title>O problema</title>
+      <problem id="p:concreto">
+        <title>Como estimar o arsênio sem medi-lo?</title>
+        Dadas as demais características medidas da água, é possível <em>estimar</em> a concentração de arsênio a partir delas? Se sim, como? E qual o conjunto <b>mínimo</b> de características necessário para uma boa estimativa?
+      </problem>
+    </slide>
+
+    <slide>
+      <title>Por que isso importa</title>
+      <list animated="true">
+        <item><em>Quadrilátero Ferrífero</em>: oxidação da arsenopirita (mineração de ouro) libera arsênio há décadas.</item>
+        <item>Nova Lima, 2024: ribeirão Água Suja com arsênio <b>13 vezes</b> acima do limite.</item>
+        <item>Estimar bem = mais barato, mais rápido, resposta mais ágil à contaminação.</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>Vocabulário</title>
+      <table id="tab:vocab">
+        <header>
+          <column>Objeto</column>
+          <column>Também chamado de</column>
+        </header>
+        <row>
+          <column>entrada $X$ (características da água)</column>
+          <column><i>input</i>, <i>features</i>, entrada, variáveis independentes, preditores</column>
+        </row>
+        <row>
+          <column>saída $Y$ (arsênio)</column>
+          <column>resposta, saída, <i>target</i>, variável dependente</column>
+        </row>
+        <caption>A saída <b>depende</b> da entrada, daí "variável dependente".</caption>
+      </table>
+    </slide>
+
+    <slide>
+      <title>Que tipo de problema é este?</title>
+      <list animated="true">
+        <item><em>Supervisionado</em>: observamos pares $(x_i, y_i)$. Nesse caso temos as "respostas" (os valores $y_i$).</item>
+        <item><em>Regressão</em>: a resposta $Y$ é <b>contínua</b>.</item>
+        <item><em>Classificação</em>: se $Y$ fosse categórica (potável / não potável).</item>
+      </list>
+      <box reveal="true">
+        Objetivo: aprender, a partir de entradas e saídas observadas, como mapear entrada em saída.
+      </box>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:matematico">
+    <title>Um problema matemático</title>
+
+    <slide>
+      <title>A versão idealizada</title>
+      <problem id="p:desconhecida">
+        <title>Função desconhecida</title>
+        Dado
+        $$S = \{ (x_1,y_1),\dots, (x_N,y_N) \} \subset \mathbb{R}^p\times \mathbb{R},$$
+        com $x_i \neq x_j$, amostrado de $Y = f(X)$ com $f$ desconhecida: <b reveal="true">como encontrar $f$?</b>
+      </problem>
+    </slide>
+
+    <slide>
+      <title>Assim, não há solução</title>
+      Geometricamente: achar uma curva (ou hipersuperfície) que passe por todos os pontos de $S$.
+      <box type="warning" reveal="true">
+        Existem <b>infinitas</b> curvas passando por $S$.
+      </box>
+      <box color="green" reveal="true">
+        Saída: <em>restringir</em> a classe de funções candidatas.
+      </box>
+    </slide>
+
+    <slide>
+      <title>Restringindo a classe</title>
+      <problem id="p:poly">
+        <title>Interpolação polinomial</title>
+        Com $p = 1$ e $f$ um polinômio de grau no máximo $N-1$ desconhecido: como encontrar $f$ a partir de $S$?
+      </problem>
+      Agora a solução <b>existe e é única</b>.
+    </slide>
+
+    <slide>
+      <title>Experimente</title>
+      <interactive id="in:poly">
+        <polynomial-interpolation runge="false" points="0,1;-0.5,0;0.5,0.2" controls="false" />
+        <caption>Arraste os pontos, clique para adicionar, duplo-clique para remover.</caption>
+      </interactive>
+    </slide>
+
+   
+    <slide>
+      <title>Agora com ruído</title>
+      <problem id="p:approx" reveal="true">
+        Dado $S$ amostrado de
+        $$
+        Y = f(X) + \varepsilon,
+        $$
+        com $f$ desconhecida e $\varepsilon$ aleatório de média zero e independente de $X$: como encontrar $f$?
+      </problem>
+      <box type="warning" reveal="true">
+        Os pontos não estão <em>sobre</em> a curva, logo interpolar deixa de ser boa ideia.
+      </box>
+    </slide>
+
+    <slide>
+      <title>Experimente</title>
+      <interactive id="in:runge">
+        <polynomial-interpolation />
+        <caption>A linha tracejada é a $f$ verdadeira.</caption>
+      </interactive>
+    </slide>
+
+    <slide>
+      <title>O que o experimento mostra</title>
+      <list animated="true">
+        <item><em>Fenômeno de Runge</em>: com muitos pontos, o interpolador oscila muito entre eles.</item>
+        <item>Novos pontos próximos de $f$ podem cair <b>longe</b> do interpolador.</item>
+        <item>Recalcular com novos pontos muda muito a curva: <b>variância alta</b>.</item>
+      </list>
+      <box reveal="true">
+        Desistimos de achar $f$: buscamos $\hat{f}$ que seja uma boa <em>aproximação</em> de $f$.
+      </box>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:ponte">
+    <title>Do concreto ao matemático</title>
+
+    <slide>
+      <title>É o mesmo problema</title>
+      <table id="tab:dic">
+        <header>
+          <column>No modelo matemático</column>
+          <column>No problema do arsênio</column>
+        </header>
+        <row><column>$X$</column><column>pH, turbidez, condutividade, OD, ...</column></row>
+        <row><column>$Y$</column><column>concentração de arsênio</column></row>
+        <row><column>$f$</column><column>o mapa (desconhecido) entre elas</column></row>
+        <row><column>$S$</column><column>as campanhas de medição do IGAM</column></row>
+        <row><column>$\varepsilon$</column><column>variabilidade natural, erro de medição, fatores omitidos</column></row>
+        <caption>O <ref to="p:concreto" /> é um caso particular do <ref to="p:approx" />.</caption>
+      </table>
+    </slide>
+
+   
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:porque">
+    <title>Por que estimar $f$?</title>
+
+    <slide>
+      <title>Duas razões com dois requisitos</title>
+      <columns>
+        <column reveal="true">
+          <b>Previsão</b>
+          <list animated="true">
+            <item>Só queremos $\hat{f}(x)$ bem próximo de $y$.</item>
+            <item>A forma de $\hat{f}$ não importa.</item>
+            <item>$\hat{f}$ <em>pode ser complicada</em>.</item>
+          </list>
+        </column>
+        <column reveal="true">
+          <b>Inferência</b>
+          <list animated="true">
+            <item>Queremos entender a relação entre $X$ e $Y$.</item>
+            <item>A forma de $\hat{f}$ é o produto.</item>
+            <item>$\hat{f}$ <em>deve ser interpretável</em>.</item>
+          </list>
+        </column>
+      </columns>
+    </slide>
+
+    <slide>
+      <title>Interpretabilidade</title>
+      $$
+      \hat{f}(x) = 15{,}2 \times \text{pH} - 2{,}1 \times \text{turbidez} - 5
+      $$
+      Lê-se direto: o <i>pH</i> tem impacto alto e positivo; a <i>turbidez</i>, impacto negativo.
+      <box type="warning" reveal="true">
+        Se $\hat{f}$ depende de $X$ de forma complicada, não inferimos nada.
+      </box>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:como">
+    <title>Como estimar $f$?</title>
+
+    <subsection id="ss:erm">
+      <title>Minimização do risco empírico</title>
+
+      <slide>
+        <title>Função perda</title>
+        <definition id="def:perda">
+          <title>Função perda</title>
+          $\ell(y,\hat{y})$ quantifica a distância entre o <b>observado</b> $y$ e o <b>previsto</b> $\hat{y} = \hat{f}(x)$.
+        </definition>
+        Exemplos: $\ell_2(y,\hat{y}) = (y-\hat{y})^2$, $\ell_1(y,\hat{y}) = |y-\hat{y}|$.
+      </slide>
+
+      <slide>
+        <title>Risco empírico</title>
+        <equation id="eq:er">
+          \frac{1}{N}\sum_{i=1}^N\ell(y_i,\hat{y}_i)
+        </equation>
+        A perda média do modelo sobre os $N$ pontos observados.
+      </slide>
+
+      <slide>
+        <title>Treinar é minimizar</title>
+        <equation id="eq:erm">
+          \hat{f}_{\text{ERM}} \in \arg\min_{g \in \mathcal{G}} \frac{1}{N} \sum_{i=1}^N \ell(y_i,g(x_i))
+        </equation>
+        Na classe de candidatas $\mathcal{G}$, ficamos com a de <b>menor perda média</b>.
+      </slide>
+
+      <slide>
+        <title>ERM em código</title>
+        <code lang="python">
+            def empirical_risk_minimization(X, y, G, l):
+                N = len(X)
+                m = math.inf
+                f_hat = G[0]
+                for g in G:
+                    e_risk = sum([l(y[i], g(X[i])) for i in range(N)])/N
+                    if e_risk < m:
+                        m = e_risk
+                        f_hat = g
+
+                return f_hat
+        </code>
+      </slide>
+    </subsection>
+
+    <subsection id="ss:mle">
+      <title>Máxima verossimilhança</title>
+
+      <slide>
+        <title>Ponto de vista probabilístico</title>
+        Com $X \in \mathbb{R}$ e $\varepsilon \sim \mathcal{N}(0,1)$, de $Y = f(X)+\varepsilon$ segue
+        $$
+        Y \,|\, X \sim \mathcal{N}(f(X),1).
+        $$
+        Com os dados independentes, a probabilidade de observar $S$ é
+        <equation id="eq:mle_example">
+          p\left(y_1,\dots, y_N \middle | x_1,\dots, x_N ; f\right) = \frac{1}{(2\pi)^{N/2}}\prod_{i=1}^N e^{-(y_i-f(x_i))^2/2}.
+        </equation>
+      </slide>
+
+      <slide>
+        <title>O estimador de máxima verossimilhança</title>
+        <equation id="eq:mle">
+          \hat{f}_{\text{MLE}} \in \arg\max_{g\in \mathcal{G}}\frac{1}{(2\pi)^{N/2}}\prod_{i=1}^N e^{-(y_i-g(x_i))^2/2}
+        </equation>
+        Escolhemos a densidade que torna os dados <b>observados</b> os mais prováveis.
+        <box reveal="true">
+          <b>Exercício.</b> Com erros normais, MLE é ERM.
+        </box>
+      </slide>
+    </subsection>
+
+    <subsection id="ss:param">
+      <title>Modelos paramétricos</title>
+
+      <slide>
+        <title>A ideia</title>
+        Otimizar sobre uma família de funções qualquer é difícil demais.
+        <box reveal="true">
+          <b>Parametrizar:</b> o domínio do problema passa a ser um subconjunto de $\mathbb{R}^n$.
+        </box>
+        <example reveal="true">
+        Por exemplo $f(x) = e^{-\beta x}$: <em>treinar</em> vira <em>encontrar $\beta$</em>.
+        </example>
+      </slide>
+
+      <slide>
+        <title>Exemplo: regressão linear</title>
+        <example id="ex:linear">
+          <title>Regressão linear</title>
+          Tome
+          $$
+          \mathcal{G} = \left \lbrace g \, : \, g(X_1,\dots,X_p) = \beta_0 + \sum_{i=1}^p\beta_iX_i \right \rbrace
+          $$
+          e a perda quadrática $\ell(y,\hat{y}) = (y-\hat{y})^2$.
+        </example>
+      </slide>
+
+      <slide>
+        <title>Um problema de cálculo</title>
+        <equation id="eq:ols">
+          \text{ER}(\beta_0,\dots,\beta_p) = \frac{1}{N}\sum_{i=1}^N(y_i - \beta_0 - \beta_1x_{1i} - \dots - \beta_p x_{pi})^2
+        </equation>
+        Minimizar $\text{ER}:\mathbb{R}^{p+1} \to \mathbb{R}$ que agora é um polinômio em $p+1$ variáveis. Terreno conhecido!
+      </slide>
+
+      <slide>
+        <title>Paramétrico ou não</title>
+        <columns>
+          <column reveal="true">
+            <b>Paramétrico</b>
+            <list animated="true">
+              <item>Assume a forma funcional de $f$.</item>
+              <item>Treinar = otimizar em $\mathbb{R}^n$.</item>
+              <item>Menos flexível, mais interpretável.</item>
+            </list>
+          </column>
+          <column reveal="true">
+            <b>Não-paramétrico</b>
+            <list animated="true">
+              <item>Não fixa forma funcional.</item>
+              <item>A complexidade cresce com os dados.</item>
+              <item>Mais flexível, exige mais dados.</item>
+            </list>
+          </column>
+        </columns>
+      </slide>
+    </subsection>
+
+    <slide>
+      <title>Não há almoço grátis</title>
+      <box type="warning" reveal="true">
+        <title>O melhor método entre todos!</title>
+        Por que não usar sempre o melhor método, com a melhor perda e a melhor escolha entre paramétrico e não-paramétrico?
+      </box>
+      <box color="green" reveal="true">
+        Porque <b>não existe o melhor método</b>.
+      </box>
+    </slide>
+
+    <slide>
+      <title>Tudo depende do contexto</title>
+      <columns>
+        <column reveal="true">
+          <b>$\ell_2(y,\hat{y}) = (y-\hat{y})^2$</b>
+          <list animated="true">
+            <item>Pune muito os erros grandes.</item>
+            <item>Sensível a <i>outliers</i>.</item>
+            <item>Diferenciável: otimização tratável.</item>
+          </list>
+        </column>
+        <column reveal="true">
+          <b>$\ell_1(y,\hat{y}) = |y-\hat{y}|$</b>
+          <list animated="true">
+            <item>Mais robusta a <i>outliers</i>.</item>
+            <item>Não diferenciável na origem.</item>
+          </list>
+        </column>
+      </columns>
+      <box reveal="true">
+        Às vezes sacrificamos performance em nome de estabilidade e vice-versa.
+      </box>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:precisao">
+    <title>Quão precisa é a estimativa?</title>
+
+    <slide>
+      <title>Erro quadrático médio</title>
+      <equation id="eq:mse">
+        \text{MSE}(\hat{f}) = \frac{1}{N}\sum_{i=1}^N(y_i - \hat{f}(x_i))^2
+      </equation>
+      A mesma fórmula mede duas coisas <b>diferentes</b>, dependendo de <em>onde</em> é calculada.
+    </slide>
+
+    <slide>
+      <title>Ajuste não é performance!</title>
+      <columns>
+        <column reveal="true">
+          <b>Nos dados de treino</b>
+          <list animated="true">
+            <item>Mede a <em>qualidade do ajuste</em>.</item>
+            <item>MSE pequeno: $\hat{f}$ passa perto dos dados que já vimos.</item>
+          </list>
+        </column>
+        <column reveal="true">
+          <b>Em dados novos</b>
+          <list animated="true">
+            <item>Mede a <em>performance</em>.</item>
+            <item>É a capacidade de <b>generalizar</b> que é o que de fato queremos.</item>
+          </list>
+        </column>
+      </columns>
+    </slide>
+
+    <slide>
+      <title>Treino e teste</title>
+      Particionamos $S$ em dois subconjuntos disjuntos, tipicamente $70/30$ ou $80/20$:
+      $$
+      \text{MSE}_{\text{treino}}(\hat{f}) = \frac{1}{|\text{treino}|}\sum_{(x,y)\in \text{treino}} (y-\hat{f}(x))^2
+      $$
+      $$
+      \text{MSE}_{\text{teste}}(\hat{f}) = \frac{1}{|\text{teste}|}\sum_{(x,y)\in \text{teste}} (y-\hat{f}(x))^2
+      $$
+      Ajustamos só no treino; avaliamos no teste, <b>nunca visto</b> por $\hat{f}$.
+    </slide>
+
+    <slide>
+      <title>Particionando</title>
+      <code lang="python">
+        import random
+
+        def particao_dados(dados: list, p_treino: float) -> tuple:
+            N = len(dados)
+            t_treino = round(N * p_treino)
+            idx_treino = random.sample(range(0, N), t_treino)
+            idx_teste = set(range(0, N)) - set(idx_treino)
+
+            treino = [dados[i] for i in idx_treino]
+            teste = [dados[i] for i in idx_teste]
+
+            return treino, teste
+      </code>
+    </slide>
+
+    <slide>
+      <title>Dividir ou não dividir?</title>
+      <remark id="rem:split">
+        <title>Dados são matéria-prima preciosa</title>
+        Nem sempre podemos abrir mão de $20\%$ ou $30\%$ dos dados no treinamento. As <em>redes neurais</em>, por exemplo, precisam de muitos dados.
+      </remark>
+      Com poucos dados, a própria estimativa de performance tem variância alta.
+    </slide>
+
+    <subsection id="ss:erros">
+      <title>A natureza dos erros</title>
+
+      <slide>
+        <title>De onde vem a aleatoriedade</title>
+        <list animated="true">
+          <item>Do ruído: $Y = f(X) + \varepsilon$, com $\varepsilon$ independente de $X$.</item>
+          <item>Do conjunto de treino: outra amostra, outra $\hat{f}$.</item>
+        </list>
+        Para $x$ fixo, faz sentido então olhar para
+        $$
+        \text{Risco}(\hat{f}(x)) := \mathbb{E}\left[ \left( Y(x) - \hat{f}(x)\right)^2\right].
+        $$
+      </slide>
+
+      <slide>
+        <title>Redutível e irredutível</title>
+        <equation id="eq:risk_yx">
+          \text{Risco}(\hat{f}(x)) = \underbrace{\mathbb{E}\left[ \left( f(x) - \hat{f}(x)\right)^2\right]}_{\text{redutível}} + \underbrace{{\rm Var}(\varepsilon)}_{\text{irredutível}}
+        </equation>
+        <columns>
+          <column reveal="true">
+            <b>Redutível.</b> Incerteza do modelo. Um método melhor a diminui.
+          </column>
+          <column reveal="true">
+            <b>Irredutível.</b> Embutido nos dados. Não depende de $\hat{f}$ nem de $x$. 😿
+          </column>
+        </columns>
+      </slide>
+    </subsection>
+
+    <subsection id="ss:viesvar">
+      <title>Trade-off viés-variância</title>
+
+      <slide>
+        <title>A decomposição</title>
+        <equation id="eq:vies_var">
+          \mathbb{E}\left[ \left( f(x) - \hat{f}(x)\right)^2\right] = \underbrace{\left(f(x) - \mathbb{E}[\hat{f}(x)]\right)^2 }_{\text{viés}^2}+ {\rm Var}(\hat{f}(x))
+        </equation>
+        <equation id="eq:vies_var_2" reveal="true">
+          \text{Risco}(\hat{f}(x)) = \text{viés}^2 + {\rm Var}(\hat{f}(x)) + {\rm Var}(\varepsilon)
+        </equation>
+      </slide>
+
+      <slide>
+        <title>O que cada termo diz</title>
+        <columns>
+          <column reveal="true">
+            <b>Viés</b>
+            <list animated="true">
+              <item>Erro sistemático: em média, $\hat{f}(x)$ está longe de $f(x)$.</item>
+              <item>Viés zero: a média sobre muitos treinos converge para $f(x)$.</item>
+            </list>
+          </column>
+          <column reveal="true">
+            <b>Variância</b>
+            <list animated="true">
+              <item>Instabilidade: $\hat{f}$ muda muito com outro conjunto de treino.</item>
+            </list>
+          </column>
+        </columns>
+        <box type="warning" reveal="true">
+          Na prática, reduzir um aumenta o outro.
+        </box>
+      </slide>
+    </subsection>
+
+    <subsection id="ss:overfit">
+      <title>Sobreajuste e regularização</title>
+
+      <slide>
+        <title>Duas maneiras de errar</title>
+        <columns>
+          <column reveal="true">
+            <b>Subajuste</b> (<i>underfitting</i>)
+            <list animated="true">
+              <item>Modelo simples demais.</item>
+              <item>Sem flexibilidade para capturar $f$.</item>
+              <item><em>Viés alto.</em></item>
+            </list>
+          </column>
+          <column reveal="true">
+            <b>Sobreajuste</b> (<i>overfitting</i>)
+            <list animated="true">
+              <item>Modelo complexo demais.</item>
+              <item>Ajusta o sinal <b>e o ruído</b> $\varepsilon$.</item>
+              <item><em>Variância alta.</em></item>
+            </list>
+          </column>
+        </columns>
+      </slide>
+
+      <slide>
+        <title>Como o sobreajuste aparece</title>
+        <list animated="true">
+          <item>$\text{MSE}_{\text{treino}}$: <b>sempre cai</b> quando a complexidade aumenta.</item>
+          <item>$\text{MSE}_{\text{teste}}$: tem forma de <b>"U"</b> — cai, atinge um mínimo, e volta a subir.</item>
+        </list>
+        <box reveal="true">
+          O mínimo do "U" é o ponto de complexidade ideal.
+        </box>
+      </slide>
+
+      <slide>
+        <title>Experimente</title>
+        <interactive id="in:overfitting">
+          <overfitting xfixed="0"/>
+          <caption>Aumente o grau e observe o MSE de teste voltar a subir.</caption>
+        </interactive>
+      </slide>
+
+      <slide>
+        <title>Por que mais grau significa mais variância?</title>
+        <list animated="true">
+          <item>Grau maior = mais coeficientes a estimar.</item>
+          <item>O conjunto de treino continua com os mesmos $N$ pontos.</item>
+          <item>$N$ pontos determinam um polinômio de grau $N-1$; para grau $N+10$ não há solução única.</item>
+          <item>Curva mais "rugosa" $\Rightarrow$ variância maior.</item>
+        </list>
+      </slide>
+
+      <slide>
+        <title>Regularização: penalizar a rugosidade</title>
+        Mínimos quadrados:
+        $$
+        \hat{\beta} \in  \arg\min_{\beta} \left\lbrace \sum_{i=1}^N(y_i - \beta_0 - \beta_1x_{i} -\dots - \beta_dx_i^d)^2 \right \rbrace
+        $$
+        <em>Lasso</em>, com hiperparâmetro $\lambda > 0$:
+        $$
+        \hat{\beta} \in  \arg\min_{\beta} \left\lbrace \sum_{i=1}^N(y_i - \beta_0 - \beta_1x_{i} -\dots - \beta_dx_i^d)^2 + \lambda\sum_{i=1}^d|\beta_i| \right \rbrace
+        $$
+      </slide>
+
+      <slide>
+        <title>O efeito da penalização</title>
+        <list animated="true">
+          <item>Coeficientes grandes passam a custar caro.</item>
+          <item>O polinômio ajustado sai com coeficientes menores.</item>
+          <item>Menos curvatura, menos oscilação, menos variância.</item>
+        </list>
+      </slide>
+    </subsection>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:classificacao">
+    <title>Problemas de classificação</title>
+
+    <slide>
+      <title>Quando $Y$ é categórico</title>
+      A resposta é um <b>rótulo</b>: $y \in \{\text{contaminada}, \text{não-contaminada}\}$.
+      <box type="warning" reveal="true">
+        Expressões como $y_i - \hat{y}_i$ deixam de fazer sentido. É preciso outra perda.
+        Com $p \le 3$, visualizamos plotando os $x_i$ e colorindo por rótulo.
+      </box>
+    </slide>
+
+    <slide>
+      <title>Taxa de erro</title>
+      <equation id="eq:ind">
+        \ell(y,\hat{y}) := \mathbb{1}\{y \neq \hat{y}\}
+      </equation>
+      O risco empírico dessa perda conta a proporção de erros:
+      $$
+      \frac{1}{N}\sum_{i=1}^N \mathbb{1}\{y_i \neq \hat{f}(x_i)\}.
+      $$
+    </slide>
+
+    <slide>
+      <title>Nem todo erro custa o mesmo</title>
+      <table id="tab:custo">
+        <header>
+          <column>Observado \ Previsto</column>
+          <column align="right" mono="true">contaminada</column>
+          <column align="right" mono="true">não-contaminada</column>
+        </header>
+        <row><column>contaminada</column><column>0</column><column>2</column></row>
+        <row><column>não-contaminada</column><column>1</column><column>0</column></row>
+        <caption>Dizer <i>não-contaminada</i> quando a água está contaminada é o erro grave: peso dobrado.</caption>
+      </table>
+    </slide>
+
+    <subsection id="ss:bayes">
+      <title>O classificador de Bayes</title>
+
+      <slide>
+        <title>O melhor classificador possível</title>
+        <definition id="def:bayes">
+          <title>Classificador de Bayes</title>
+          $$
+          \hat{Y}_{\text{Bayes}}(x) = \arg\max_{j \in \mathcal{C}}P(Y=j \, | \, X=x).
+          $$
+        </definition>
+        Ele minimiza o risco de classificação $\text{Risco}(\hat{Y}) = P(Y \neq \hat{Y})$ — nenhum classificador faz melhor.
+      </slide>
+
+      <slide>
+        <title>Um exemplo</title>
+        <example id="ex:binomial">
+          Se $X \in [0,1]$ e $Y \,|\, X \sim {\rm bin}(K,x)$, então
+          $$
+          P(Y=j \, | \, X=0{,}5) = \binom{K}{j}\frac{1}{2^K}
+          $$
+          é máxima em $j = \lfloor K/2 \rfloor$, logo $\hat{Y}_{\text{Bayes}}(0{,}5) = \lfloor K/2 \rfloor$.
+        </example>
+      </slide>
+
+      <slide>
+        <title>Por que ele é apenas teórico</title>
+        <box type="warning">
+          Na prática, <b>não conhecemos</b> a distribuição condicional de $Y \,|\, X$.
+        </box>
+        Ele serve de <em>referência de excelência</em>: bons métodos tentam aproximá-lo.
+      </slide>
+    </subsection>
+
+    <subsection id="ss:knn">
+      <title>Os $K$ vizinhos mais próximos</title>
+
+      <slide>
+        <title>O algoritmo</title>
+        <list marker="number" animated="true">
+          <item>Calcule a distância entre a entrada $x$ e <b>todos</b> os pontos observados.</item>
+          <item>Fixe os $K$ pontos mais próximos de $x$.</item>
+          <item>Classifique $x$ com o rótulo da <b>maioria</b> entre esses $K$.</item>
+        </list>
+      </slide>
+
+      <slide>
+        <title>Experimente</title>
+        <interactive id="in:knn">
+          <knn-example k="3" />
+          <caption>A linha tracejada aponta os $K$ vizinhos mais próximos.</caption>
+        </interactive>
+      </slide>
+
+      <slide>
+        <title>KNN imita Bayes</title>
+        Pela Lei dos Grandes Números, a probabilidade condicional é aproximada por uma proporção. Como raramente há pontos com entrada <b>exatamente</b> $x_0$, usamos os $K$ vizinhos $N_K(x_0)$:
+        <equation id="eq:prop_k">
+          P(Y = j \, | \, X=x_0) \approx \frac{\left | \left \lbrace \right (x,y) \in S \, : \, x\in N_K(x_0) \text{ e } y=j\rbrace \right| }{K}
+        </equation>
+        Maximizar o lado direito é escolher o rótulo da maioria.
+      </slide>
+    </subsection>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:fecho">
+    <title>Fechamento</title>
+
+    <slide>
+      <title>O modelo mental</title>
+      <list animated="true">
+        <item>$Y = f(X) + \varepsilon$: aprender é estimar $f$ a partir de uma amostra.</item>
+        <item>Estimamos para <em>prever</em> ou para <em>inferir</em> — requisitos diferentes.</item>
+        <item>Estimar = otimizar: ERM, MLE, parametrização.</item>
+        <item>Avaliar = generalizar: treino <em>vs.</em> teste.</item>
+        <item>Risco = viés$^2$ + variância + irredutível.</item>
+        <item>Não há almoço grátis: o método depende do contexto.</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>Para casa</title>
+      <list animated="true">
+        <item>Prove que a matriz de Vandermonde é invertível se, e somente se, os $x_i$ são distintos.</item>
+        <item>Mostre que, com erros normais, MLE é um caso particular de ERM.</item>
+        <item>Prove a decomposição viés-variância.</item>
+        <item>Implemente o KNN em <i>Python</i>, sem bibliotecas.</item>
+      </list>
+    </slide>
+  </section>
+
+</document>
