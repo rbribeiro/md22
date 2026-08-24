@@ -387,7 +387,7 @@
           <title>Modelos paramétricos</title>
           Do ponto de vista matemático, maximizar ou minimizar expressões como as dada pela <ref to="eq:erm" /> e <ref to="eq:MLE" /> é uma tarefa difícil no grau de generalidade em que as apresentamos. Parte da dificuldade reside no fato de que o domínio do problema pode ser uma família de funções muito grande e complexa. 
 
-          Uma maneira muito frutífera de simplificar o problema de <i>otimização</i> definido por <ref to="eq:erm" /> e <ref to="eq:MLE" /> é introduzir <em>parâmetros</em>. Isso muda o domínio do problema para algum subconjunto de $\mathbb{R}^n$.
+          Uma maneira muito frutífera de simplificar o problema de <i>otimização</i> definido por <ref to="eq:erm" /> e <ref to="eq:MLE" /> é introduzir <em>parâmetros</em>. Isso muda o domínio do problema para algum subconjunto de $\mathbb{R}^n$ para algum $n$ fixo.
 
           O exemplo clássico é a <em>regressão linear</em> que discutiremos com mais detalhes. Por ora, descrevemos a ideia geral no exemplo abaixo.
           <example>
@@ -456,6 +456,17 @@
 
         <subsection>
           <title>Modelos não-paramétricos</title>
+          Uma confusão comum quando se trata de modelos paramétricos v.s. não-paramétricos é pensar que modelos não-paramétricos não possuem parâmetros. Na verdade, modelos não-paramétricos possuem parâmetros que ou são infinitos ou crescem com o tamanho da amostra. O ponto principal é não existir uma parametrização fixa da função $f$ que seja independente do tamanho da amostra.
+
+          Uma vantagem de modelos não-paramétricos é que muitas vezes eles não assumem uma forma funcional específica para $f$. Isso pode ser útil quando não temos conhecimento prévio sobre a forma de $f$ ou quando queremos capturar padrões complexos nos dados. Por outro lado, modelos paramétricos podem ser mais fáceis de interpretar e podem exigir menos dados para estimar os parâmetros.
+
+          Talvez o exemplo mais clássico de modelo não-paramétrico seja o <em>KNN</em> (k-vizinhos mais próximos). No contexto de problemas de regressão, podemos definir $\hat{f}$ simplesmente como a média dos $k$ vizinhos mais próximos de $x$. Ou seja, se $N_k(x)$ é o conjunto dos $k$ pontos mais próximos de $x$, então
+          $$
+          \hat{f}(x) = \frac{1}{k}\sum_{i \in N_k(x)} y_i.
+          $$
+          Observe que não estamos assumindo nenhuma forma funcional para $f$. A única suposição é que pontos próximos de $x$ possuem valores de $y$ próximos de $f(x)$. Além disso, nesse contexto, o valor de $k$ é dito <em>hiperparâmetro</em>, já que ele é escolhido pelo usuário e não é aprendido a partir dos dados. 
+
+          Note que, de certa forma, o modelo KNN possui $N$ parâmetros, onde $N$ é o tamanho da amostra. Isso porque, para cada ponto de entrada $x_i$, temos um parâmetro que é o valor de $y_i$. Logo, à medida que mais dados são coletados, o número de parâmetros cresce, tornando o modelo mais flexível e capaz de capturar padrões mais complexos nos dados. Voltaremos a falar do KNN com mais detalhe na <ref to="sss:knn" />. 
         </subsection>
 
         <subsection>
@@ -494,7 +505,9 @@
 
 
         <subsection>
-          <title>Dados de treino e dados de teste</title>
+          <title>Partição dos dados</title>
+          <subsubsection>
+            <title>Dados de treino e teste</title>
           A discussão anterior motiva o seguinte procedimento comumente adotado em aprendizado de máquina: <b>particionar</b> o nosso conjunto de dados entre <em>treino</em> e <em>teste</em>. Em geral, antes de computarmos $\hat{f}$, dividimos nosso conjunto de dados $S$ em dois subconjuntos disjuntos (treino e teste) na proporção $70/30$ (ou $80/20$). O objetivo é calcularmos $\hat{f}$ usando apenas os dados de treino e avaliarmos sua performance no conjunto de teste, o qual nunca foi "visto" por $\hat{f}$.
 
           O código abaixo implementa uma função que faz essa partição.
@@ -540,6 +553,38 @@
             
             Essa é a principal razão para que o processo de medir/estimar a performance de um modelo em dados novos se torne mais difícil. Com poucos dados, a nossa estimativa de performance pode ter variância alta.
           </remark>
+          </subsubsection>
+          <subsubsection>
+            <title>LOOCV</title>
+            Como comentamos anteriormente, em muitas situações, os dados são matéria-prima rara e por isso não é uma boa ideia abrir mão de uma proporção dos dados (seja ela $20\%$ ou $30\%$) no processo de treinamento.
+
+            O <em>Leave-one-out cross validation</em> é uma técnica que propõe treinar retirando apenas uma única observação de cada vez de forma a treinar $\hat{f}$ no maior conjunto possível, mas ainda assim, mantendo uma maneira para se medir a capacidade de generalização do modelo.
+
+            Mais formalmente, a técnica funciona da seguinte maneira. Seja $S=\{(x_1,y_1),\dots,(x_N,y_N)\}$ nosso conjunto de dados. Denote por $\hat{f}_{-i}$ o modelo ajustado utilizando-se $S\setminus\{(x_i,y_i)\}$. Logo, terminamos com $N$ modelos, $\hat{f}_{-1},\dots,\hat{f}_{-N}$, em que, $\hat{f}_{-i}$ não "viu" a i-ésima observação. Por fim, como medida de teste, calculamos o seguinte erro quadrático
+            $$
+                \frac{1}{N}\sum_{i=1}^N(y_i - \hat{f}_{-i}(x_i))^2.
+            $$
+            O <em>LOOCV</em> nos permite medir capacidade de generalização em um conjunto de dados "novos" ao mesmo tempo que reduz a perda de dados a uma única observação no processo de treinamento de cada $\hat{f}_{-i}$.
+          </subsubsection>
+          <subsubsection>
+            <title><i>k</i>-fold cross-validation</title>
+            O <em>k-fold cross-validation</em> é uma generalização do <em>LOOCV</em>. Um dos objetivos é aumentar a eficiência computacional do processo de validação cruzada. No <em>LOOCV</em>, precisamos treinar $N$ modelos, o que pode ser computacionalmente caro. No <em>k-fold cross-validation</em>, dividimos o conjunto de dados em $k$ subconjuntos (ou "folds") de tamanho aproximadamente igual. Em seguida, treinamos o modelo $k$ vezes, cada vez usando $k-1$ folds para treinamento e o fold restante para teste.
+
+            Mais formalmente, seja $S=\{(x_1,y_1),\dots,(x_N,y_N)\}$ nosso conjunto de dados. Dividimos $S$ em $k$ subconjuntos disjuntos $S_1,\dots,S_k$ de tamanho aproximadamente igual. Denote por $\hat{f}_{-j}$ o modelo ajustado utilizando-se $S\setminus S_j$. Logo, terminamos com $k$ modelos, $\hat{f}_{-1},\dots,\hat{f}_{-k}$, em que, $\hat{f}_{-j}$ não "viu" o j-ésimo fold (ou lote). Por fim, como medida de teste, calculamos o seguinte erro quadrático
+            $$
+                \frac{1}{N}\sum_{j=1}^k\sum_{(x,y)\in S_j}(y - \hat{f}_{-j}(x))^2.
+            $$
+            O <em>k-fold cross-validation</em> nos permite medir capacidade de generalização em um conjunto de dados "novos" ao mesmo tempo que reduz a perda de dados a uma proporção de $1/k$ no processo de treinamento de cada $\hat{f}_{-j}$.
+          </subsubsection>
+
+          <subsubsection>
+            <title>Vazamento de dados</title>
+            Avaliar um modelo $\hat{f}$ em dados que foram utilizados em seu treinamento nos dará sempre uma medida de performace otimista demais. A razão disso é bem simples. $\hat{f}$ é, em geral, escolhida para se ajustar àquele conjunto de dados. 
+
+            Por exemplo, no conjunto de dados fixo, $\hat{f}$ pode ter erro zero, o que significa que o modelo simplesmente interpola os dados.
+
+            Durante processo de treinamento/teste é <b>crucial</b> garantir que os dados usados no treinamento não <b>vazem</b> para o processo de teste. O vazamento pode acontecer de maneira óbvia quando simplesmente usamos observações comuns nas duas etapas. Contudo, há maneiras mais sutis de vazamento de dados. Por exemplo, a introdução de um novo preditor (variável independente) que, de alguma forma, é calculado como função das outras observação gera vazamento, pois a nova "coluna" carrega informação vinda de todas as linhas.
+          </subsubsection>
         </subsection>
 
       

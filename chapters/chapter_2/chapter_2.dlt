@@ -1,13 +1,45 @@
 <document>
+  <floating>
+    <toc scope="project" />
+  </floating>
     <chapter id="ch:notsup">
       <title>Visão geral de Aprendizado de Máquina <em>não-supervisionado</em></title>
+      <meta>
+        <meta-item key="Autor"> Rodrigo Ribeiro</meta-item>
+        <meta-item key="Instituição"> IMPA Tech </meta-item>
+        <meta-item key="Status"> Rascunho </meta-item>
+      </meta>
+      <box type="warning">
+        <title>Rascunho</title>
+        Este capítulo ainda está em desenvolvimento. O conteúdo apresentado aqui é apenas uma visão geral do que será abordado no capítulo final.
+      </box>
+      Em aprendizado de máquina supervisionado, temos um conjunto de dados com suas respectivas respostas. Então o objetivo é aprender como mapear as entradas para as saídas. De um ponto de vista mais probabilístico, podemos dizer que o objetivo é aprender $P(Y|X)$, isto é, a distribuição condicional da variável de saída $Y$ dado as variáveis de entrada $X$. Em outras palavras, queremos aprender como a variável de saída $Y$ depende das variáveis de entrada $X$.
+
+      Em aprendizado de máquina <em>não-supervisionado</em> o paradigma é diferente. Não temos um conjunto de dados com suas respectivas respostas. Logo, a pergunta $P(Y|X)$ sequer faz sentido, pois não temos a variável de saída $Y$. Então, o que queremos aprender? A resposta é que queremos aprender a estrutura dos dados. Queremos aprender como os dados estão organizados, quais são as relações entre eles e quais são os padrões que eles formam. Em outras palavras, queremos aprender $P(X)$, isto é, a distribuição conjunta das variáveis de entrada $X$.
+
       
-      <section id="subsec:clustering"><title>Clustering</title>
+      <section id="subsec:clustering">
+        <title>Clustering</title>
+        Uma das propriedades que podemos aprender sobre $P(X)$ é a existência de grupos de dados que são mais próximos entre si do que de outros grupos. Em outras palavras, queremos aprender se os dados podem ser agrupados em clusters. 
+
+        Um exemplo prático da utilidade de <i>clustering</i> é a segmentação de clientes. Suponha que você tenha um conjunto de dados com informações sobre os clientes de uma empresa, como idade, renda, localização, histórico de compras, entre outros. Com técnicas de <i>clustering</i>, você pode descobrir grupos de clientes que compartilham características semelhantes. Por exemplo, você pode encontrar um grupo de clientes jovens com alta renda e outro grupo de clientes mais velhos com renda média. Essa informação pode ser extremamente útil para direcionar campanhas de marketing específicas para cada grupo.
+
+        Quando nossos dados $\{x_1,x_2,\dots,x_N\}\subset \mathbb{R}^p$ possuem poucas features, podemos tentar encontrar os clusters visualmente simplesmente plotando os dados em algum $\mathbb{R}^p$ com $p\le 3$. Em princípio, mesmo se $p > 3$, poderíamos plotar os dados relacionando apenas duas ou três features de cada vez. No entanto, se tentássemos plotar todas as combinações de features, teríamos que fazer $\binom{p}{2} + \binom{p}{3}$ plots, o que rapidamente se torna inviável. Por isso, é interessante ter métodos automáticos para descobrir clusters em dados de alta dimensão.
         
       </section>
     
-      <section id="subsec:latent"><title>Descobrindo fatores latentes</title>
-        
+      <section id="subsec:latent"><title>Redução de Dimensionalidade</title>
+      Aprendizado de máquina <em>não-supervisionado</em> também pode ser usado para aprender representações mais compactas dos dados. Em outras palavras, podemos tentar aprender uma representação dos dados em um espaço de menor dimensão que ainda capture as características mais importantes dos dados originais. Isso é conhecido como <em>redução de dimensionalidade</em>.
+
+      Um exemplo prático da utilidade de redução de dimensionalidade é a compressão de imagens. Suponha que você tenha um conjunto de imagens em alta resolução, cada uma representada por milhares ou milhões de pixels. Com técnicas de redução de dimensionalidade, você pode aprender uma representação mais compacta dessas imagens, preservando as características visuais mais importantes. Isso pode ser útil para economizar espaço de armazenamento e acelerar o processamento das imagens.
+      <subsection>
+        <title>Análise de Componentes Principais (PCA)</title>
+        A Análise de Componentes Principais (PCA) é uma técnica clássica de redução de dimensionalidade. O objetivo do PCA é encontrar uma nova base para os dados, de forma que a maior parte da variância dos dados seja capturada pelos primeiros componentes principais. Em outras palavras, o PCA busca projetar os dados em um espaço de menor dimensão, preservando ao máximo a informação contida nos dados originais.
+      </subsection>
+      <subsection>
+        <title>O mapa de Johnson-Lindenstrauss</title>
+        O mapa de Johnson-Lindenstrauss é um resultado teórico que garante que é possível projetar um conjunto de pontos de alta dimensão em um espaço de menor dimensão, preservando aproximadamente as distâncias entre os pontos. Em outras palavras, o mapa de Johnson-Lindenstrauss nos diz que podemos reduzir a dimensionalidade dos dados sem perder muita informação sobre as relações entre os pontos.
+      </subsection>
       </section>
 
     </chapter>
