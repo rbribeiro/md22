@@ -1,0 +1,151 @@
+<document type="presentation" lang="pt" theme-accent="red" theme="slides.css">
+  <title>MD22 — Aprendizado de Máquina não-supervisionado</title>
+
+  <progress/>
+
+  <floating>
+    <toc>
+      <title>Roteiro</title>
+    </toc>
+  </floating>
+
+  <cover>
+    <title>Aprendizado de Máquina <em>não-supervisionado</em></title>
+    <subtitle>Uma visão geral</subtitle>
+    <author>Rodrigo Ribeiro</author>
+    <affiliation>IMPA Tech</affiliation>
+    <event>Aprendizado de Máquina I (MD22)</event>
+    <date>2026.2</date>
+  </cover>
+
+  <slide>
+    <title>Capítulo em construção</title>
+    <box type="warning">
+      <title>Rascunho</title>
+      Este capítulo ainda está em desenvolvimento. O que vem a seguir é a <em>visão geral</em> do que será abordado no capítulo final.
+    </box>
+  </slide>
+
+  <slide>
+    <toc depth="1">
+      <title>Roteiro</title>
+    </toc>
+  </slide>
+
+  <!-- ==================================================================== -->
+  <section id="sec:paradigma">
+    <title>Uma mudança de paradigma</title>
+
+    <slide>
+      <title>Dois objetivos diferentes</title>
+      <columns>
+        <column reveal="true">
+          <b>Supervisionado</b>
+          <list animated="true">
+            <item>Temos os dados <em>e</em> as respostas.</item>
+            <item>Objetivo: mapear entrada em saída.</item>
+            <item>Aprender $P(Y \, | \, X)$.</item>
+          </list>
+        </column>
+        <column reveal="true">
+          <b>Não-supervisionado</b>
+          <list animated="true">
+            <item>Não há respostas.</item>
+            <item>Objetivo: a <em>estrutura</em> dos dados.</item>
+            <item>Aprender $P(X)$.</item>
+          </list>
+        </column>
+      </columns>
+    </slide>
+
+    <slide>
+      <title>Sem $Y$, a pergunta muda</title>
+      Sem a variável de saída, $P(Y \, | \, X)$ <b>sequer faz sentido</b>.
+      <box color="green" reveal="true">
+        O que resta perguntar: como os dados estão organizados, quais são as relações entre eles, que padrões eles formam.
+      </box>
+      <b reveal="true">Isto é: queremos aprender a distribuição conjunta $P(X)$.</b>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:clustering">
+    <title>Clustering</title>
+
+    <slide>
+      <title>Grupos dentro de $P(X)$</title>
+      Uma das propriedades que podemos aprender sobre $P(X)$: existem <em>grupos</em> de dados mais próximos entre si do que dos demais?
+      <box reveal="true">
+        Em símbolos: os dados $\{x_1,\dots,x_N\}\subset\mathbb{R}^p$ podem ser agrupados em <b>clusters</b>?
+      </box>
+    </slide>
+
+    <slide>
+      <title>Exemplo: segmentação de clientes</title>
+      Dados de clientes de uma empresa — idade, renda, localização, histórico de compras.
+      <list animated="true">
+        <item>Um grupo de clientes jovens com alta renda.</item>
+        <item>Outro grupo de clientes mais velhos com renda média.</item>
+        <item>Campanhas de marketing dirigidas a cada grupo.</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>Por que não olhar a olho nu</title>
+      Com $p \le 3$, basta plotar os pontos e procurar os grupos.
+      <box type="warning" reveal="true">
+        Com $p > 3$, poderíamos plotar duas ou três <i>features</i> de cada vez — mas todas as combinações somam
+        $$\binom{p}{2} + \binom{p}{3}$$
+        gráficos, o que rapidamente se torna inviável.
+      </box>
+      <b reveal="true">Daí a necessidade de métodos <em>automáticos</em> em alta dimensão.</b>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:reducao">
+    <title>Redução de dimensionalidade</title>
+
+    <slide>
+      <title>Representações mais compactas</title>
+      Aprender uma representação dos dados em um espaço de <b>menor dimensão</b> que ainda capture as características mais importantes dos originais.
+      <box color="green" reveal="true">
+        <b>Exemplo:</b> compressão de imagens. Milhares ou milhões de <i>pixels</i> por imagem; a representação compacta preserva o que é visualmente importante e economiza armazenamento e processamento.
+      </box>
+    </slide>
+
+    <slide>
+      <title>Análise de Componentes Principais (PCA)</title>
+      Técnica clássica de redução de dimensionalidade.
+      <list animated="true">
+        <item>Encontrar uma <em>nova base</em> para os dados.</item>
+        <item>De modo que os <b>primeiros</b> componentes capturem a maior parte da <em>variância</em>.</item>
+        <item>Projetar em menor dimensão preservando ao máximo a informação original.</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>O mapa de Johnson–Lindenstrauss</title>
+      Um resultado <em>teórico</em>: é possível projetar pontos de alta dimensão em um espaço de menor dimensão <b>preservando aproximadamente as distâncias</b> entre eles.
+      <box reveal="true">
+        Reduzir a dimensionalidade sem perder muita informação sobre as <em>relações</em> entre os pontos.
+      </box>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:fecho">
+    <title>Fechamento</title>
+
+    <slide>
+      <title>O que fica</title>
+      <list animated="true">
+        <item>Sem $Y$, o alvo deixa de ser $P(Y \, | \, X)$ e passa a ser $P(X)$.</item>
+        <item><em>Clustering</em>: descobrir grupos que a inspeção visual não alcança.</item>
+        <item><em>Redução de dimensionalidade</em>: representar o mesmo com menos.</item>
+        <item>PCA pela variância; Johnson–Lindenstrauss pelas distâncias.</item>
+      </list>
+    </slide>
+  </section>
+
+</document>

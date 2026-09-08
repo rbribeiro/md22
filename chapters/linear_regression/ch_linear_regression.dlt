@@ -1,0 +1,350 @@
+<document>
+    <floating>
+        <toc scope="project" depth="4" />
+    </floating>
+    <chapter id="ch:linear_regression">
+        <title>Regressão Linear</title>
+        <meta>
+            <meta-item key="Autor"> Rodrigo Ribeiro</meta-item>
+            <meta-item key="Instituição"> IMPA Tech </meta-item>
+            <meta-item key="Período"> 2026.2 </meta-item>
+        </meta>
+
+        <intro>O objetivo deste capítulo é apresentar o modelo de regressão linear, que é um dos modelos mais importantes e amplamente utilizados em aprendizado de máquina. A regressão linear é usada para modelar a relação entre uma variável dependente e uma ou mais variáveis independentes, assumindo que essa relação seja linear.
+        </intro>
+
+        Vimos na <ref to="sss:erm" /> que uma maneira de encontrar uma aproximação $\hat{f}$ para $f$ no <ref to="p:approx" /> é encontrando uma função que minimize o risco empírico. Matematicamente, esse problema pode ser difícil de resolver por diversas razões, como por exemplo, a família $\mathcal{G}$ é geral demais, ou o risco empírico é difícil de calcular. No entanto, se restringirmos a família $\mathcal{G}$ para funções lineares, o problema se torna mais simples e podemos encontrar uma solução analítica para o problema de minimização do risco empírico.
+
+        A regressão linear é um modelo que assume que a relação entre a variável dependente $Y$ e as variáveis independentes $X_1, X_2, \ldots, X_p$ é linear. O modelo pode ser representado da seguinte forma:
+        <equation id="eq:linear_regression">
+        Y = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \ldots + \beta_p X_p + \varepsilon
+        </equation>
+        onde $\beta_0, \beta_1, \ldots, \beta_p$ são os coeficientes do modelo e $\varepsilon$ é o termo de erro, que é assumido como uma variável aleatória com média zero e variância constante e independente das variáveis independentes $X_1, X_2, \ldots, X_p$.
+
+        Note que o problema de minimizar o risco empírico se torna o problema de minimizar uma função de $p+1$ variáveis, que são os coeficientes $\beta_0, \beta_1, \ldots, \beta_p$. Dependendo da função perda que escolhemos, podemos encontrar uma solução analítica para o problema de minimização do risco empírico usando ferramentas clássicas do cálculo e da álgebra linear, como veremos a seguir.
+
+        <section id="sec:estimando_coeficientes">
+            <title>Estimando os coeficientes: o método dos mínimos quadrados</title>
+            A função perda mais comum usada na regressão linear é a função perda quadrática. O problema de minimizar o risco empírico com a função perda quadrática é equivalente ao problema de minimizar a soma dos quadrados dos resíduos (<i>residual sum of squares</i>, do inglês), que é dado por:
+            <equations id="eq:sum_of_squares">
+            \text{RSS}(\beta_0, \beta_1, \ldots, \beta_p) & = \sum_{i=1}^{N} (y_i - \hat{y}_i)^2 \\
+            & = \sum_{i=1}^{N} (y_i - (\beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2} + \ldots + \beta_p x_{ip}))^2,
+            </equations>
+            uma vez que $\text{RSS} = N \cdot \text{EQM}$ e $N$ é constante.
+
+            O método dos mínimos quadrados propões então tomar como estimativa para os coeficientes $\beta_0, \beta_1, \ldots, \beta_p$ os valores que minimizam a soma dos quadrados dos resíduos. Mais formalmente, o método dos mínimos quadrados consiste em resolver o seguinte problema de otimização:
+            <equation id="eq:least_squares">
+                \hat{\beta}_0, \hat{\beta}_1, \ldots, \hat{\beta}_p \in \arg\min_{\beta_0, \beta_1, \ldots, \beta_p} \text{RSS}(\beta_0, \beta_1, \ldots, \beta_p).
+            </equation>
+            Veremos que dependendo do conjunto de dados, o problema acima possui solução única e podemos trocar o $\in$ por um $=$.
+            <subsection>
+                <title>Caso $p = 1$</title>
+                Vamos começar com o caso particular em que temos apenas uma variável independente, ou seja, $p = 1$, pois esse caso nos permite resolver explicitamente o problema de otimização e encontrar uma fórmula fechada para os coeficientes $\hat{\beta}_0$ e $\hat{\beta}_1$.
+                
+                Nesse caso, o modelo de regressão linear se reduz a:
+                <equation id="eq:linear_regression_p1">
+                Y = \beta_0 + \beta_1 X + \varepsilon
+                </equation>
+                O problema de minimizar a soma dos quadrados dos resíduos se torna:
+                <equation id="eq:least_squares_p1">
+                \hat{\beta}_0, \hat{\beta}_1 \in \arg\min_{\beta_0, \beta_1} \sum_{i=1}^{N} (y_i - (\beta_0 + \beta_1 x_i))^2.
+                </equation>
+                Note que ${\rm RSS}(\beta_0,\beta_1)$ é uma função quadrática em $\beta_0$ e $\beta_1$, e portanto é diferenciável. Logo, para minimizá-la, podemos usar cálculo! Em particular, o seguinte teorema:
+                <theorem id="thm:gradient_zero">
+                    Seja $h: \mathbb{R}^n \to \mathbb{R}$ uma função diferenciável. Se $x^* \in \mathbb{R}^n$ é um ponto de mínimo local de $h$, então $\nabla h(x^*) = 0$.
+
+                    Além disso, se $h$ é convexa, então qualquer ponto crítico é um ponto de mínimo global.
+                </theorem>
+                Com auxílio do teorema acima, podemos provar a seguinte proposição
+                <proposition id="prop:least_squares_p1">
+                    Seja $h(\beta_0, \beta_1) = \sum_{i=1}^{N} (y_i - (\beta_0 + \beta_1 x_i))^2$. Então, o ponto $(\hat{\beta}_0, \hat{\beta}_1)$ que minimiza $h$ é dado por:
+                    <equation id="eq:least_squares_solution_p1">
+                    \hat{\beta}_1 = \frac{\sum_{i=1}^{N} (x_i - \bar{x})(y_i - \bar{y})}{\sum_{i=1}^{N} (x_i - \bar{x})^2}, \quad
+                    \hat{\beta}_0 = \bar{y} - \hat{\beta}_1 \bar{x},
+                    </equation>
+                    onde $\bar{x} = \frac{1}{N} \sum_{i=1}^{N} x_i$ e $\bar{y} = \frac{1}{N} \sum_{i=1}^{N} y_i$ são as médias amostrais de $x$ e $y$.
+                </proposition>
+                <proof>
+                    
+                    Para encontrar o ponto crítico de $h$, precisamos calcular o gradiente de $h$ e igualá-lo a zero. O gradiente de $h$ é dado por:
+                    <equations id="eq:gradient_h">
+                    \frac{\partial h}{\partial \beta_0} & = -2 \sum_{i=1}^{N} (y_i - (\beta_0 + \beta_1 x_i))  \\
+                    \frac{\partial h}{\partial \beta_1} & = -2 \sum_{i=1}^{N} (y_i - (\beta_0 + \beta_1 x_i)) x_i
+                    </equations>
+                    Igualando o gradiente a zero, obtemos o seguinte sistema de equações:
+                    <equations id="eq:normal_equations">
+                    \sum_{i=1}^{N} (y_i - (\beta_0 + \beta_1 x_i)) & = 0  \\
+                    \sum_{i=1}^{N} (y_i - (\beta_0 + \beta_1 x_i)) x_i & = 0
+                    </equations>
+                    Resolvendo para $\beta_0$ na primeira equação, obtemos:
+                    <equation id="eq:beta0_solution">
+                    \hat{\beta}_0 = \bar{y} - \hat{\beta}_1 \bar{x}
+                    </equation>
+                    Substituindo $\hat{\beta}_0$ na segunda equação
+                    <equations id="eq:beta1_solution">
+                        \sum_{i=1}^{N} [y_i - (\bar{y} - \hat{\beta}_1 \bar{x} + \hat{\beta}_1 x_i)] x_i & = \sum_{i=1}^{N} [y_i - (\bar{y} - \hat{\beta}_1 \bar{x} + \hat{\beta}_1 x_i)] (x_i - \bar{x} + \bar{x}) \\
+                        & = \sum_{i=1}^{N} (y_i - \bar{y}) (x_i - \bar{x}) + \hat{\beta}_1 \sum_{i=1}^{N} (x_i - \bar{x})^2 = 0,
+                    </equations>
+                    pois os termos $\sum_{i=1}^{N} (y_i - \bar{y}) \bar{x}$ e $\hat{\beta}_1 \sum_{i=1}^{N} (x_i - \bar{x}) \bar{x}$ são iguais a zero. Resolvendo para $\hat{\beta}_1$, obtemos:
+                    <equation id="eq:beta1_solution_final">
+                    \hat{\beta}_1 = \frac{\sum_{i=1}^{N} (x_i - \bar{x})(y_i - \bar{y})}{\sum_{i=1}^{N} (x_i - \bar{x})^2}.
+                    </equation>
+                    Falta apenas mostrar que o ponto crítico $(\hat{\beta}_0, \hat{\beta}_1)$ é de fato um ponto de mínimo global. Para isso, basta mostrar que a função $h$ é convexa. Aqui podemos mostrar que a hessiana de $h$ é positiva semidefinida, o que implica que $h$ é convexa. A hessiana de $h$ é dada por:
+                    <equation id="eq:hessian_h">
+                    H = \begin{bmatrix}
+                    \frac{\partial^2 h}{\partial \beta_0^2} & \frac{\partial^2 h}{\partial \beta_0 \partial \beta_1} \\
+                    \frac{\partial^2 h}{\partial \beta_1 \partial \beta_0} & \frac{\partial^2 h}{\partial \beta_1^2}
+                    \end{bmatrix} = \begin{bmatrix}
+                    2N & 2 \sum_{i=1}^{N} x_i \\
+                    2 \sum_{i=1}^{N} x_i & 2 \sum_{i=1}^{N} x_i^2
+                    \end{bmatrix}
+                    </equation>
+                    Para mostrar que $H$ é positiva semidefinida, usamos o <em>Critério de Sylvester</em>. $H$ nesse caso será positiva semidefinida se e somente se todos os menores principais forem não-negativos. O primeiro menor principal é $2N > 0$. O segundo menor principal é o determinante de $H$, que é dado por:
+                    <equation id="eq:determinant_hessian_h">
+                    \det(H) = 4N \sum_{i=1}^{N} x_i^2 - 4 \left( \sum_{i=1}^{N} x_i \right)^2.
+                    </equation>
+                    Note que o segundo termo pode ver visto como o quadrado do produto interno entre os vetores $x = (x_1, \dots, x_N)$ e $\mathbf{1} = (1, \dots, 1)$. Pela desigualdade de Cauchy-Schwarz, temos que:
+                    <equation id="eq:cauchy_schwarz">
+                    \left( \sum_{i=1}^{N} x_i \right)^2 \leq \left( \sum_{i=1}^{N} x_i^2 \right) \left( \sum_{i=1}^{N} 1^2 \right) = N \sum_{i=1}^{N} x_i^2.
+                    </equation>
+                    Portanto, $\det(H) \geq 0$, o que mostra que $H$ é positiva semidefinida e, portanto, $h$ é convexa. Logo, pelo <ref to="thm:gradient_zero" />, isso implica que o ponto crítico $(\hat{\beta}_0, \hat{\beta}_1)$ é de fato um ponto de mínimo global e assim concluímos a prova.
+                </proof>
+                Uma observação importante é que a solução para $\hat{\beta}_1$ dada na <ref to="eq:beta1_solution_final" /> pode ser interpretada como a razão entre a covariância amostral de $x$ e $y$ e a variância amostral de $x$. De fato, podemos escrever:
+                <equation id="eq:beta1_cov_var">
+                \hat{\beta}_1 = \frac{\text{Cov}(x, y)}{\text{Var}(x)}.
+                </equation>
+                Se $X$ e $Y$ não são correlacionados, então $\text{Cov}(x, y) = 0$ e portanto $\hat{\beta}_1 = 0$. Isso significa que a melhor aproximação linear para $f$ é simplesmente a média de $y$.
+
+                Vale a pena visualizar o que as fórmulas acima fazem. O ambiente <ref to="in:simple_regression" /> abaixo mostra os três objetos em jogo: a reta verdadeira $\beta_0 + \beta_1 x$, que na prática <em>nunca</em> observamos; a amostra $(x_1, y_1), \ldots, (x_N, y_N)$ gerada a partir dela com erro $\varepsilon$ de média zero; e a reta $\hat{\beta}_0 + \hat{\beta}_1 x$ obtida pela <ref to="eq:least_squares_solution_p1" />. Aumente $N$ e observe $\hat{\beta}_0$ e $\hat{\beta}_1$ se aproximarem de $\beta_0$ e $\beta_1$; aumente ${\rm Var}(\varepsilon)$ e note que a reta ajustada continua correta <em>em média</em>, mas oscila muito mais de amostra para amostra.
+
+                <interactive id="in:simple_regression">
+                  <simple-regression beta0="2" beta1="1.5" sample-size="30" noise-variance="4" />
+                  <caption>Regressão linear simples. A reta tracejada é a reta desconhecida $\beta_0 + \beta_1 x$ e a reta cheia é o ajuste de mínimos quadrados. Marque <i>resíduos</i> para ver as distâncias verticais cujos quadrados a <ref to="eq:sum_of_squares" /> soma; <i>rastro</i> para guardar os ajustes anteriores e ver como eles se comportam quando $N$ muda ou quando você reamostra; e <i>IC da reta</i> / <i>predição</i> para as duas faixas de incerteza. Clique no plano para acrescentar um ponto e arraste-o para longe da nuvem: um único ponto pode inclinar a reta ajustada.</caption>
+                </interactive>
+
+                As duas faixas sombreadas merecem uma palavra, ainda que a matemática por trás delas só apareça na <ref to="sec:acuracia" />. A faixa <i>IC da reta</i> marca onde a reta verdadeira plausivelmente está, dado o que esta amostra revela: ela mede a nossa incerteza sobre $\beta_0$ e $\beta_1$. Já a faixa de <i>predição</i> marca onde uma <em>observação nova</em> plausivelmente cairia — ela precisa acomodar, além dessa mesma incerteza, o próprio erro $\varepsilon$ que a observação vai carregar. Por isso a segunda é sempre mais larga que a primeira, e as duas se comportam de maneiras bem diferentes quando $N$ cresce, como o exercício a seguir pede para você verificar.
+
+                <exercise id="exerc:regressao_interativa">
+                    <title>Explorando a regressão linear simples</title>
+                    <meta>
+                        <meta-item key="Habilidades">Experimentação, Pensamento crítico</meta-item>
+                        <meta-item key="Uso de IA">Não recomendado</meta-item>
+                    </meta>
+                    Todos os itens abaixo são feitos no ambiente <ref to="in:simple_regression" />, cuja reta verdadeira tem $\beta_0 = 2$ e $\beta_1 = 1{,}5$. Em cada item, <b>escreva o que você espera antes de mexer nos controles</b> e só depois compare com o que acontece: o valor do exercício está justamente nas vezes em que as duas coisas discordarem.
+                    <list marker="a">
+                        <item>
+                            <b>Quanto $\hat{\beta}$ varia de amostra para amostra.</b> Deixe ${\rm Var}(\varepsilon) = 4$ e ponha $N = 10$. Clique em <i>nova amostra</i> umas dez vezes, anotando $\hat{\beta}_1$ a cada vez. Repita o procedimento com $N = 120$. Compare as duas listas de valores: o que muda, a <em>média</em> ou a <em>dispersão</em>? Agora marque <i>rastro</i> e reamostre várias vezes sem anotar nada — a nuvem de retas que se acumula na tela é uma imagem direta dessa dispersão.
+                        </item>
+                        <item>
+                            <b>O que acontece quando $N$ cresce.</b> Com o <i>rastro</i> ainda marcado, desmarque-o e marque-o de novo para limpá-lo, e então arraste o controle de $N$ devagar, de $5$ até $120$. Descreva em uma frase o formato do leque de retas que se forma. Para qual reta ele parece estar afunilando? Justifique por que essa é a reta esperada, e não outra.
+                        </item>
+                        <item>
+                            <b>O erro tem um piso.</b> Antes de tocar em qualquer controle, responda: quando $N \to \infty$, o $\text{MSE}$ da <ref to="eq:mse" /> tende a zero? Agora verifique, aumentando $N$ até o máximo com ${\rm Var}(\varepsilon) = 4$, e compare o valor de $\text{MSE}$ com o valor de ${\rm Var}(\varepsilon)$ que está no controle ao lado. Explique o que você observou usando as <ref to="eq:risk_yx" />. E a $\text{RSS}$ da <ref to="eq:sum_of_squares" />, o que ela faz quando $N$ cresce? <hint>Lembre que $\text{RSS} = N\cdot\text{MSE}$, e que essas duas quantidades <em>não</em> podem então fazer a mesma coisa.</hint>
+                        </item>
+                        <item>
+                            <b>O papel do ruído.</b> Fixe $N = 60$ e varra ${\rm Var}(\varepsilon)$ de $0$ até o máximo, marcando <i>rastro</i> e reamostrando algumas vezes em cada valor. O ajuste erra a reta verdadeira <em>sistematicamente</em> para algum lado, ou erra para os dois lados com igual frequência? O que o ruído afeta, então: o centro da nuvem de retas ou a largura dela? Compare também o $\text{MSE}$ com ${\rm Var}(\varepsilon)$ em cada valor testado.
+                        </item>
+                        <item>
+                            <b>Um ponto só pode estragar tudo.</b> Volte a ${\rm Var}(\varepsilon) = 4$ e $N = 30$. Clique no plano para acrescentar um ponto bem acima da nuvem, primeiro numa posição próxima do centro do eixo $x$, e observe quanto a reta ajustada se move; dê um duplo-clique para removê-lo e repita a mesma coisa com um ponto próximo da borda direita, em $x \approx 10$. Qual dos dois desloca mais a reta? Use a <ref to="eq:beta1_solution_final" /> para explicar a diferença. <hint>Olhe para o peso que $(x_i - \bar{x})$ dá a cada ponto no numerador.</hint> Essa sensibilidade é o que se quer dizer quando se afirma que os mínimos quadrados <em>não são robustos</em> a <i>outliers</i>. Que outra função perda, já vista nestas notas, sofreria menos com esse mesmo ponto?
+                        </item>
+                        <item>
+                            <b>As duas faixas.</b> Marque <i>IC da reta</i> e <i>predição</i> ao mesmo tempo e arraste $N$ de $5$ até $120$. Qual das duas encolhe até quase sumir e qual estaciona numa largura que não diminui mais? Explique a diferença a partir do que cada faixa representa. Em seguida, com $N = 30$, conte quantos pontos da amostra ficam fora da faixa de predição e compare com os $5\%$ esperados. Por fim, deixe apenas <i>IC da reta</i> marcado e clique em <i>nova amostra</i> vinte vezes, contando em quantas delas a reta tracejada fica inteiramente dentro da faixa — o número que você obtiver é uma estimativa de quê?
+                        </item>
+                    </list>
+                </exercise>
+
+                <solution of="exerc:regressao_interativa" collapsed="true">
+                    <b>(a)</b> A <em>média</em> dos valores de $\hat{\beta}_1$ fica em torno de $1{,}5$ nos dois casos; o que muda drasticamente é a <em>dispersão</em>. Com $N = 10$ não é raro obter $\hat{\beta}_1$ variando alguns décimos de uma amostra para outra, enquanto com $N = 120$ os valores se concentram bem mais perto de $1{,}5$. Ou seja, o estimador acerta em média independentemente de $N$, mas a sua variância diminui quando a amostra cresce. A nuvem de retas do <i>rastro</i> é essa variância desenhada: é a mesma quantidade ${\rm Var}(\hat{f}(x))$ que apareceu na <ref to="eq:vies_var" />, agora para o caso particular de uma reta.
+
+                    <b>(b)</b> O leque afunila sobre a reta tracejada, ou seja, sobre a própria reta verdadeira $\beta_0 + \beta_1 x$. É ela, e não outra, porque o erro tem média zero: em <ref to="eq:linear_regression_p1" />, $\mathbb{E}[Y \mid X = x] = \beta_0 + \beta_1 x$. À medida que $N$ cresce, as médias amostrais que aparecem na <ref to="eq:least_squares_solution_p1" /> se aproximam das quantidades populacionais correspondentes, e $\hat{\beta}$ se aproxima de $\beta$.
+
+                    <b>(c)</b> <b>Não</b>, o $\text{MSE}$ não tende a zero — e essa é a parte do exercício que costuma contrariar a expectativa. Ele estaciona em torno de ${\rm Var}(\varepsilon)$, isto é, em torno de $4$ com a configuração pedida. A razão está nas <ref to="eq:risk_yx" />: mesmo com $\hat{f}$ perfeita, sobra o termo ${\rm Var}(\varepsilon)$, o <em>erro irredutível</em>, que nenhum método pode eliminar porque não está no modelo, está nos dados. O que $N$ grande elimina é o erro <em>redutível</em>, e esse já era pequeno aqui, porque a família de funções escolhida (retas) contém a função verdadeira.
+
+                    Já a $\text{RSS}$ <em>cresce</em>, aproximadamente como $N \cdot {\rm Var}(\varepsilon)$, exatamente porque $\text{RSS} = N \cdot \text{MSE}$ e o segundo fator estabiliza. Vale reter a distinção: somar mais parcelas quadráticas aumenta a soma, e é a média delas — não a soma — que mede a qualidade do ajuste e admite comparação entre conjuntos de tamanhos diferentes.
+
+                    <b>(d)</b> O ajuste erra para os dois lados com igual frequência: não há tendência sistemática, o estimador continua correto em média (não-viesado) para qualquer nível de ruído. O que ${\rm Var}(\varepsilon)$ controla é a <em>largura</em> da nuvem de retas, não o seu centro. Nos termos da <ref to="eq:vies_var_2" />, mexer no ruído mexe em ${\rm Var}(\hat{f}(x))$ e no termo irredutível, deixando o viés intacto. E o $\text{MSE}$ acompanha de perto o valor de ${\rm Var}(\varepsilon)$ escolhido, o que é a mesma observação do item (c) vista de outro ângulo.
+
+                    <b>(e)</b> O ponto próximo da borda desloca muito mais a reta. A <ref to="eq:beta1_solution_final" /> escreve
+                    $$
+                        \hat{\beta}_1 = \frac{\sum_{i=1}^{N} (x_i - \bar{x})(y_i - \bar{y})}{\sum_{i=1}^{N} (x_i - \bar{x})^2},
+                    $$
+                    e cada observação entra no numerador ponderada por $(x_i - \bar{x})$. Um ponto com $x_i \approx \bar{x}$ recebe peso quase nulo e mal afeta a inclinação, por mais absurdo que seja o seu $y_i$; um ponto na borda recebe o maior peso disponível e arrasta a reta atrás de si. Essa capacidade de influenciar o ajuste por estar longe do centro em $x$ é o que se chama de <em>alavancagem</em>.
+
+                    A raiz do problema é a função perda: como $\ell(y,\hat{y}) = (y - \hat{y})^2$ é quadrática, dobrar um resíduo quadruplica a sua contribuição, e um único resíduo grande domina a soma inteira. A perda $\ell_1$, cujo risco empírico é o <em>MAE</em> discutido na <ref to="sss:metricas_reg" />, cresce apenas linearmente com o resíduo e é bem menos sensível a esse mesmo ponto.
+
+                    <b>(f)</b> A faixa <i>IC da reta</i> encolhe até quase sumir: ela mede a incerteza sobre $\beta_0$ e $\beta_1$, que é justamente o que $N$ grande resolve — é o item (a) outra vez. A faixa de <i>predição</i> estaciona numa largura que não diminui mais, porque uma observação nova traz o seu próprio $\varepsilon$; ainda que soubéssemos $\beta_0$ e $\beta_1$ exatamente, não saberíamos onde o próximo ponto cairia. O piso dessa faixa é, mais uma vez, o erro irredutível do item (c).
+
+                    A contagem de pontos fora da faixa de predição deve dar algo em torno de $5\%$ (com $N = 30$, tipicamente um ou dois pontos), e a fração de amostras em que a reta verdadeira cai inteiramente dentro da faixa de confiança deve ficar próxima de $95\%$. Esse último número é o <em>nível de confiança</em> da faixa, e a maneira correta de lê-lo é essa: não é a reta verdadeira que se move, é a faixa que muda a cada amostra, e ela é construída para capturar a reta na maior parte das vezes. Formalizaremos esse cálculo na <ref to="subsec:acuracia_coef" />.
+                </solution>
+
+            </subsection>
+            <subsection>
+                <title>Caso geral</title>
+                Para o caso geral com mais de $1$ preditor, isto é,
+                $$
+                    Y = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \ldots + \beta_p X_p + \varepsilon,
+                $$
+                podemos escrever o modelo de forma matricial como:
+                <equation id="eq:linear_regression_matrix">
+                Y = X \beta + \varepsilon,
+                </equation>
+                onde $Y$ é um vetor coluna de tamanho $N \times 1$, $\beta$ é um vetor coluna de tamanho $(p+1) \times 1$, $X$ é uma matriz de tamanho $N \times (p+1)$ e $\varepsilon$ é um vetor coluna de tamanho $N \times 1$. A matriz $X$ é chamada de matriz de desenho (<i>design matrix</i>, do inglês) e é dada por:
+                <equation id="eq:design_matrix">
+                X = \begin{bmatrix}
+                1 & x_{11} & x_{12} & \ldots & x_{1p} \\
+                1 & x_{21} & x_{22} & \ldots & x_{2p} \\
+                \vdots & \vdots & \vdots & \ddots & \vdots \\
+                1 & x_{N1} & x_{N2} & \ldots & x_{Np}
+                \end{bmatrix}
+                </equation>
+                onde a primeira coluna é composta por uns para representar o intercepto $\beta_0$.
+
+                Portanto, o problema de minimizar a soma dos quadrados dos resíduos (ou, equivalentemente, o risco empírico com a função perda quadrática) se torna:
+                <equation id="eq:least_squares_matrix">
+                \hat{\beta} \in \arg\min_{\beta} (y - X \beta)^T (y - X \beta).
+                </equation>
+                pois a soma dos quadrados dos resíduos é, por definição, dada por
+                <equations numbered="false">
+                    \text{RSS}(\beta_0, \beta_1, \ldots, \beta_p) & = \sum_{i=1}^N (y_i - \beta_0 - \beta_1 x_{i1} - \ldots - \beta_p x_{ip})^2 \\ 
+                    & = (y - X \beta)^T (y - X \beta).
+                </equations>
+                A solução para o problema acima é dada pela seguinte proposição:
+                <proposition id="prop:least_squares_matrix">
+                    Seja $h(\beta) = (y - X \beta)^T (y - X \beta)$, onde $y$ é um vetor coluna com $N$ linhas e $X$ é a matriz design com $N$ linhas e $(p+1)$ colunas. Então, o ponto $\hat{\beta}$ que minimiza $h$ é dado por:
+                    <equation id="eq:least_squares_solution_matrix">
+                    \hat{\beta} = (X^T X)^{-1} X^T y,
+                    </equation>
+                    desde que $X^T X$ seja invertível.
+                </proposition>
+               A prova da proposição acima é análoga à prova do caso $p = 1$ no sentido de que usamos o teorema <ref to="thm:gradient_zero" /> e mostramos que a função $h$ é convexa. A diferença é que agora precisamos usar cálculo matricial para calcular o gradiente e a hessiana de $h$. Para aqueles que não estão familiarizados com cálculo matricial, deixamos o seguinte exercício que consiste em provar as fórmulas que usaremos na prova. A solução é direta, bastando usar a definição do gradiente e de multiplicação matricial.
+                <exercise id="exerc:matrix_calculus">
+                    <title>Cálculo matricial</title>
+                    <meta>
+                        <meta-item key="Habilidades">Cálculo, Álgebra Linear</meta-item>
+                        <meta-item key="Uso de IA">Não recomendado</meta-item>
+                    </meta>
+                    Dada uma função $h: \mathbb{R}^{n} \to \mathbb{R}$, adotamos a convenção de que um vetor $\beta$ é um vetor coluna de tamanho $n \times 1$ e então podemos derivar $h$ com relação a $\beta$ ou ao seu transposto $\beta^T$. 
+                    <equation numbered="false">
+                    \frac{\partial h}{\partial \beta} =
+                    \begin{bmatrix}
+                    \frac{\partial h}{\partial \beta_1} \\
+                    \frac{\partial h}{\partial \beta_2} \\
+                    \vdots \\
+                    \frac{\partial h}{\partial \beta_n}
+                    \end{bmatrix}; \quad \frac{\partial h}{\partial \beta^T} =
+                    \begin{bmatrix}
+                    \frac{\partial h}{\partial \beta_1} & \frac{\partial h}{\partial \beta_2} & \ldots & \frac{\partial h}{\partial \beta_n}
+                    \end{bmatrix}.
+                    </equation>
+                    Em linhas gerais, derivar $h$ com respeito a 
+                    Prove as seguintes fórmulas de cálculo matricial:
+                    <list marker="a">
+                        <item>Dados dois vetores coluna de mesmo tamanho $v$ e $x$. Então,
+                        $$
+                            \frac{\partial (v^T x)}{\partial x} = v.
+                        $$
+                        </item>
+                        
+                        <item>Seja $A$ uma matriz simétrica de tamanho $n \times n$ e $x$ um vetor coluna de tamanho $n \times 1$. Então, 
+                        $$
+                            \frac{\partial (x^T A x)}{\partial x} = 2Ax.
+                        $$
+                        </item>
+                    </list>
+                </exercise>
+                Assumindo o resultado do exercício acima, podemos provar a proposição.
+                <proof>
+                    <title>da <ref to="prop:least_squares_matrix" /></title>
+                    Queremos encontrar o ponto crítico de $h(\beta) = (y - X \beta)^T (y - X \beta)$. Para isso, precisamos calcular o gradiente de $h$ e igualá-lo a zero. Usando as fórmulas do <ref to="exerc:matrix_calculus" />, temos:
+                    <equations id="eq:gradient_h_matrix">
+                    \frac{\partial h}{\partial \beta} & = \frac{\partial (y - X \beta)^T (y - X \beta)}{\partial \beta} \\
+                    & = \frac{\partial (y^T y - 2 y^T X \beta + \beta^T X^T X \beta)}{\partial \beta} \\
+                    & = -2 X^T y + 2 X^T X \beta.
+                    </equations>
+                    Portanto, se $X^TX$ é não-singular (invertível), o ponto crítico de $h$ é dado por:
+                    <equation id="eq:critical_point_h_matrix">
+                    \hat{\beta} = (X^T X)^{-1} X^T y.
+                    </equation>
+                    Para mostrar que o ponto crítico $(\hat{\beta})$ é de fato um ponto de mínimo global, basta mostrar que a função $h$ é convexa. A hessiana de $h$ é dada por:
+                    <equation id="eq:hessian_h_matrix">
+                    H = \frac{\partial^2 h}{\partial \beta^2} = 2 X^T X.
+                    </equation>
+                    Para mostrar que $H$ é positiva semidefinida, basta mostrar que para qualquer vetor $v \in \mathbb{R}^{p+1}$, temos que $v^T H v \geq 0$. De fato, temos:
+                    <equation id="eq:positive_semidefinite_hessian">
+                    v^T H v = v^T (2 X^T X) v = 2 v^T X^T X v = 2 (X v)^T (X v) = 2 \| X v \|^2 \geq 0.
+                    </equation>
+                    Portanto, $H$ é positiva semidefinida e, portanto, $h$ é convexa. Logo, pelo <ref to="thm:gradient_zero" />, isso implica que o ponto crítico $(\hat{\beta})$ é de fato um ponto de mínimo global e assim concluímos a prova.
+                </proof>
+            </subsection>
+        </section>
+
+        <section id="sec:acuracia">
+            <title>Medindo Acurácia</title>
+            <subsection id="subsec:acuracia_coef">
+                <title>Acurácia dos Coeficientes</title>
+            </subsection>
+            <subsection id="subsec:acuracia_modelo">
+                <title>Acurácia do Modelo</title>
+            </subsection>
+        </section>
+
+        <section id="sec:regularizacao">
+            <title>Regularização</title>
+            Recorde a <ref to="eq:vies_var_2" />. Como vimos, o método dos mínimos quadrados é um estimador não-viesado, mas pode ter uma variância muito grande. Podemos então apelar à regularização (discutida brevemente na <ref to="sss:overfitting" />) para reduzir a variância às custas de introduzir um viés.
+
+            Nesta seção discutiremos duas formas de regularização: a <em>ridge regression</em> e a <em>lasso regression</em>. 
+
+            <subsection id="ss:ridge">
+                <title>Ridge Regression</title>
+                A ridge regression é uma forma de regularização que adiciona uma penalidade à soma dos quadrados dos coeficientes do modelo. Diferentemente dos mínimos quadrados, a ideia é minimizar a seguinte função
+                <equation id="eq:ridge_loss_2">
+                L(\beta) = \sum_{i=1}^{N} (y_i - \beta_0 - \sum_{j=1}^{p} \beta_j x_{ij })^2 + \lambda \sum_{j=1}^{p} \beta_j^2,
+                </equation>
+                onde $\lambda \geq 0$ é um parâmetro de regularização que controla a força da penalidade. Note que a penalidade é a norma $L_2$ do vetor de coeficientes $\beta$, excluindo o intercepto $\beta_0$, enquanto o primeiro termo é a soma dos quadrados dos resíduos, como nos mínimos quadrados. 
+
+                Em termos matriciais, podemos escrever a função acima como
+                <equation id="eq:ridge_loss_matrix">
+                L(\beta) = (y - X \beta)^T (y - X \beta) + \lambda \beta_{-0}^T \beta_{-0},
+                </equation>
+                onde $X$ é a matriz de desenho (design matrix), $\beta_{-0}$ é o vetor de coeficientes excluindo o intercepto $\beta_0$ e $y$ é o vetor de respostas.
+            </subsection>
+        </section>
+
+        
+        <section>
+            <title>Considerações Importantes</title>
+            <subsection>
+                <title>Além de aproximações lineares</title>
+                Note que na <ref to="sec:estimando_coeficientes" /> não fizemos nenhuma suposição sobre a relação entre os preditores $X_1,\ldots,X_p$. Esse é um ponto importante, pois nos permite usar a regressão linear para aproximar funções não-lineares simplesmente fazendo uma transformação apropriada nos preditores. Por exemplo, se quisermos aproximar uma função quadrática, podemos usar o modelo:
+                <equation id="eq:quadratic_model">
+                Y = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \varepsilon,
+                </equation>
+                mas tomando $X_2 = X_1^2$, que é linear nos parâmetros $\beta_0, \beta_1$ e $\beta_2$, mas não em $X_1$. Como o método dos mínimos quadrados não precisa assumir nada sobre como $X_1$ se relaciona com $X_2$, podemos encontrar $\hat{\beta}$ construindo a matriz design e encontrando $(X^TX)^{-1} X^T y$, em que a matriz design é dada por
+                <equation id="eq:design_matrix_quadratic">
+                X = \begin{bmatrix}
+                1 & x_{11} & x_{11}^2 \\
+                1 & x_{21} & x_{21}^2 \\
+                \vdots & \vdots & \vdots \\
+                1 & x_{N1} & x_{N1}^2
+                \end{bmatrix}.
+                </equation>
+
+                O que o método assume é linearidade nos parâmetros $\beta_0, \beta_1, \ldots, \beta_p$. Isso significa que podemos usar funções não-lineares de $X_1$ como $X_1^2$, $\log(X_1)$, $\exp(X_1)$, etc., desde que a função seja linear nos parâmetros. Por exemplo, o modelo:
+                <equation id="eq:nonlinear_model">
+                Y = \beta_0 + \beta_1 \log(X_1) + \beta_2 \exp(X_1) + \varepsilon
+                </equation>
+                é linear nos parâmetros $\beta_0, \beta_1$ e $\beta_2$, mas não em $X_1$. Portanto, podemos usar o método dos mínimos quadrados para encontrar $\hat{\beta}$ nesse caso também.
+
+               Outra observação é que nada nos impede de que a transformação dependa de mais de um preditor. Por exemplo, podemos usar o modelo:
+                <equation id="eq:interaction_model">
+                Y = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \beta_3 X_1 X_2 + \varepsilon,
+                </equation>
+                que é linear nos parâmetros $\beta_0, \beta_1, \beta_2$ e $\beta_3$, mas não em $X_1$ e $X_2$. Nesse caso, a transformação depende de dois preditores, mas ainda assim podemos usar o método dos mínimos quadrados para encontrar $\hat{\beta}$.
+            </subsection>
+            <subsection>
+                <title>Preditores Qualitativos</title>
+            </subsection>
+        </section>
+
+    </chapter>
+</document>

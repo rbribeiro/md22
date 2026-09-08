@@ -3,7 +3,7 @@
     <floating>
         <toc scope="project" depth="4"/>
     </floating>
-    <chapter>
+    <chapter id="ch:aprender">
     <title>O que significa aprender?</title>
      <meta>
         <meta-item key="Autor"> Rodrigo Ribeiro</meta-item>

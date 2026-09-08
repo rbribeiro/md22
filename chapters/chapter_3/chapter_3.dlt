@@ -1,40 +1,1076 @@
 <document>
-<chapter>
+
+  <floating>
+    <toc scope="project" depth="4" />
+  </floating>
+
+  <chapter id="ch:pipeline">
       <title>O <em>pipeline</em> de aprendizado de máquina</title>
+      <meta>
+        <meta-item key="Autor"> Rodrigo Ribeiro</meta-item>
+        <meta-item key="Instituição"> IMPA Tech </meta-item>
+        <meta-item key="Período"> 2026.2 </meta-item>
+      </meta>
+      <intro>
+        Nos capítulos anteriores construímos o modelo mental: aprender é <b>dados + método + medida de performance</b>, e estimar $f$ a partir de $S=\{(x_1,y_1),\dots,(x_N,y_N)\}$ é um problema matemático bem posto assim que decidimos o que significa "boa aproximação". Neste capítulo vamos discutir todas as etapas envolvidas no processo de solucionar um problema de aprendizado de máquina. Esse processo vai desde o dado bruto até o modelo em operação, e é chamado de <em>pipeline</em>.
+      </intro>
+
+      A primeira observação que fazemos é a de que o conjunto $S$ ao qual nos referimos o tempo todo não existe no mundo real. Pelo menos não com a perfeição com que o definimos. No mundo real os problemas e as decisões importantes aparecem antes mesmo da existência de $S$. E quando temos $S$, em geral, ele está longe de vir como um conjunto de dados bem lapidados e pronto para o treinamento.
+
+      Portanto, existe um processo que vai desde a obtenção dos dados até o momento em que o usuário final faz uso do modelo para fazer previsões/classificações. A esse processo, chamamos de <em>pipeline</em> a sequência de etapas que leva do dado bruto ao modelo em operação:
+      <box>
+        coleta <b>→</b> pré-processamento <b>→</b> escolha do método <b>→</b> treinamento <b>→</b> validação &amp; teste <b>→</b> <i>deploy</i> <b>→</b> <b>coleta</b> ...
+      </box>
+      Honestamente, a palavra <i>pipeline</i> (literalmente, "encanamento") é péssima, porque sugere uma linha reta com começo e fim. Contudo, o que temos é o <i>loop</i> do <ref to="ch:aprender" />, as três etapas do aprendizado humano: coletar informação, processá-la, medir se funcionou e voltar ao início (todas elas instrumentadas para rodar em um computador). As seis caixas acima são apenas uma versão mais detalhada daquelas três e a última seta aponta de volta para a primeira.
+
+      Vamos percorrer as seis etapas mantendo o <ref to="p:concrete_problem" /> como fio condutor, mas é sempre instrutivo pensar em outros problemas do mundo real que sejam diferentes daquele de se estimar a concentração de arsênio. Em cada seção a pergunta é a mesma: <b>o que pode dar errado aqui e o que isso faz com a estimativa $\hat{f}$?</b>
 
       <section id="subsec:scraping">
         <title>Coletando os dados</title>
 
-      </section>
-      <section id="subsec:pipepre">
-        <title>Pré-processamento</title>
-        
-      <subsection id="subsec:imputation">
-        <title>Dados faltantes e imputação</title>
-        
-      </subsection>
+        Dados chegam até você de várias formas e cada uma tem um custo e um viés característicos:
+        <list marker="a">
+          <item><em>Portais de dados abertos.</em> Órgãos públicos e privados publicam séries históricas em <c>csv</c>, <c>xlsx</c> ou <c>pdf</c>. É o caso do IGAM <cite paper="igam-series"/>. Esse é um dado barato, legalmente tranquilo, mas você recebe o dado que <b>eles</b> decidiram coletar, no formato que eles escolheram.</item>
+          <item><em>APIs.</em> Quando existem, resolvem o problema: dados estruturados, versionados, com paginação. Não são comuns e muitas vezes é necessário pagar.</item>
+          <item><em>Raspagem</em> (<i>web scraping</i>). Extrair dado de páginas feitas para humanos. Frágil (a página muda e o código quebra) e cheio de armadilhas jurídicas, veja o aviso adiante.</item>
+          <item><em>Instrumentação.</em> Você mesmo coleta o dado manualmente. No caso do problema <ref to="p:concrete_problem" />, caro, lento, e a única opção que te dá controle real sobre o desenho amostral.</item>
+          <item><em>Rotulação manual.</em> Alguém precisa olhar cada exemplo e dizer qual é o $y$. Em aprendizado supervisionado, esse costuma ser o gargalo do tempo e do dinheiro. Além de ser uma fonte silenciosa de erro, porque pessoas diferentes rotulam diferente.</item>
+        </list>
+
+        No nosso caso concreto, os dados do <em>Programa Águas de Minas</em> são publicados como planilhas trimestrais. Não há API: o trabalho é baixar os arquivos, abrir cada um, localizar as colunas de interesse (que mudam de nome ao longo dos anos) e empilhar tudo. Um esboço em <i>Python</i> puro da etapa final desse processo seria algo assim:
+
+        <code lang="python">
+          # Cada linha da planilha, já lida como lista de strings.
+          # COLUNAS mapeia nome do parâmetro -> índice da coluna.
+          def linha_para_exemplo(linha, COLUNAS):
+              x = []
+              for nome in ["pH", "turbidez", "condutividade", "OD"]:
+                  x.append(float(linha[COLUNAS[nome]]))
+              y = float(linha[COLUNAS["arsenio"]])
+              return (x, y)
+
+          def carregar(linhas, COLUNAS):
+              return [linha_para_exemplo(l, COLUNAS) for l in linhas]
+        </code>
+
+        Esse código está errado e está errado de um jeito instrutivo. Ele quebra na primeira linha em que a célula do arsênio está vazia (<c>float("")</c> levanta exceção) e na primeira linha em que o resultado é a expressão <c>< 0,003</c> (que não é um número). Se você "consertar" o problema envolvendo tudo em um <c>try/except</c> que descarta a linha problemática, terá tomado, sem perceber, uma decisão estatística de peso, que é o assunto da <ref to="subsec:imputation" />.
+
+        <box type="warning">
+          <title>Antes de raspar, leia</title>
+          Coletar dado de terceiros tem regras. Respeite o <c>robots.txt</c> e os termos de uso do site; limite a taxa de requisições (você está usando de graça um servidor que alguém paga para manter); cite a fonte; e verifique se o dado contém <em>dado pessoal</em>, caso em que a LGPD <cite paper="lgpd"/> impõe obrigações concretas sobre o que você pode fazer com ele. Dados ambientais agregados por estação não são dados pessoais; um conjunto com endereço de consumidores seria.
+        </box>
+
+        <subsection id="sss:amostra">
+          <title>Qual população esses dados representam?</title>
+
+          Aqui está o ponto matemático da seção e é o mais fácil de esquecer. Toda a construção do capítulo anterior, a Lei dos Grandes Números na <ref to="ss:sl_deep" />, o risco populacional da <ref to="eq:pop_risk" />, a interpretação do erro de teste como estimativa de generalização, repousa em uma hipótese que nunca foi discutida: a de que as observações $(x_i,y_i)$ são amostras <b>independentes de uma mesma distribuição</b> $p_{X,Y}$ e que essa distribuição é a mesma sob a qual o modelo vai operar.
+
+          Quem decide se isso é verdade não é o método. É a <b>coleta!</b>
+
+          <definition id="def:vies_amostragem">
+            <title>Viés de amostragem</title>
+            Dizemos que há <em>viés de amostragem</em> (ou viés de seleção) quando o processo de coleta induz uma distribuição $\tilde{p}_{X,Y}$ diferente da distribuição $p_{X,Y}$ sob a qual o modelo será utilizado. Nesse caso, minimizar o risco empírico em $S$ aproxima o risco populacional <b>sob $\tilde{p}$</b>, e não sob $p$.
+          </definition>
+
+          No Programa Águas de Minas, várias escolhas de coleta produzem exatamente esse descolamento. As cerca de 660 estações não estão distribuídas uniformemente pelo território: há mais estações onde há mais gente, mais indústria e mais histórico de problema. As coletas são majoritariamente trimestrais, o que significa que a série praticamente não enxerga eventos de curta duração, uma chuva forte, um vazamento, o rompimento de uma estrutura de contenção. E a decisão de <b>qual</b> parâmetro medir em <b>qual</b> campanha depende de orçamento e de suspeita prévia.
+
+          Cada uma dessas escolhas é defensável do ponto de vista de gestão de recursos hídricos. Nenhuma delas foi feita pensando em treinar um modelo.
+
+          <box type="danger">
+            <title>Viés de coleta não aparece no erro de teste</title>
+            É tentador tratar o viés de amostragem como mais uma fonte de erro, ao lado do erro irredutível da <ref to="eq:risk_yx" />. Não é a mesma coisa e a diferença importa:
+            <list marker="a">
+              <item>o erro irredutível ${\rm Var}(\varepsilon)$ é <b>visível</b>, quer dizer, ele aparece como um piso no <i>EQM</i>(MSE) de teste e você sabe que está lá;</item>
+              <item>o viés de coleta é <b>invisível</b>, porque o conjunto de teste foi extraído da mesma amostra enviesada. Ele não faz o erro de teste subir. Ele faz o erro de teste mentir, uma vez que o erro de teste reflete o risco sob $\tilde{p}$ e não sob $p$.</item>
+            </list>
+            Nenhum método, nenhuma função perda e nenhuma validação cruzada corrigem isso. A única defesa é conhecer o processo que gerou os dados.
+          </box>
+        </subsection>
+
+        <subsection id="sss:granularidade">
+          <title>O que é uma linha?</title>
+
+          Uma pergunta aparentemente burocrática, com consequências longas: qual é a <em>unidade de observação</em>? No nosso caso, uma linha é uma <b>campanha</b>, isto é, um par (estação, data). A estação BV035 aparece dezenas de vezes na série, uma vez por trimestre desde 1997.
+
+          Isso significa que as linhas <b>não são independentes</b>. Duas campanhas da mesma estação em trimestres consecutivos compartilham geologia, uso do solo a montante e regime hidrológico; duas campanhas de estações vizinhas no mesmo mês compartilham o clima daquele mês. Há correlação espacial e há correlação temporal.
+
+          <sidenote>
+            Guarde esta observação: ela vai voltar, com juros, na <ref to="sss:particao_honesta" />.
+          </sidenote>
+
+          A hipótese de independência, portanto, é falsa nos nossos dados. Isso não impede que se ajuste um modelo. Impede que se estime honestamente a sua performance por sorteio uniforme e é por isso que a etapa de validação (<ref to="subsec:test" />) precisa saber o que é uma linha.
+
+          <exercise>
+            <title>Um plano de coleta</title>
+            <meta>
+              <meta-item key="Habilidades">Pensamento crítico</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+            </meta>
+            Suponha que você tenha orçamento para instalar 50 estações novas com o objetivo explícito de treinar um modelo que estime arsênio a partir de parâmetros de campo. Responda:
+            <list marker="a">
+              <item>Qual é a sua unidade de observação e qual é a população-alvo, isto é, sobre quais medições futuras o modelo vai operar?</item>
+              <item>Onde você colocaria as estações? Note a tensão: colocar todas onde há contaminação conhecida dá muitos exemplos do caso raro, mas produz $\tilde{p} \neq p$. Colocar uniformemente respeita $p$, mas pode não render exemplo nenhum de contaminação.</item>
+              <item>Que frequência de coleta você escolheria e o que essa escolha torna invisível?</item>
+              <item>Liste três vieses que o seu próprio plano introduz e que você não consegue eliminar.</item>
+            </list>
+          </exercise>
+
+        </subsection>
       </section>
 
+      <section id="subsec:pipepre">
+        <title>Pré-processamento</title>
+
+        A meta desta etapa é precisa: sair de uma planilha e chegar em uma <em>matriz design</em> $X \in \mathbb{R}^{N\times p}$ e um vetor de respostas $y = (y_1,\ldots,y_N) \in \mathbb{R}^N$. A matriz design é construída de modo que cada coluna represente um preditor/variável e cada linha represente uma única observação. Todo método do capítulo anterior pressupõe esses dois objetos: a <ref to="eq:erm" /> soma sobre $i=1,\dots,N$ e avalia $g(x_i)$ com $x_i \in \mathbb{R}^p$. Uma planilha não é isso.
+
+        <subsection id="sss:tidy">
+          <title>Tabela organizada</title>
+
+          O primeiro passo é estrutural e a regra cabe em uma linha <cite paper="wickham2014"/>: <b>uma linha por observação, uma coluna por variável, uma célula por valor</b>. Planilhas feitas para leitura humana quase nunca obedecem a essa regra. Um formato comum em relatórios é o "largo", com um trimestre por coluna:
+
+          <table>
+            <header>
+              <column>Estação</column>
+              <column align="right" mono="true">pH T1</column>
+              <column align="right" mono="true">pH T2</column>
+              <column align="right" mono="true">pH T3</column>
+            </header>
+            <row><column>BV035</column><column>7,1</column><column>7,0</column><column>6,9</column></row>
+            <row><column>BV062</column><column>6,8</column><column>6,6</column><column>6,7</column></row>
+            <caption>Forma "larga": o trimestre está codificado no <b>nome</b> da coluna e não em uma variável. Cada linha carrega três observações.</caption>
+          </table>
+
+          Aqui "trimestre" é uma variável disfarçada de cabeçalho e cada linha contém três observações em vez de uma. A forma organizada correspondente é:
+
+          <table>
+            <header>
+              <column>Estação</column>
+              <column>Trimestre</column>
+              <column align="right" mono="true">pH</column>
+            </header>
+            <row><column>BV035</column><column>T1</column><column>7,1</column></row>
+            <row><column>BV035</column><column>T2</column><column>7,0</column></row>
+            <row><column>BV035</column><column>T3</column><column>6,9</column></row>
+            <row><column>BV062</column><column>T1</column><column>6,8</column></row>
+            <caption>Forma organizada: uma linha por observação, o trimestre virou uma variável. É esta forma que se traduz em uma matriz design.</caption>
+          </table>
+
+          Parece pedantismo, mas não é: enquanto o trimestre estiver no nome da coluna, ele não pode ser usado como <i>feature</i>, não pode ser filtrado e não pode servir de critério de partição.
+        </subsection>
+
+        <subsection id="sss:encoding">
+          <title>Variáveis categóricas</title>
+
+          A matriz design é de números reais, enquanto várias variáveis interessantes não são. A bacia hidrográfica de uma estação é um elemento de um conjunto finito sem ordem natural, digamos $\mathcal{B} = \{\text{Velhas}, \text{Doce}, \text{São Francisco}\}$.
+
+          A tentação é numerar: Velhas $=1$, Doce $=2$, São Francisco $=3$. É rápido, mas destrói informação de um jeito difícil de perceber depois. Ao numerar, você afirmou que Doce está <em>entre</em> Velhas e São Francisco e que a distância de Velhas a Doce é metade da distância de Velhas a São Francisco. Para o <ref to="sss:knn" />, cuja única suposição é que pontos próximos têm respostas próximas, isso não é um detalhe: é uma alteração da métrica do problema, feita por acidente!
+
+          A alternativa é a codificação <em>one-hot</em>: uma variável categórica com $m$ níveis vira $m$ colunas indicadoras $D_1,\dots,D_m$, com $D_j(i) = 1$ se a $i$-ésima observação pertence ao nível $j$ e $0$ caso contrário. Nenhuma ordem é imposta e todas as categorias ficam equidistantes.
+
+          Há um preço, e ele é de álgebra linear. Como cada observação pertence a exatamente um nível,
+          <equation id="eq:onehot">
+            \sum_{j=1}^m D_j = \mathbf{1},
+          </equation>
+          onde $\mathbf{1}$ é o vetor de uns. Mas $\mathbf{1}$ é justamente a coluna do intercepto $\beta_0$ (veja <ref to="ch:linear_regression" /> para entender melhor).
+          
+          O ponto aqui é que incluir um termo independente na expressão de $f$ e as $m$ indicadoras produz uma matriz design com colunas linearmente dependentes que tem implicações em como estimamos parâmetros do modelo. A solução usual é descartar uma das indicadoras, chamada categoria de <i>referência</i>; os coeficientes das demais passam a ser lidos como contrastes em relação a ela.
+
+          <remark>
+            <title>Quando numerar é correto</title>
+            Um preditor que por exemplo representa nível de escolaridade (fundamental, médio, superior) ou tamanho de animal (pequeno, médio, grande) é categórico mas tem ordem natural. Nesse caso, numerar é correto e preserva informação. A codificação <i>one-hot</i> ainda é possível, mas não há necessidade.
+          </remark>
+
+      
+        </subsection>
+
+        <subsection id="sss:escalonamento">
+          <title>A escala das <i>features</i></title>
+
+          Volte à tabela de dados do capítulo anterior e olhe as ordens de grandeza: o pH vive entre $6{,}4$ e $7{,}6$; a condutividade, entre $45$ e $320$ µS/cm. Agora calcule a distância euclidiana ao quadrado entre as estações BV062 e BV153, usando os quatro parâmetros de campo:
+
+          <equations id="eq:dist_bruta">
+            \|x_{\text{BV062}} - x_{\text{BV153}}\|^2 & = \underbrace{(6{,}8-7{,}6)^2}_{\text{pH}} + \underbrace{(141-9)^2}_{\text{turbidez}} + \underbrace{(320-45)^2}_{\text{condutividade}} + \underbrace{(5{,}1-7{,}9)^2}_{\text{OD}} \\
+            & = 0{,}64 + 17\,424 + 75\,625 + 7{,}84 \\
+            & = 93\,057{,}48.
+          </equations>
+
+          A condutividade responde por $81\%$ dessa distância, a turbidez por $19\%$ e o pH por <b>$0{,}0007\%$</b>. Se você entregar esses dados ao KNN, terá construído um classificador de condutividade que ignora educadamente todo o resto. E note que ninguém escolheu isso: a decisão foi tomada pelo fabricante da sonda, ao definir a unidade de medida.
+
+          As duas correções usuais são a <em>padronização</em>,
+          <equation id="eq:padroniza">
+            z_{ij} = \frac{x_{ij} - \hat{\mu}_j}{\hat{\sigma}_j},
+          </equation>
+          que deixa cada coluna com média zero e desvio padrão um, e a <em>normalização min-max</em>,
+          <equation id="eq:minmax">
+            \tilde{x}_{ij} = \frac{x_{ij} - \min_i x_{ij}}{\max_i x_{ij} - \min_i x_{ij}},
+          </equation>
+          que confina cada coluna a $[0,1]$. A padronização é mais robusta a valores extremos; a min-max preserva a forma da distribuição, mas um único <i>outlier</i> comprime todo o resto contra uma das bordas.
+
+          Quais métodos se importam com isso? Todos os que envolvem distância ou penalização de coeficientes:
+          <list marker="a">
+            <item><em>KNN</em> e demais métodos baseados em distância, pelo motivo que acabamos de calcular.</item>
+            <item><em>Regularização.</em> O <i>lasso</i> da <ref to="sss:overfit" /> penaliza $\lambda\sum_i|\beta_i|$. Mas $\beta_i$ tem unidade "mg/L de arsênio por µS/cm". Se você passar a medir a condutividade em mS/cm, os valores da coluna se dividem por mil, o $\hat{\beta}$ correspondente se multiplica por mil e a penalização passa a recair quase inteiramente sobre essa variável. A mesma matemática, com a mesma $\lambda$, produz um modelo diferente porque alguém mudou de unidade.</item>
+            <item><em>Métodos iterativos.</em> Colunas em escalas muito diferentes deixam a superfície do risco empírico alongada, e o gradiente descendente da <ref to="sss:gd" /> passa a ziguezaguear.</item>
+          </list>
+          E quais não se importam? A regressão linear <b>sem</b> penalização (reescalar uma coluna apenas reescala o coeficiente correspondente, mas a previsão é idêntica) e os métodos baseados em partições do espaço, como as árvores de decisão, que só usam a <i>ordem</i> dos valores dentro de cada coluna.
+
+          <box type="tip">
+            <title>Escalonar não é ritual</title>
+            "Sempre padronize" é um bom hábito de laboratório e um péssimo princípio. Escalonar é uma decisão acoplada à escolha do método (<ref to="subsec:method" />): obrigatória para KNN e para qualquer coisa regularizada, irrelevante para OLS puro, inútil para árvores. Saber <em>por que</em> vale mais do que saber <em>que</em>.
+          </box>
+        </subsection>
+
+        <subsection id="sss:transf">
+          <title>Transformações e <i>outliers</i></title>
+
+          Concentrações são grandezas positivas de <hint show-icon="false"><title>cauda pesada</title>Podem assumir valores muito grandes na escala em que são descritos.</hint>. Na tabela do capítulo anterior o arsênio varia de $0{,}003$ a $0{,}133$ mg/L,  mais de uma ordem de grandeza, e a literatura registra, no Quadrilátero Ferrífero, valores centenas de vezes acima do limite de potabilidade <cite paper="borba2004"/>. Ajustar uma perda quadrática diretamente sobre esses números faz com que praticamente toda a soma da <ref to="eq:mse" /> venha de meia dúzia de observações extremas.
+
+          Uma resposta comum é trabalhar com $\log y$ em vez de $y$. Vale entender o que isso faz. Se o erro é <em>multiplicativo</em>, a medição erra por uma fração do valor, não por uma quantidade fixa, o que é típico de ensaios químicos, então $Y = f(X)\cdot e^{\varepsilon}$ e portanto $\log Y = \log f(X) + \varepsilon$, que é de novo o modelo aditivo do <ref to="p:approx" />. Além disso, minimizar o erro quadrático em escala logarítmica corresponde a controlar o erro <b>relativo</b> na escala original, que costuma ser o que interessa: errar $0{,}002$ mg/L é irrelevante perto do limite legal de $0{,}01$ e é gravíssimo perto de $0{,}003$.
+
+          O preço aparece imediatamente: $\log$ de zero não existe e boa parte das nossas observações de arsênio é justamente "algo abaixo de $0{,}003$". Voltaremos a esse ponto na <ref to="subsec:imputation" />.
+
+          <box type="warning">
+            <title><i>Outlier</i> não é sinônimo de erro</title>
+            Existe uma prática difundida de "limpar" os dados removendo observações extremas. No problema do arsênio, essa prática é catastrófica: o pico de concentração <b>é o evento que queremos detectar</b>. Remover os extremos produz um conjunto de treino bem-comportado, um MSE de teste bonito e um modelo estruturalmente incapaz de fazer a única coisa para a qual foi construído.
+
+            Um valor extremo pode ser (i) erro de digitação, (ii) erro de instrumento, ou (iii) o mundo sendo o mundo. Só o primeiro caso autoriza remoção, e distinguir os três exige olhar o dado, não o quantil. Quando a suspeita é de erro de medição mas não há como verificar, a saída honesta é trocar a perda: a perda absoluta $\ell_1$ da <ref to="sss:nfl" /> é bem menos sensível a extremos do que a quadrática e não exige jogar dado fora.
+          </box>
+        </subsection>
+
+        <subsection id="sss:leak_pre">
+          <title>O pré-processamento faz parte do modelo</title>
+
+          Chegamos ao erro mais comum de toda esta etapa, e ele é sutil o bastante para sobreviver a revisões.
+
+          Olhe de novo a <ref to="eq:padroniza" />. Os números $\hat{\mu}_j$ e $\hat{\sigma}_j$ não caíram do céu: foram <b>estimados a partir dos dados</b>. O mesmo vale para o conjunto de categorias vistas na codificação <i>one-hot</i>, para a média usada em uma imputação, para os limites da normalização min-max. Todos são parâmetros, e todos carregam informação da amostra.
+
+          Formalmente, o que se serve ao usuário final não é $\hat{f}$, mas a composição
+          <equation id="eq:pipeline_modelo">
+            \hat{f} \circ T_{\hat{\theta}},
+          </equation>
+          onde $T_{\hat{\theta}}:\mathbb{R}^{p} \to \mathbb{R}^{p'}$ é o pré-processador e $\hat{\theta}$ reúne todos os parâmetros acima. Escrito assim, a conclusão é imediata: <b>$\hat{\theta}$ é parte do modelo</b> e, portanto, deve ser estimado exatamente com os mesmos cuidados que $\hat{f}$, isto é, usando <em>somente</em> o conjunto de treino.
+
+          Padronizar a base inteira e só depois particioná-la em treino e teste é <em>vazamento de dados</em> (<ref to="sss:vazamento" />) <cite paper="kaufman2012"/>. É um vazamento pequeno e discreto, a média e o desvio de cada coluna, calculados com as observações de teste incluídas, mas é informação do teste entrando no treino e o efeito é uma estimativa de performance otimista. E, dentro de uma validação cruzada (<ref to="sss:kfold" />), o pré-processador precisa ser reajustado <b>em cada <i>fold</i></b>, com o <i>fold</i> de avaliação de fora.
+
+          A maneira de não errar isso é estrutural: separe o <em>ajuste</em> da <em>aplicação</em>.
+
+          <code lang="python">
+            class Padronizador:
+                def __init__(self):
+                    self.mu = None
+                    self.sigma = None
+
+                # Só o conjunto de treino entra aqui.
+                def ajustar(self, X):
+                    p = len(X[0])
+                    N = len(X)
+                    self.mu = [sum(x[j] for x in X) / N for j in range(p)]
+                    self.sigma = []
+                    for j in range(p):
+                        v = sum((x[j] - self.mu[j])**2 for x in X) / N
+                        self.sigma.append(v**0.5 if v > 0 else 1.0)
+                    return self
+
+                # Aplicado a qualquer dado, inclusive teste e produção,
+                # sempre com os parâmetros estimados no treino.
+                def aplicar(self, X):
+                    return [[(x[j] - self.mu[j]) / self.sigma[j]
+                             for j in range(len(x))] for x in X]
+          </code>
+
+          Com essa separação, o uso correto é literalmente impossível de confundir com o incorreto:
+          <code lang="python">
+            treino, teste = particao_dados(dados, 0.7)
+
+            pad = Padronizador().ajustar(X_treino)   # ajusta SÓ no treino
+            X_treino_z = pad.aplicar(X_treino)
+            X_teste_z  = pad.aplicar(X_teste)        # aplica os mesmos mu, sigma
+          </code>
+
+          <box type="danger">
+            <title>A regra</title>
+            Nada que dependa do conjunto de teste pode influenciar o treinamento e isso inclui a média de uma coluna. Se você precisou olhar o teste para calcular um número que entra no modelo, o teste deixou de medir generalização!
+          </box>
+
+          <exercise>
+            <title>Medindo o próprio vazamento</title>
+            <meta>
+              <meta-item key="Habilidades">Programação, Pensamento crítico</meta-item>
+              <meta-item key="Uso de IA">Permitido</meta-item>
+            </meta>
+            Gere um conjunto sintético pequeno (digamos $N=40$) com $p$ grande em relação a $N$ e com $Y$ <b>independente</b> de $X$, de modo que a melhor previsão possível é a média de $y$ e nenhum modelo deveria ter performance acima do baseline. Em seguida:
+            <list marker="a">
+              <item>Padronize a base inteira, particione em treino e teste, ajuste um modelo e registre o MSE de teste.</item>
+              <item>Faça o mesmo, agora particionando antes e ajustando o padronizador só no treino.</item>
+              <item>Repita cada procedimento $200$ vezes e compare as distribuições dos dois MSE de teste. O efeito é maior ou menor quando $N$ diminui? Explique por quê.</item>
+            </list>
+          </exercise>
+        </subsection>
+
+        <subsection id="subsec:imputation">
+          <title>Dados faltantes e imputação</title>
+
+          Voltemos à tabela do capítulo anterior. Ela tem dois defeitos que prometemos discutir aqui e que são de naturezas diferentes: a célula <b>vazia</b> da estação BV105, que significa "esse parâmetro não foi medido nesta campanha" e os valores <c>< 0,003</c>, que significam "foi medido, mas o laboratório só pode garantir que está abaixo deste patamar". O primeiro é <em>ausência</em>. O segundo é <em>censura</em> e é informação parcial, não falta de informação. Vamos tratá-los separadamente.
+
+          <subsubsection id="sss:mecanismos">
+            <title>Os mecanismos de ausência</title>
+
+            Comece formalizando o que está faltando. Ao lado da matriz $X$, considere a <em>matriz de ausência</em> $R \in \{0,1\}^{N\times p}$, com $R_{ij} = 1$ se a entrada $x_{ij}$ foi observada e $0$ caso contrário. Escreva $X = (X_{\rm obs}, X_{\rm mis})$ para a decomposição de $X$ nas partes observada e não observada.
+
+            A pergunta decisiva não é "quantos dados faltam", mas <b>por que</b> faltam. A taxonomia clássica é devida a Rubin <cite papers="rubin1976,little-rubin2019"/>.
+
+            <definition id="def:mcar">
+              <title>MCAR, MAR e MNAR</title>
+              Dizemos que a ausência é
+              <list marker="a">
+                <item><em>MCAR</em> (<i>missing completely at random</i>) se $P(R \mid X, Y) = P(R)$: a ausência não depende de nada, observado ou não;</item>
+                <item><em>MAR</em> (<i>missing at random</i>) se $P(R \mid X, Y) = P(R \mid X_{\rm obs})$: a ausência depende apenas do que foi observado;</item>
+                <item><em>MNAR</em> (<i>missing not at random</i>) caso contrário, isto é, quando a ausência depende do próprio valor que não foi observado.</item>
+              </list>
+            </definition>
+
+
+            E qual é o nosso caso? A sonda multiparamétrica mede pH, turbidez, condutividade, temperatura e oxigênio dissolvido em segundos, a custo marginal quase nulo. O arsênio exige coleta, preservação, transporte e ensaio de laboratório. Quando o orçamento aperta, adivinhe qual parâmetro deixa de ser medido e adivinhe onde ele continua sendo medido: nas estações com histórico de problema.
+
+            Ou seja, a probabilidade de o arsênio estar ausente depende da própria concentração de arsênio. Isso é <b>MNAR</b>, o caso ruim. E as consequências são simétricas e igualmente indesejáveis:
+            <list marker="a">
+              <item>descartar as linhas sem arsênio deixa uma amostra <b>enviesada para cima</b>, porque as linhas preservadas são justamente as suspeitas;</item>
+              <item>imputar o arsênio ausente pela média dos observados deixa a amostra <b>enviesada para baixo</b> nas estações suspeitas e para cima nas demais.</item>
+            </list>
+            Não existe opção neutra. Existe a opção que você entende e consegue documentar.
+          </subsubsection>
+
+          <subsubsection id="sss:estrategias">
+            <title>O que fazer com o que falta</title>
+
+            <b>1. Deleção (análise de casos completos).</b> Descartar toda linha que tenha alguma célula vazia. É não-viesada sob MCAR e enviesada sob MAR e MNAR. Mesmo no caso benigno, o custo em dados é maior do que a intuição sugere: se cada uma das $p$ colunas falta de forma independente com probabilidade $q$, a fração de linhas completas é
+            <equation id="eq:completos">
+              (1-q)^p.
+            </equation>
+            Com $q = 0{,}05$, apenas $5\%$ de ausência por coluna, que parece pouco, e $p = 12$ colunas, sobram $54\%$ das linhas. Você jogou fora quase metade da amostra por causa de "só $5\%$".
+
+            2. <b>Imputação por constante (média ou mediana).</b> Preencher cada célula vazia com a média (ou mediana) dos valores observados naquela coluna. Preserva $N$, é trivial de implementar, e distorce a distribuição de um modo previsível: como todos os valores imputados são idênticos e iguais à média, a dispersão da coluna encolhe. O <ref to="exerc:media_imputa" /> abaixo torna isso exato.
+
+            Há uma leitura mais generosa dessa estratégia: a média é a previsão de menor risco quadrático <b>na ausência de qualquer informação</b>, como vimos na <ref to="p:risk" />. Mas nós não estamos na ausência de informação, temos as outras colunas daquela mesma linha. É exatamente o que a próxima estratégia explora.
+
+            3.<b> Imputação por modelo.</b> Se falta o valor da coluna $j$ na linha $i$, estime-o a partir das demais colunas daquela linha. Note o que acabou de acontecer: imputar <em>é</em> um problema de aprendizado supervisionado, com a coluna $j$ no papel de resposta e as demais no papel de preditores. Você pode resolvê-lo com regressão linear, com o <ref to="sss:knn" /> (imputar pela média dos $k$ vizinhos mais próximos, calculada nas colunas disponíveis) ou com qualquer método deste curso.
+
+            Cuidado com uma armadilha: se você imputa com o valor <b>ajustado</b> pela regressão, todos os pontos imputados caem exatamente sobre a superfície ajustada. A variância encolhe de novo e a correlação entre as colunas fica artificialmente inflada, você inventou dados perfeitamente coerentes com o seu modelo e depois vai usá-los para ajustar um modelo. A correção é a <em>imputação estocástica</em>: imputar $\hat{f}(x_i) + \varepsilon_i$, com $\varepsilon_i$ sorteado com a variância residual estimada.
+
+            4.<b> Indicadora de ausência.</b> Acrescente ao modelo a coluna $R_{\cdot j}$ como uma <i>feature</i> adicional, e só então impute. Sob MNAR, a ausência em si carrega sinal, no nosso caso, "o laboratório decidiu medir arsênio nesta campanha" é informação sobre a própria estação. É barato, frequentemente eficaz, e transforma um problema em uma variável.
+
+            É também um canal de vazamento em potencial: se a ausência de uma coluna é <b>causada</b> pelo rótulo (o parâmetro só deixa de ser medido quando o resultado já era conhecido por outra via, por exemplo), a indicadora carrega informação do futuro e a performance medida vai ser irreal.
+
+            5.<b> Imputação múltipla.</b> Em vez de um conjunto completado, gere $M$ deles, sorteando valores imputados de uma distribuição preditiva; ajuste $M$ modelos e combine os resultados <cite paper="little-rubin2019"/>. A vantagem conceitual é grande: as quatro estratégias anteriores entregam um valor imputado que passa a ser tratado como se fosse dado e essa fingida certeza contamina toda a análise posterior. A imputação múltipla propaga a incerteza da imputação até a estimativa final, em vez de escondê-la.
+
+            <exercise id="exerc:media_imputa">
+              <title>Imputar pela média encolhe a variância</title>
+              <meta>
+                <meta-item key="Habilidades">Demonstração</meta-item>
+                <meta-item key="Uso de IA">Não recomendado</meta-item>
+              </meta>
+              Considere uma coluna com $N$ entradas, das quais $m = (1-q)N$ foram observadas. Sejam $\bar{x}$ e $s^2$ a média e a variância amostral (dividida por $m$) dos valores observados. Complete a coluna substituindo cada uma das $qN$ entradas ausentes por $\bar{x}$ e denote por $\bar{x}_c$ e $s_c^2$ a média e a variância (dividida por $N$) da coluna completada.
+              <list marker="a">
+                <item>Mostre que $\bar{x}_c = \bar{x}$.</item>
+                <item>Mostre que $s_c^2 = (1-q)\,s^2$.</item>
+                <item>Conclua que imputar $30\%$ de uma coluna pela média reduz o seu desvio padrão em cerca de $16\%$, sem que nada no conjunto de dados sinalize que isso aconteceu.</item>
+                <item>O que acontece com a correlação amostral entre essa coluna e uma outra, totalmente observada?</item>
+              </list>
+            </exercise>
+
+            <solution of="exerc:media_imputa" collapsed="true">
+              Denote por $O$ o conjunto dos índices observados, $|O| = m$, e por $A$ o conjunto dos ausentes, $|A| = qN$.
+
+              <b>(a)</b> A soma da coluna completada é $\sum_{i\in O}x_i + qN\,\bar{x} = m\bar{x} + qN\bar{x} = N\bar{x}$, logo $\bar{x}_c = \bar{x}$. A média é, de fato, o único valor constante que preserva a média.
+
+              <b>(b)</b> Como $\bar{x}_c = \bar{x}$, cada entrada imputada contribui com $(\bar{x}-\bar{x}_c)^2 = 0$ para a soma dos desvios quadráticos. Portanto
+              $$
+                s_c^2 = \frac{1}{N}\left[\sum_{i \in O}(x_i - \bar{x})^2 + \sum_{i\in A} 0 \right] = \frac{1}{N}\cdot m\,s^2 = (1-q)\,s^2.
+              $$
+
+              <b>(c)</b> Com $q = 0{,}3$, temos $s_c = \sqrt{0{,}7}\,s \approx 0{,}837\,s$, uma redução de aproximadamente $16\%$ no desvio padrão.
+
+              <b>(d)</b> Seja $y$ a outra coluna, com média $\bar{y}$. A covariância amostral da coluna completada com $y$ é
+              $$
+                \frac{1}{N}\sum_{i\in O}(x_i-\bar{x})(y_i-\bar{y}) + \frac{1}{N}\sum_{i \in A}\underbrace{(\bar{x}-\bar{x})}_{=0}(y_i - \bar{y}),
+              $$
+              ou seja, também fica multiplicada por $(1-q)$ em relação à covariância calculada só nos observados. Na correlação, o fator $(1-q)$ do numerador é cancelado apenas em parte pelo $\sqrt{1-q}$ do denominador: o resultado é que a correlação é multiplicada por $\sqrt{1-q}$, isto é, <b>atenuada</b>. Imputar pela média não só apaga variabilidade como enfraquece sistematicamente as relações que estamos justamente tentando estimar.
+            </solution>
+
+            <exercise>
+              <title>Qual é o mecanismo?</title>
+              <meta>
+                <meta-item key="Habilidades">Pensamento crítico</meta-item>
+                <meta-item key="Uso de IA">Não recomendado</meta-item>
+              </meta>
+              Classifique cada situação abaixo como MCAR, MAR ou MNAR, justificando em uma frase. Quando houver ambiguidade, diga qual informação adicional resolveria a dúvida.
+              <list marker="a">
+                <item>Uma caixa com amostras de três estações quebrou no transporte e todas as análises daquele lote se perderam.</item>
+                <item>O ensaio de arsênio só é solicitado quando a turbidez medida em campo passa de $100$ UNT.</item>
+                <item>O ensaio de arsênio só é solicitado quando o técnico, ao chegar à estação, observa sinais visíveis de atividade de mineração a montante, sinais que não são registrados em nenhuma coluna da planilha.</item>
+                <item>O laboratório perde a amostra sempre que a concentração é tão alta que exige rediluição e o volume coletado não é suficiente.</item>
+              </list>
+            </exercise>
+          </subsubsection>
+
+          <subsubsection id="sss:censura">
+            <title>Valores censurados: o <c>< 0,003</c></title>
+
+            Agora o segundo defeito da tabela, e ele merece uma seção própria porque é sistematicamente tratado como se fosse o primeiro.
+
+            Quando o laboratório reporta <c>< 0,003</c>, ele <b>não</b> está dizendo "não sei". Está dizendo algo bem preciso: o valor verdadeiro $x$ satisfaz $0 \le x < \text{LQ}$, onde LQ é o <em>limite de quantificação</em> do método analítico. Isso é uma restrição, ou seja, informação, apenas não é um número. Chamamos esse tipo de dado de <em>censurado à esquerda</em>.
+
+            A prática corrente é substituir o valor censurado por algum número escolhido a dedo: $0$, ou LQ, ou LQ$/2$, ou LQ$/\sqrt{2}$. Todas essas substituições inventam uma precisão que não existe, e todas enviesam, a média, e sobretudo a variância, que fica artificialmente pequena porque todas as observações censuradas viraram o mesmo valor (é o <ref to="exerc:media_imputa" /> de novo, em outra roupa) <cite paper="helsel2005"/>.
+
+            Existe uma formulação honesta e ela liga esta discussão diretamente ao <ref to="sss:mle" />. Lá, escolhíamos $f$ maximizando a probabilidade de observar os dados que temos. Para uma observação usual $y_i$, essa contribuição é a densidade avaliada no ponto. Para uma observação censurada, a contribuição correta é a <b>probabilidade do evento que de fato observamos</b>:
+            <equation id="eq:verossim_censura">
+              P\left(Y_i < \text{LQ} \mid X_i = x_i ; f\right),
+            </equation>
+            isto é, a função de distribuição acumulada avaliada em LQ, em vez da densidade avaliada em um ponto inventado. A verossimilhança total mistura os dois tipos de fator, um por observação. Nada aqui é exótico: é o mesmo princípio de máxima verossimilhança da <ref to="eq:MLE" />, aplicado ao evento que realmente ocorreu.
+
+            <sidenote>
+              Esta é uma das situações em que a abordagem de máxima verossimilhança tem vantagem clara sobre a minimização do risco empírico: a censura é natural de escrever como probabilidade e desajeitada de escrever como perda.
+            </sidenote>
+
+            Vale distinguir dois casos, porque a gravidade é diferente:
+            <list marker="a">
+              <item><em>O valor censurado é um preditor</em> (por exemplo, ferro abaixo do LQ, usado para estimar arsênio). O estrago é limitado: aquela coluna perde resolução na faixa baixa, e uma indicadora "abaixo do LQ" recupera boa parte da informação.</item>
+              <item><em>O valor censurado é a resposta</em> $y$ — que é exatamente o nosso caso. Aqui o problema é estrutural: uma boa parte do conjunto de treino não tem valor de $y$, tem um intervalo. Substituir por LQ$/2$ e seguir em frente é ajustar o modelo a números fabricados.</item>
+            </list>
+
+            <remark>
+              <title>O dado é pior justamente onde a decisão acontece</title>
+              Junte os dois números: o limite legal para arsênio, tanto ambiental quanto de potabilidade, é $0{,}01$ mg/L <cite papers="conama357,portaria888"/>; o limite de quantificação do ensaio é da ordem de $0{,}003$ mg/L. Eles estão na mesma ordem de grandeza.
+
+              Isso significa que a fronteira de decisão, "esta água está acima ou abaixo do limite?", cai bem perto da região em que o dado deixa de ser um número e vira um intervalo. Não é uma dificuldade técnica menor a ser contornada com uma substituição conveniente: é a informação mais importante do problema chegando em sua forma mais fraca.
+            </remark>
+          </subsubsection>
+
+          <subsubsection id="sss:imput_codigo">
+            <title>Imputar sem vazar</title>
+
+            Tudo o que foi dito na <ref to="sss:leak_pre" /> vale aqui, com força redobrada: a média usada para imputar, o modelo imputador, a lista de colunas descartadas, todos são $\hat{\theta}$ da <ref to="eq:pipeline_modelo" />, e todos se estimam só no treino. Mantendo a mesma estrutura <c>ajustar</c>/<c>aplicar</c>:
+
+            <code lang="python">
+              class ImputadorMedia:
+                  def __init__(self):
+                      self.mu = None
+
+                  # None marca a ausência; a média é calculada só com o observado.
+                  def ajustar(self, X):
+                      p = len(X[0])
+                      self.mu = []
+                      for j in range(p):
+                          obs = [x[j] for x in X if x[j] is not None]
+                          self.mu.append(sum(obs) / len(obs) if obs else 0.0)
+                      return self
+
+                  # Devolve a coluna imputada E a indicadora de ausência,
+                  # para que o modelo possa usar o fato de o dado ter faltado.
+                  def aplicar(self, X):
+                      saida = []
+                      for x in X:
+                          valores    = [self.mu[j] if x[j] is None else x[j]
+                                        for j in range(len(x))]
+                          indicadora = [1 if x[j] is None else 0
+                                        for j in range(len(x))]
+                          saida.append(valores + indicadora)
+                      return saida
+            </code>
+
+            <box type="warning">
+              <title>A média da imputação é um parâmetro do modelo</title>
+              Se você calcular a média de imputação usando a base inteira, terá vazado o teste para dentro do treino e, pior, terá vazado de um jeito que nenhuma métrica vai denunciar. Dentro de uma validação cruzada, o <c>ajustar</c> roda de novo a cada <i>fold</i>.
+            </box>
+          </subsubsection>
+        </subsection>
+      </section>
 
       <section id="subsec:method">
         <title>A escolha do método</title>
-        
+
+        Vimos na <ref to="sss:nfl" /> que não existe o melhor método, a escolha depende do contexto. Essa é uma afirmação verdadeira e, sozinha, inútil: ela diz o que não fazer sem dizer o que fazer. Esta seção tenta torná-la operacional, listando qual é o contexto que importa.
+
+        <subsection id="sss:perguntas">
+          <title>Seis perguntas antes de escolher</title>
+
+          <list marker="number">
+            <item><em>Qual é a tarefa?</em> A resposta $Y$ é contínua (regressão), categórica (classificação), ou sequer existe (não-supervisionado, <ref to="ch:notsup" />)? No problema do arsênio, note que <b>as duas primeiras são possíveis</b>: estimar a concentração é regressão; decidir se a amostra ultrapassa $0{,}01$ mg/L é classificação. São problemas diferentes, com métricas diferentes, e a escolha entre eles é sua, não do dado.</item>
+
+            <item><em>Previsão ou inferência?</em> A distinção da <ref to="subsec:pq" />. Se o modelo apenas prevê, $\hat{f}$ pode ser tão complicada quanto se queira. Mas um órgão público que emite um alerta de contaminação, mobilizando equipes, notificando prefeituras, eventualmente interditando uma captação, precisa <b>justificar</b> a decisão. Interpretabilidade, aqui, não é preferência estética: é requisito administrativo.</item>
+
+            <item><em>Quanto dado e em que forma?</em> A relação entre $N$ e $p$ governa quase tudo. Com $N$ pequeno, métodos flexíveis vão diretamente para o lado ruim da <ref to="eq:vies_var_2" />: eles têm viés baixo e variância alta e o risco total piora. Com $p$ da ordem de $N$, mesmo a regressão linear já interpola.</item>
+
+            <item><em>Qual o orçamento computacional e onde ele é gasto?</em> Veja a discussão logo abaixo; é a pergunta mais esquecida da lista.</item>
+
+            <item><em>Qual perda reflete o custo real do erro?</em> Já discutimos na <ref to="subsec:classi" /> que prever "não-contaminada" quando a água está contaminada é um erro pior do que o contrário e que isso se escreve em uma função perda assimétrica. Essa escolha precede a escolha do método e restringe quais métodos servem já que nem todos aceitam perdas arbitrárias.</item>
+
+            <item><em>Qual a estrutura do dado?</em> Tabular, temporal, espacial, texto, imagem, grafo. Nossos dados são tabulares <b>com</b> estrutura espaço-temporal e ignorar a segunda parte é uma decisão, não um padrão.</item>
+          </list>
+        </subsection>
+
+        <subsection id="sss:custo">
+          <title>Treinar é caro uma vez. Prever é caro sempre</title>
+
+          A pergunta 4 merece atenção separada, porque a intuição costuma estar errada. Compare dois métodos que já conhecemos:
+
+          <list marker="a">
+            <item>o <em>KNN</em> (<ref to="sss:knn" />) não tem etapa de treino: ele guarda os dados e pronto, custo $O(1)$. Mas cada previsão exige calcular a distância da entrada a todos os $N$ pontos guardados, custo $O(Np)$ e o modelo precisa carregar a base inteira consigo;</item>
+            <item>a <em>regressão linear</em> resolve as equações normais uma única vez, a um custo da ordem de $O(Np^2 + p^3)$, e depois cada previsão é um produto escalar, $O(p)$. O modelo servido são $p+1$ números.</item>
+          </list>
+
+          Ou seja, os dois métodos gastam em momentos opostos. Qual dos dois perfis é aceitável depende inteiramente de <b>onde o modelo vai rodar</b>: um processo em lote que roda uma vez por trimestre em um servidor tolera qualquer coisa; um modelo embarcado na própria sonda multiparamétrica, para dar um alerta em campo, não pode carregar 25 anos de série histórica na memória.
+
+          Note o que isso significa: uma restrição de <i>deploy</i> (<ref to="subsec:deploy" />), que é a última etapa do <i>pipeline</i>, acabou de determinar a escolha do método, que é a terceira. As etapas não são independentes, e pensar nelas em ordem estrita é uma boa forma de descobrir tarde demais que o modelo não cabe no lugar onde precisa rodar.
+
+          <table id="tab:metodos">
+            <header>
+              <column>Método</column>
+              <column>Paramétrico</column>
+              <column>Interpretável</column>
+              <column>Custo de treino</column>
+              <column>Custo de previsão</column>
+              <column>Sensível à escala</column>
+            </header>
+            <row>
+              <column>Média (<i>baseline</i>)</column>
+              <column>Sim</column>
+              <column>Total</column>
+              <column>$O(N)$</column>
+              <column>$O(1)$</column>
+              <column>Não</column>
+            </row>
+            <row>
+              <column>Regressão linear</column>
+              <column>Sim</column>
+              <column>Alta</column>
+              <column>$O(Np^2+p^3)$</column>
+              <column>$O(p)$</column>
+              <column>Não</column>
+            </row>
+            <row>
+              <column><i>Lasso</i> / <i>ridge</i></column>
+              <column>Sim</column>
+              <column>Alta</column>
+              <column>Iterativo</column>
+              <column>$O(p)$</column>
+              <column><b>Sim</b></column>
+            </row>
+            <row>
+              <column>KNN</column>
+              <column>Não</column>
+              <column>Média</column>
+              <column>$O(1)$</column>
+              <column>$O(Np)$</column>
+              <column><b>Sim</b></column>
+            </row>
+            <row>
+              <column>Árvore de decisão</column>
+              <column>Não</column>
+              <column>Alta</column>
+              <column>$O(Np\log N)$</column>
+              <column>$O(\text{profundidade})$</column>
+              <column>Não</column>
+            </row>
+            <row>
+              <column><i>Ensembles</i> de árvores</column>
+              <column>Não</column>
+              <column>Baixa</column>
+              <column>Alto</column>
+              <column>Médio</column>
+              <column>Não</column>
+            </row>
+            <row>
+              <column>Rede neural</column>
+              <column>Sim</column>
+              <column>Muito baixa</column>
+              <column>Muito alto</column>
+              <column>$O(\text{tamanho da rede})$</column>
+              <column><b>Sim</b></column>
+            </row>
+            <caption>Um resumo grosseiro, útil para eliminar candidatos cedo. "Paramétrico" aqui é no sentido da <ref to="sss:param" />: existe uma parametrização de dimensão fixa, independente de $N$. Repare que interpretabilidade e flexibilidade tendem a andar em direções opostas — o que é apenas o <i>trade-off</i> da <ref to="sss:vies_var" /> visto de outro ângulo.</caption>
+          </table>
+        </subsection>
+
+        <subsection id="sss:baseline">
+          <title>Sempre comece pelo <i>baseline</i></title>
+
+          Antes de qualquer método sofisticado, ajuste o modelo mais burro possível: para regressão, a constante $\hat{f}(x) = \bar{y}_{\text{treino}}$; para classificação, a classe majoritária. Esse é o seu <em>baseline</em>, e ele não é uma formalidade.
+
+          A razão é simples: um MSE não significa nada sozinho. Se o modelo de arsênio tem $\text{MSE}_{\text{teste}} = 0{,}004$, isso é bom? Impossível dizer sem saber o que a constante conseguiria. E há mais: o baseline da média tem, por construção,
+          <equation id="eq:baseline_var" numbered="false">
+            \text{MSE}(\bar{y}) = \frac{1}{N}\sum_{i=1}^N (y_i - \bar{y})^2 = \widehat{\rm Var}(y),
+          </equation>
+          de modo que a redução relativa de erro do seu modelo sobre o baseline é <b>exatamente</b> o $R^2$ que a <ref to="sss:metricas" /> vai definir. O baseline não é um ponto de comparação arbitrário: ele é o zero da régua.
+
+          <code lang="python">
+            def baseline_media(y_treino):
+                media = sum(y_treino) / len(y_treino)
+                return lambda x: media
+
+            def mse(f, dados):
+                return sum((y - f(x))**2 for x, y in dados) / len(dados)
+          </code>
+
+          <box type="tip">
+            <title>Se não bater o baseline, o problema não é o método</title>
+            Um modelo que não supera a constante está dizendo alguma coisa, em geral, que as <i>features</i> não carregam informação sobre $y$, que há um erro no <i>pipeline</i> ou que o erro irredutível domina. Nenhuma dessas hipóteses se resolve trocando de algoritmo, e todas se resolvem voltando à <ref to="subsec:scraping" /> ou à <ref to="subsec:pipepre" />.
+          </box>
+
+          Por fim, um esclarecimento de vocabulário que organiza as duas próximas seções. Um modelo tem <em>parâmetros</em>, os $\beta$ da regressão, e <em>hiperparâmetros</em>, o $k$ do KNN (<ref to="sss:knn" />), o $\lambda$ do <i>lasso</i> (<ref to="sss:overfit" />), o grau do polinômio. A diferença não é de natureza matemática e sim de <b>quem os escolhe</b>:
+          <list marker="a">
+            <item>parâmetros são determinados pelo <em>treinamento</em>, resolvendo o problema de otimização da <ref to="subsec:training" />;</item>
+            <item>hiperparâmetros são determinados pela <em>validação</em>, comparando modelos treinados, na <ref to="subsec:test" />.</item>
+          </list>
+
+          <exercise>
+            <title>Escolhendo com justificativa</title>
+            <meta>
+              <meta-item key="Habilidades">Pensamento crítico</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+            </meta>
+            Para cada cenário, escolha um método e justifique usando as seis perguntas da <ref to="sss:perguntas" />. Diga também qual método você <b>descartaria</b> primeiro e por quê.
+            <list marker="a">
+              <item>$N = 180$ campanhas, $p = 6$ parâmetros de campo, e o resultado será apresentado em um relatório técnico que precisa explicar o peso de cada parâmetro.</item>
+              <item>$N = 40\,000$ campanhas, $p = 30$, previsão em lote uma vez por trimestre em servidor, e o único objetivo é minimizar o erro de previsão.</item>
+              <item>$N = 40\,000$, $p = 30$, mas o modelo precisa rodar dentro da sonda, em campo, sem conexão, dando uma resposta em menos de um segundo.</item>
+            </list>
+          </exercise>
+        </subsection>
       </section>
 
       <section id="subsec:training">
         <title>Treinamento</title>
-        
+
+        Treinar um modelo é resolver o problema de otimização que definimos na <ref to="sss:erm" />: encontrar, dentro de uma família $\mathcal{G}$, a função que minimiza o risco empírico da <ref to="eq:erm" /> (ou que maximiza a verossimilhança da <ref to="eq:MLE" />). Uma vez adotada uma parametrização, no sentido da <ref to="sss:param" />, esse problema deixa de ser sobre funções e passa a ser sobre vetores de $\mathbb{R}^n$, e aí há dois regimes bem distintos.
+
+        <subsection id="sss:fechada">
+          <title>Quando existe fórmula fechada</title>
+
+          O caso feliz. Tome a regressão linear com perda quadrática e escreva o risco empírico em forma matricial, com $X \in \mathbb{R}^{N\times (p+1)}$ contendo uma coluna de uns para o intercepto:
+          <equation id="eq:er_matricial">
+            \text{ER}(\beta) = \frac{1}{N}\left\| y - X\beta \right\|^2.
+          </equation>
+          A função é diferenciável, e o gradiente é
+          <equation id="eq:grad_ols">
+            \nabla \text{ER}(\beta) = -\frac{2}{N}X^\top\left(y - X\beta\right).
+          </equation>
+          Igualando a zero obtemos as <em>equações normais</em>
+          <equation id="eq:normais">
+            X^\top X \hat{\beta} = X^\top y,
+          </equation>
+          e, quando $X$ tem posto completo, a solução única
+          <equation id="eq:ols_fechada">
+            \hat{\beta} = \left(X^\top X\right)^{-1}X^\top y.
+          </equation>
+
+          Duas conexões valem a pena. A primeira: essa é a mesma história da solução do <ref to="p:poly" />, em que o sistema linear tinha solução única exatamente quando a matriz de Vandermonde era invertível. A segunda, mais prática: a hipótese de posto completo é precisamente a que o <ref to="exerc:posto" /> mostrou ser violada por uma codificação <i>one-hot</i> ingênua. A etapa de pré-processamento pode, sozinha, tornar o problema de treinamento mal posto.
+
+          <remark>
+            <title>Não inverta a matriz</title>
+            A <ref to="eq:ols_fechada" /> é uma afirmação matemática, não uma receita de implementação. Calcular explicitamente $(X^\top X)^{-1}$ é numericamente ruim; o que se faz é resolver o sistema da <ref to="eq:normais" /> por uma decomposição (QR sobre $X$, ou Cholesky sobre $X^\top X$).
+
+            Há também um recado que vem da <ref to="sss:escalonamento" />: o número de condição de $X^\top X$ é o quadrado do de $X$, e piora quando as colunas têm escalas muito diferentes. Padronizar não muda a solução matemática do OLS, mas muda bastante a qualidade com que ela é computada.
+          </remark>
+        </subsection>
+
+        <subsection id="sss:gd">
+          <title>Quando não existe: métodos iterativos</title>
+
+          Na maioria dos casos interessantes não há fórmula fechada, ou há, mas $N$ e $p$ são grandes demais para usá-la. A alternativa é descer a superfície do risco empírico um passo de cada vez:
+          <equation id="eq:gd">
+            \beta^{(t+1)} = \beta^{(t)} - \eta\,\nabla \text{ER}\left(\beta^{(t)}\right).
+          </equation>
+
+          A constante $\eta > 0$ é a <em>taxa de aprendizado</em> e é um hiperparâmetro no sentido exato da <ref to="sss:baseline" />: pequena demais, o algoritmo demora eras; grande demais, ele passa do ponto e diverge. Quem escolhe $\eta$ é a validação (<ref to="subsec:test" />), não o treino.
+
+          Duas observações teóricas dão o contorno do que esperar:
+
+          <b>Convexidade.</b> Para o risco da <ref to="eq:er_matricial" />, a matriz hessiana é $\frac{2}{N}X^\top X$, que é semidefinida positiva para qualquer $X$. Logo $\text{ER}$ é convexa, todo mínimo local é global e a <ref to="eq:gd" /> converge para uma solução ótima com $\eta$ suficientemente pequeno. É por isso que a regressão linear é um problema resolvido. Quando a família $\mathcal{G}$ não produz risco convexo, o caso das redes neurais, treinar deixa de ser "resolver" e passa a ser "procurar" e as garantias evaporam.
+
+          <b>Gradiente estocástico.</b> Olhe de novo a <ref to="eq:er" />: o risco empírico é uma <em>média</em> sobre as $N$ observações. Pela linearidade do gradiente, $\nabla\text{ER}$ também é uma média de $N$ termos. Mas então a média sobre uma subamostra sorteada dessas $N$ parcelas é um <b>estimador não-viesado</b> do gradiente completo e custa uma fração do preço. Essa observação de uma linha é toda a ideia do gradiente descendente estocástico e das versões em <i>mini-lote</i>, que é o que torna viável treinar com $N$ na casa dos milhões.
+
+          <code lang="python">
+            def gradiente_descendente(X, y, eta, passos):
+                N = len(X)
+                p = len(X[0])
+                beta = [0.0] * p
+
+                for _ in range(passos):
+                    # residuo[i] = y[i] - <x[i], beta>
+                    residuo = [y[i] - sum(X[i][j]*beta[j] for j in range(p))
+                               for i in range(N)]
+                    # grad[j] = -(2/N) * sum_i X[i][j] * residuo[i]
+                    grad = [-(2.0/N) * sum(X[i][j]*residuo[i] for i in range(N))
+                            for j in range(p)]
+                    beta = [beta[j] - eta*grad[j] for j in range(p)]
+
+                return beta
+          </code>
+
+          <exercise>
+            <title>O gradiente e a convexidade</title>
+            <meta>
+              <meta-item key="Habilidades">Cálculo, Álgebra linear, Demonstração</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+            </meta>
+            <list marker="a">
+              <item>Deduza a <ref to="eq:grad_ols" /> a partir da <ref to="eq:er_matricial" />, derivando componente a componente.</item>
+              <item>Calcule a hessiana de $\text{ER}$ e mostre que ela é semidefinida positiva para qualquer $X$, concluindo que $\text{ER}$ é convexa.</item>
+              <item>Mostre que $\text{ER}$ é <em>estritamente</em> convexa se e somente se $X$ tem posto completo, e relacione com a unicidade de $\hat{\beta}$ na <ref to="eq:ols_fechada" />.</item>
+            </list>
+          </exercise>
+
+          <exercise>
+            <title>Iterativo contra fechado</title>
+            <meta>
+              <meta-item key="Habilidades">Programação</meta-item>
+              <meta-item key="Uso de IA">Permitido</meta-item>
+            </meta>
+            Use os quatro pontos $(x_i,y_i)$ da tabela do exercício de regressão linear simples do capítulo anterior.
+            <list marker="a">
+              <item>Calcule $\hat{\beta}$ pela fórmula fechada.</item>
+              <item>Rode a função <c>gradiente_descendente</c> acima e verifique que ela converge para o mesmo valor. Quantos passos foram necessários com $\eta = 0{,}01$?</item>
+              <item>Aumente $\eta$ progressivamente até o algoritmo divergir. Estime empiricamente o valor crítico e compare com $2/\lambda_{\max}$, onde $\lambda_{\max}$ é o maior autovalor da hessiana.</item>
+              <item>Multiplique a coluna de $x$ por $1000$ e repita o item (b). O que aconteceu, e o que a <ref to="sss:escalonamento" /> tem a dizer sobre isso?</item>
+            </list>
+          </exercise>
+        </subsection>
+
+        <subsection id="sss:repro">
+          <title>Reprodutibilidade</title>
+
+          Treinar envolve mais aleatoriedade do que parece. A partição de treino e teste da <ref to="sss:split" /> usa <c>random.sample</c>; a inicialização de métodos iterativos costuma ser aleatória; o embaralhamento dos <i>mini-lotes</i> também. Rodar duas vezes e obter dois modelos diferentes é o comportamento normal e é indistinguível, à primeira vista, de um erro.
+
+          A disciplina mínima é registrar, junto com cada modelo treinado: a semente aleatória, a versão exata do conjunto de dados usado, os parâmetros do pré-processamento, os hiperparâmetros e as métricas obtidas. Não é burocracia: sem isso, você não consegue nem comparar duas execuções suas, quanto mais responder a uma pergunta feita seis meses depois sobre por que o modelo decidiu o que decidiu.
+
+          <box type="warning">
+            <title>O treino vê só o treino</title>
+            Vale repetir, porque é onde o erro acontece: o conjunto de teste não participa do treinamento, e isso inclui o ajuste do pré-processador (<ref to="sss:leak_pre" />) e da imputação (<ref to="sss:imput_codigo" />). Se o seu código de treino recebe a base inteira em algum ponto, há um vazamento esperando para acontecer.
+          </box>
+
+          <remark>
+            <title>Convergir não é acertar</title>
+            Um otimizador que converge informa que encontrou um mínimo da função que você <b>escreveu</b>, não que essa função era a certa. Um sinal trocado no gradiente, uma coluna desalinhada após a imputação ou um $y$ em unidade errada produzem convergência tranquila para um modelo sem sentido. O antídoto barato é o da <ref to="sss:baseline" />: compare com a constante. Se o modelo elaborado não a supera, pare e investigue o <i>pipeline</i> antes de mexer no algoritmo.
+          </remark>
+        </subsection>
       </section>
 
       <section id="subsec:test">
         <title>Validação &amp; Teste</title>
-        
+
+        No capítulo anterior particionamos os dados em dois conjuntos (<ref to="sss:split" />): treino para ajustar, teste para medir generalização. Essa partição é suficiente enquanto houver um único modelo a avaliar. Assim que aparece um hiperparâmetro para escolher, e sempre aparece, ela deixa de ser.
+
+        <subsection id="sss:tresconj">
+          <title>Por que três conjuntos e não dois</title>
+
+          Considere o procedimento que qualquer pessoa razoável tentaria primeiro: treinar o KNN com $k = 1, 3, 5, \dots, 21$, medir o $\text{MSE}_{\text{teste}}$ de cada um e ficar com o melhor.
+
+          O problema é que você acabou de usar o conjunto de teste para <b>decidir</b>. E decidir com base em um conjunto é uma forma de aprender com ele, mais fraca do que ajustar coeficientes, mas da mesma natureza. O valor de $k$ escolhido é uma função dos dados de teste, exatamente como $\hat{\beta}$ é uma função dos dados de treino. O que o teste mede, a partir daí, deixa de ser generalização.
+
+          <remark>
+            <title>O mínimo de estimadores ruidosos</title>
+            Vale a pena ver a direção do viés. Suponha $M$ modelos com riscos verdadeiros $r_1,\dots,r_M$, e suponha que o conjunto de teste forneça estimativas não-viesadas $\hat{r}_m = r_m + \xi_m$, com ruídos $\xi_m$ de média zero. Você escolhe $m^* = \arg\min_m \hat{r}_m$ e reporta $\hat{r}_{m^*}$.
+
+            Ora, o índice escolhido é justamente aquele em que o ruído $\xi_m$ foi mais favorável. Em geral,
+            $$
+              \mathbb{E}\left[\min_m \hat{r}_m\right] \le \min_m \mathbb{E}\left[\hat{r}_m\right] = \min_m r_m,
+            $$
+            pela desigualdade de Jensen aplicada ao mínimo (que é uma função côncava das coordenadas). Ou seja, o valor reportado é <b>viesado para baixo</b>, e o viés cresce com $M$ e com a variância do ruído. Você não só escolheu o melhor modelo, escolheu também a estimativa mais otimista e reportou as duas coisas juntas.
+          </remark>
+
+          A correção é acrescentar um terceiro conjunto e dar a cada um exatamente um papel:
+          <list marker="a">
+            <item><em>treino</em>: ajusta os parâmetros ($\hat{\beta}$, e também o $\hat{\theta}$ do pré-processador);</item>
+            <item><em>validação</em>: escolhe os hiperparâmetros ($k$, $\lambda$, $\eta$, grau), comparando modelos já treinados;</item>
+            <item><em>teste</em>: estima a performance do modelo final, <b>uma única vez</b>.</item>
+          </list>
+
+          <box type="danger">
+            <title>O conjunto de teste tem um uso só</title>
+            No instante em que uma decisão sua, qualquer decisão: hiperparâmetro, escolha de <i>features</i>, transformação, arquitetura, leva em conta o resultado no teste, o teste virou conjunto de validação e a estimativa de generalização foi gasta. Não há como "desusá-lo". Se isso acontecer, o caminho honesto é dizer, no relatório, que o número reportado é otimista.
+          </box>
+
+          E quando os dados são poucos demais para dividir em três? Use validação cruzada <b>dentro</b> do treino: o <ref to="sss:kfold" /> ou o <ref to="sss:loocv" /> substituem o conjunto de validação separado, sem custo em dados. O que eles <em>não</em> substituem é o conjunto de teste.
+        </subsection>
+
+        <subsection id="sss:busca">
+          <title>A busca por hiperparâmetros</title>
+
+          Juntando as peças, o procedimento completo é este:
+          <list marker="number">
+            <item>separe o conjunto de teste e <b>esqueça que ele existe</b>;</item>
+            <item>para cada valor candidato do hiperparâmetro e para cada <i>fold</i> da validação cruzada: ajuste o pré-processador <b>e</b> o modelo na parte de treino do <i>fold</i>, e avalie na parte retida;</item>
+            <item>tome a média sobre os <i>folds</i>, obtendo $\text{CV}(\lambda)$, e escolha $\lambda^* = \arg\min_\lambda \text{CV}(\lambda)$;</item>
+            <item>reajuste o modelo com $\lambda^*$ usando o conjunto de treino <b>inteiro</b>;</item>
+            <item>meça uma única vez no teste e reporte esse número.</item>
+          </list>
+
+          <code lang="python">
+            def cv_score(dados, k_folds, treinar, hiper):
+                n = len(dados)
+                tam = n // k_folds
+                erros = []
+
+                for f in range(k_folds):
+                    ini, fim = f*tam, (f+1)*tam
+                    val    = dados[ini:fim]
+                    treino = dados[:ini] + dados[fim:]
+
+                    # treinar() ajusta pré-processador E modelo, só com `treino`
+                    modelo = treinar(treino, hiper)
+                    erros.append(mse(modelo, val))
+
+                return sum(erros) / len(erros)
+
+            def escolher_hiper(dados_treino, k_folds, treinar, grade):
+                scores = [(cv_score(dados_treino, k_folds, treinar, h), h)
+                          for h in grade]
+                melhor = min(scores)[1]
+                # reajuste final no conjunto de treino inteiro
+                return treinar(dados_treino, melhor), melhor
+          </code>
+
+          <remark>
+            <title>Quanto custa procurar</title>
+            O custo total é (número de candidatos) $\times$ (número de <i>folds</i>) $\times$ (custo de um treino). Com uma grade de 10 valores e validação cruzada de 5 <i>folds</i>, você treinou 50 modelos para escolher um número e ainda faltou o reajuste final.
+
+            Quando há vários hiperparâmetros, a grade completa cresce exponencialmente e deixa de ser viável. Vale saber que sortear combinações ao acaso costuma ser melhor do que varrer uma grade regular com o mesmo orçamento: em uma grade, todas as combinações testadas repetem os mesmos poucos valores de cada hiperparâmetro individual, o que desperdiça avaliações quando só um deles importa de verdade.
+          </remark>
+
+          O ambiente <ref to="in:overfitting" /> do capítulo anterior é exatamente essa busca, feita à mão: mover o controle de grau é percorrer a grade, e a curva em "U" do erro de teste é a função que $\text{CV}(\lambda)$ está tentando minimizar sem olhar para o teste.
+        </subsection>
+
+        <subsection id="sss:particao_honesta">
+          <title>Partir os dados honestamente</title>
+
+          Toda a discussão acima supõe que a partição é feita por sorteio uniforme. Esse sorteio embute uma hipótese: a de que as observações são permutáveis, isto é, que a ordem e o agrupamento delas não carregam informação. Vimos na <ref to="sss:granularidade" /> que, nos dados do IGAM, isso é falso.
+
+          Pense no que um sorteio uniforme faz com a nossa base. A estação BV035 tem cerca de cem campanhas na série. Sorteando linhas, umas setenta vão para o treino e trinta para o teste. Mas a campanha de junho de 2019 na BV035 é extremamente parecida com a de março de 2019 na mesma estação, mesma geologia, mesmo uso do solo, mesma bacia. O modelo, ao ser testado em junho, está essencialmente sendo testado em um ponto que ele já viu. A estimativa de generalização sai boa e é falsa.
+
+          Há duas correções, e a escolha entre elas depende do que o modelo vai realmente fazer:
+          <list marker="a">
+            <item><em>Partição por grupo.</em> Todas as campanhas de uma mesma estação vão inteiras para um dos lados. Responde à pergunta "o modelo funciona em uma estação que ele nunca viu?", que é a pergunta certa se a intenção é usar o modelo em pontos de amostragem novos.</item>
+            <item><em>Partição temporal.</em> Treinar com tudo até certa data e testar no que vem depois. Responde a "o modelo funciona no próximo trimestre?", que é a pergunta certa para o uso operacional e é a única partição que respeita a direção do tempo, evitando treinar com o futuro para prever o passado.</item>
+          </list>
+
+          <box type="tip">
+            <title>A partição deve imitar o uso</title>
+            A regra geral é simples de enunciar: a relação entre o conjunto de treino e o de teste deve reproduzir a relação entre os dados que você terá e os dados sobre os quais o modelo vai operar. Se o modelo vai prever o futuro, teste no futuro. Se vai operar em estações novas, teste em estações novas.
+          </box>
+
+          Um último cuidado, específico de classificação com classe rara. Amostras com arsênio acima do limite legal são uma fração pequena do total; um sorteio uniforme pode perfeitamente produzir um conjunto de teste sem <b>nenhum</b> caso positivo, e nesse conjunto qualquer classificador constante tem acurácia perfeita. A <em>estratificação</em>, sortear preservando a proporção de classes em cada parte, evita esse acidente.
+        </subsection>
+
+        <subsection id="sss:metricas">
+          <title>Escolher a métrica</title>
+
+          A métrica é a resposta à pergunta "isso funcionou?" e escolhê-la mal é a forma mais eficiente de se enganar com rigor.
+
+          <subsubsection id="sss:metricas_reg">
+            <title>Regressão</title>
+            Já conhecemos o $\text{MSE}$ da <ref to="eq:mse" />. Na prática convivem três variantes, e a diferença entre elas é de leitura:
+            <list marker="a">
+              <item>o <em>RMSE</em>, $\sqrt{\text{MSE}}$, que tem a mesma unidade de $y$, no nosso caso, mg/L de arsênio, o que permite comparar diretamente com o limite legal de $0{,}01$ mg/L;</item>
+              <item>o <em>MAE</em>, $\frac1N\sum|y_i - \hat{f}(x_i)|$, que é o risco empírico da perda $\ell_1$ e é bem menos sensível a observações extremas;</item>
+              <item>o <em>$R^2$</em>, que compara o modelo ao <i>baseline</i> da <ref to="sss:baseline" />:</item>
+            </list>
+            <equation id="eq:r2">
+              R^2 = 1 - \frac{\sum_{i=1}^N \left(y_i - \hat{f}(x_i)\right)^2}{\sum_{i=1}^N \left(y_i - \bar{y}\right)^2}.
+            </equation>
+            O numerador é o erro do modelo; o denominador, o erro da constante. Assim $R^2 = 0$ significa "empatou com a média" e $R^2 < 0$, calculado no teste, significa "perdeu para a média", o que é perfeitamente possível e bastante informativo.
+          </subsubsection>
+
+          <subsubsection id="sss:metricas_class">
+            <title>Classificação e a armadilha da acurácia</title>
+
+            Suponha agora a versão de classificação do problema: decidir se a amostra ultrapassa $0{,}01$ mg/L. A taxa de erro da <ref to="eq:ind" /> é a métrica natural e é uma armadilha.
+
+            Se apenas $2\%$ das campanhas estão acima do limite, o classificador que responde <i>"nunca contaminada"</i> a qualquer entrada tem acurácia de $98\%$. Ele não olha para os dados, não precisa de treinamento, e derrota com folga qualquer modelo honesto avaliado pela acurácia. Também é inteiramente inútil, já que erra <b>todos</b> os casos que motivaram o projeto.
+
+            O instrumento correto é a matriz de confusão, que separa os dois tipos de erro:
+            <table id="tab:confusao">
+              <header>
+                <column></column>
+                <column>Previsto: contaminada</column>
+                <column>Previsto: não-contaminada</column>
+              </header>
+              <row>
+                <column><b>Real: contaminada</b></column>
+                <column>verdadeiro positivo (VP)</column>
+                <column>falso negativo (FN)</column>
+              </row>
+              <row>
+                <column><b>Real: não-contaminada</b></column>
+                <column>falso positivo (FP)</column>
+                <column>verdadeiro negativo (VN)</column>
+              </row>
+              <caption>A matriz de confusão. A acurácia é $(\text{VP}+\text{VN})/N$ e mistura em um único número duas colunas de erro com consequências radicalmente diferentes.</caption>
+            </table>
+
+            A partir dela definem-se
+            <equations id="eq:prec_rec">
+              \text{precisão} &= \frac{\text{VP}}{\text{VP}+\text{FP}}, \qquad \text{recall} = \frac{\text{VP}}{\text{VP}+\text{FN}}, \\
+              F_1 &= 2\cdot\frac{\text{precisão}\cdot\text{recall}}{\text{precisão}+\text{recall}}.
+            </equations>
+            Em palavras: a <em>precisão</em> responde "das vezes em que dei alarme, quantas eram reais?"; o <em>recall</em> responde "dos casos reais, quantos eu peguei?". No problema do arsênio, um falso negativo é água contaminada distribuída à população, e um falso positivo é uma coleta extra de laboratório. Não há a menor dúvida sobre qual dos dois é mais caro e isso significa que a métrica a maximizar é o recall da classe "contaminada", com a precisão funcionando como restrição de orçamento.
+
+            Um ponto que costuma passar batido: quase todo classificador produz, internamente, uma <b>pontuação contínua</b> e a classe sai da comparação dessa pontuação com um <em>limiar</em>. O limiar não é uma saída do modelo; é uma escolha sua, feita depois do treino, e movê-lo troca precisão por recall ao longo de uma curva. Escolher o limiar é, precisamente, escolher a razão entre os custos dos dois erros, a mesma perda assimétrica que a <ref to="subsec:classi" /> introduziu ao propor $\ell(\text{contaminada},\text{não-contaminada}) = 2$.
+
+            <box type="tip">
+              <title>Métrica de avaliação e função perda não precisam coincidir</title>
+              É perfeitamente legítimo treinar com uma perda diferenciável, por conveniência de otimização e avaliar com uma métrica que reflete o custo real, treinar com log-verossimilhança e avaliar por recall, por exemplo. O que não pode acontecer é as duas apontarem para lados opostos, com o treino otimizando algo que a avaliação penaliza.
+            </box>
+          </subsubsection>
+
+          <exercise>
+            <title>Lendo uma matriz de confusão</title>
+            <meta>
+              <meta-item key="Habilidades">Pensamento crítico</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+            </meta>
+            Um classificador avaliado em $1000$ campanhas, das quais $30$ estão de fato acima do limite legal, produziu $\text{VP} = 18$, $\text{FN} = 12$, $\text{FP} = 45$ e $\text{VN} = 925$.
+            <list marker="a">
+              <item>Calcule acurácia, precisão, recall e $F_1$.</item>
+              <item>Compare a acurácia com a do classificador constante "nunca contaminada". O que você conclui?</item>
+              <item>Baixando o limiar, o modelo passa a $\text{VP}=27$, $\text{FN}=3$, $\text{FP}=180$. Recalcule as métricas. Você recomendaria a mudança? Note que a resposta depende de quanto custa uma coleta de laboratório e de quanto custa não detectar contaminação — e que essa é uma decisão de política pública, não de estatística.</item>
+            </list>
+          </exercise>
+
+          <exercise>
+            <title>O classificador constante</title>
+            <meta>
+              <meta-item key="Habilidades">Demonstração</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+            </meta>
+            Seja $\pi = P(Y = \text{contaminada})$ a prevalência da classe positiva. Considere o classificador constante $\hat{Y}(x) = \text{não-contaminada}$ para todo $x$.
+            <list marker="a">
+              <item>Mostre que sua acurácia é $1-\pi$ e que seu recall é zero.</item>
+              <item>Mostre que, sob a perda da <ref to="eq:ind" />, ele é o classificador de Bayes (<ref to="sss:bayes_classifier" />) sempre que $P(Y=\text{contaminada}\mid X=x) < 1/2$ para todo $x$. Comente: o classificador ótimo segundo a taxa de erro pode ser inútil na prática. O que isso diz sobre a taxa de erro como medida de qualidade?</item>
+              <item>Refaça o item (b) com a perda assimétrica da <ref to="subsec:classi" />, em que errar uma contaminação custa o dobro. Como muda o limiar de decisão?</item>
+            </list>
+          </exercise>
+
+          <exercise>
+            <title>Validação cruzada na mão</title>
+            <meta>
+              <meta-item key="Habilidades">Programação</meta-item>
+              <meta-item key="Uso de IA">Permitido</meta-item>
+            </meta>
+            Implemente a validação cruzada em $k$ <i>folds</i> a partir do esqueleto da <ref to="sss:busca" />, e depois estenda-a de duas formas:
+            <list marker="a">
+              <item>uma versão <em>estratificada</em>, que preserva a proporção de classes em cada <i>fold</i>;</item>
+              <item>uma versão <em>por grupo</em>, que recebe um identificador de estação por observação e garante que todas as campanhas de uma estação fiquem no mesmo <i>fold</i>.</item>
+            </list>
+            Compare, em um conjunto sintético com forte correlação dentro de cada grupo, o erro estimado pelas duas versões. Qual delas você usaria para decidir se vale a pena colocar o modelo em operação?
+          </exercise>
+        </subsection>
       </section>
 
       <section id="subsec:deploy">
         <title>Deploy</title>
-        
+
+        Um modelo que existe apenas no seu <i>notebook</i> não poupou nenhum ensaio de laboratório, não acelerou nenhuma resposta a contaminação e não economizou um centavo. Toda a promessa do <ref to="p:concrete_problem" /> — medir mais rápido, mais barato, e responder mais ágil — se realiza ou se perde nesta última etapa.
+
+        <subsection id="sss:artefato">
+          <title>O artefato é o <i>pipeline</i>, não o modelo</title>
+
+          O que precisa ser colocado em operação é a composição inteira da <ref to="eq:pipeline_modelo" />, $\hat{f}\circ T_{\hat{\theta}}$. Isso significa que viajam junto com os coeficientes: a lista de categorias e a categoria de referência da codificação <i>one-hot</i>, os $\hat{\mu}_j$ e $\hat{\sigma}_j$ da padronização, as médias de imputação, as transformações aplicadas a cada coluna e o limiar de decisão escolhido na <ref to="sss:metricas_class" />.
+
+          Salvar apenas $\hat{\beta}$ é o erro clássico, e ele é traiçoeiro porque o sistema resultante <b>funciona</b>: recebe uma entrada, devolve um número plausível, não levanta exceção. Só que o número está errado, porque a entrada chegou em uma escala diferente daquela em que o modelo foi treinado.
+
+          O erro tem um primo mais comum ainda: reimplementar o pré-processamento "do lado de produção", em outra linguagem ou por outra pessoa. Você passa a ter duas implementações do mesmo $T_{\hat\theta}$, que começam idênticas e divergem no primeiro ajuste feito em uma só delas. A literatura chama isso de <em>skew treino/serviço</em>, e é um dos itens mais caros da "dívida técnica oculta" de sistemas de aprendizado de máquina <cite paper="sculley2015"/>. A defesa é ter uma única implementação, exercitada nos dois contextos.
+        </subsection>
+
+        <subsection id="sss:formas">
+          <title>Formas de servir</title>
+
+          <list marker="a">
+            <item><em>Em lote.</em> A cada campanha trimestral, roda-se o modelo sobre todas as estações de uma vez e grava-se o resultado. É o que o caso do IGAM de fato pede: os dados chegam em lotes trimestrais, e não há urgência de milissegundos. É também a forma mais simples de operar e monitorar.</item>
+            <item><em>Sob demanda.</em> Um serviço que responde a consultas individuais. Necessário quando a previsão precisa acompanhar uma interação — um painel em que o técnico digita as medições e vê a estimativa na hora.</item>
+            <item><em>Embarcado.</em> O modelo roda na própria sonda, em campo, sem conexão. É a modalidade mais restritiva: memória, energia e latência viram restrições duras — e é aqui que o custo de previsão discutido na <ref to="sss:custo" /> deixa de ser detalhe e passa a eliminar métodos.</item>
+          </list>
+        </subsection>
+
+        <subsection id="sss:monitor">
+          <title>Monitoramento: o mundo não assinou contrato de estacionariedade</title>
+
+          Todo o capítulo anterior foi construído sobre $Y = f(X) + \varepsilon$, com $f$ fixa e $p_{X,Y}$ fixa. Em operação, essas hipóteses têm prazo de validade. Distinguem-se dois tipos de mudança <cite paper="gama2014"/>:
+
+          <list marker="a">
+            <item><em>Deriva de dados</em> (<i>data drift</i>): a distribuição das entradas $p_X$ muda, mas a relação $p_{Y\mid X}$ permanece. Uma barragem nova a montante, um período de seca prolongada, uma sonda recalibrada — as entradas passam a vir de outra região do espaço, possivelmente onde o modelo nunca foi treinado. A boa notícia é que isso se detecta <b>sem rótulo nenhum</b>: basta comparar a distribuição das entradas que chegam com a do conjunto de treino.</item>
+            <item><em>Deriva de conceito</em> (<i>concept drift</i>): a própria $p_{Y\mid X}$ muda, isto é, a função $f$ mudou. Uma nova fonte de contaminação altera a relação entre os parâmetros de campo e o arsênio: os mesmos valores de pH, turbidez e condutividade passam a corresponder a outra concentração. Aqui não há atalho — detectar exige rótulos, ou seja, exige medir arsênio de verdade.</item>
+          </list>
+
+          E é aqui que o caso do arsênio tem uma propriedade que muitos problemas não têm: <b>os rótulos existem, apenas chegam tarde</b>. O laboratório continua operando; nada impede que ele siga medindo arsênio em uma subamostra das campanhas. Quando esses resultados voltam, semanas depois, você tem exatamente o que precisa — um fluxo permanente de pares $(x, y)$ verdadeiros, coletados sob operação real, para comparar com o que o modelo previu.
+
+          <box type="tip">
+            <title>Não desligue a medição que o modelo substitui</title>
+            A tentação, uma vez que o modelo funciona, é cortar o ensaio de laboratório por completo — afinal, era essa a economia prometida. Mas a medição que continua sendo feita é o único conjunto de teste que você terá depois do <i>deploy</i>, e ela é o que separa "o modelo está funcionando" de "o modelo está devolvendo números". Reduzir a frequência do ensaio é economia; eliminá-lo é ficar cego.
+          </box>
+        </subsection>
+
+        <subsection id="sss:consequencia">
+          <title>A previsão vira decisão</title>
+
+          Há uma diferença de natureza entre o modelo no capítulo anterior e o modelo em operação. Lá, $\hat{f}(x)$ era um número, avaliado por um MSE. Aqui, $\hat{f}(x)$ dispara uma ação: mandar uma equipe a campo, emitir um alerta, notificar uma prefeitura, ou — o caso perigoso — <b>dispensar</b> um ensaio de laboratório porque a estimativa ficou confortavelmente abaixo do limite.
+
+          Um falso negativo, nesse contexto, não é uma célula de uma matriz de confusão. É água com arsênio acima de $0{,}01$ mg/L <cite papers="conama357,portaria888"/> sendo distribuída sem que ninguém saiba — em uma região onde concentrações treze vezes acima do limite já foram efetivamente medidas <cite paper="manuelzao2025"/>.
+
+          Isso tem consequências concretas sobre como o modelo deve ser usado:
+          <list marker="a">
+            <item>o papel honesto do modelo é <b>priorizar onde medir</b>, e não substituir a medição. Ele transforma um orçamento fixo de ensaios em um orçamento bem alocado, o que é um ganho real e defensável;</item>
+            <item>a previsão deve vir acompanhada de uma indicação de incerteza. Uma estimativa de $0{,}009$ mg/L com incerteza de $\pm 0{,}006$ e uma estimativa de $0{,}009$ com incerteza de $\pm 0{,}0005$ autorizam decisões completamente diferentes, e reportar só o $0{,}009$ apaga essa diferença;</item>
+            <item>o limiar de decisão da <ref to="sss:metricas_class" /> é uma escolha de política pública — quantos falsos alarmes a sociedade aceita para não perder uma contaminação —, e não um detalhe de implementação a ser fixado por quem escreve o código.</item>
+          </list>
+        </subsection>
+
+        <subsection id="sss:loop">
+          <title>O laço se fecha</title>
+
+          Os rótulos que chegam do laboratório servem para monitorar e servem, também, para retreinar. E retreinar significa voltar à <ref to="subsec:scraping" />: novos dados entram, o pré-processamento é reajustado, o método é reavaliado, o modelo é retreinado, revalidado e reimplantado. As seis etapas deste capítulo não são uma lista; são um ciclo.
+
+          Mas há uma última armadilha, e é o viés de amostragem da <ref to="sss:amostra" /> voltando pela porta dos fundos. Suponha que o modelo entre em operação decidindo <b>onde</b> o laboratório vai medir. Então os rótulos da próxima rodada são exatamente aqueles que o modelo atual julgou interessantes; o conjunto de treino seguinte herda as crenças do modelo atual; e o modelo seguinte é treinado para concordar com o anterior. Isso é um <em>laço de retroalimentação</em>: o modelo passa a gerar os dados que o confirmam, e o erro de teste continua excelente enquanto a cobertura real do problema encolhe.
+
+          A defesa é barata e precisa ser deliberada: reserve uma fração das medições para ser <b>sorteada ao acaso</b>, independentemente do que o modelo pense. Essas medições sorteadas custam pouco, são as únicas que permanecem uma amostra legítima de $p_{X,Y}$, e são elas que vão avisar quando o modelo começar a se enganar.
+
+          <box>
+            <title>O <i>pipeline</i> é o <i>loop</i>, de novo</title>
+            No <ref to="ch:aprender" /> escrevemos que aprender é <b>dados + método + medida de performance</b>, e que essas três etapas formam um <i>loop</i>. Este capítulo apenas detalhou cada uma delas: <em>dados</em> são a coleta e o pré-processamento, <em>método</em> é a escolha e o treinamento, <em>medida de performance</em> é a validação e o teste. E o <i>deploy</i> é o que devolve o resultado ao mundo — de onde vêm os dados da próxima volta.
+
+            Um modelo não é um produto acabado. É um estado momentâneo de um processo que continua girando enquanto o problema existir.
+          </box>
+
+          <exercise>
+            <title>Um plano de monitoramento</title>
+            <meta>
+              <meta-item key="Habilidades">Pensamento crítico</meta-item>
+              <meta-item key="Uso de IA">Não recomendado</meta-item>
+            </meta>
+            O modelo de arsênio entrou em operação. Escreva um plano de monitoramento respondendo:
+            <list marker="a">
+              <item>Que quantidades você mediria <b>sem</b> esperar os rótulos do laboratório, e o que cada uma detectaria?</item>
+              <item>Que fração das campanhas você continuaria enviando ao laboratório, e como escolheria quais? Justifique a fração em termos do que ela compra.</item>
+              <item>Que critério dispararia um retreinamento, e que critério dispararia a suspensão do modelo? Note que os dois são diferentes.</item>
+              <item>Como você distinguiria, ao observar a performance piorar, se houve deriva de dados ou deriva de conceito?</item>
+            </list>
+          </exercise>
+
+          <exercise>
+            <title>O laço de retroalimentação</title>
+            <meta>
+              <meta-item key="Habilidades">Pensamento crítico, Programação</meta-item>
+              <meta-item key="Uso de IA">Permitido</meta-item>
+            </meta>
+            Simule o ciclo descrito acima. Gere uma população sintética com uma relação $Y = f(X)+\varepsilon$ conhecida; treine um modelo em uma amostra inicial; e então repita, por várias rodadas: (i) o modelo escolhe as $n$ observações com maior previsão para serem "medidas", (ii) essas observações recebem rótulo verdadeiro e entram no treino, (iii) o modelo é retreinado.
+            <list marker="a">
+              <item>Acompanhe, ao longo das rodadas, o erro medido no conjunto que o próprio modelo selecionou e o erro medido em uma amostra uniforme da população. Descreva o que acontece com cada um.</item>
+              <item>Repita substituindo uma fração $\rho$ das $n$ medições por observações sorteadas uniformemente. Qual o menor $\rho$ que evita a degradação?</item>
+              <item>Relacione o fenômeno observado com a <ref to="def:vies_amostragem" />.</item>
+            </list>
+          </exercise>
+        </subsection>
       </section>
 
-</chapter>
+  </chapter>
 </document>

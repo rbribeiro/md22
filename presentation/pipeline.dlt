@@ -1,0 +1,664 @@
+<document type="presentation" lang="pt" theme-accent="red" theme="slides.css">
+  <title>MD22 — O pipeline de aprendizado de máquina</title>
+
+  <progress/>
+
+  <floating>
+    <toc>
+      <title>Roteiro</title>
+    </toc>
+  </floating>
+
+  <cover>
+    <title>O <em>pipeline</em> de aprendizado de máquina</title>
+    <subtitle>Do dado bruto ao modelo em operação</subtitle>
+    <author>Rodrigo Ribeiro</author>
+    <affiliation>IMPA Tech</affiliation>
+    <event>Aprendizado de Máquina I (MD22)</event>
+    <date>2026.2</date>
+  </cover>
+
+  <slide>
+    <toc depth="1">
+      <title>Roteiro</title>
+    </toc>
+  </slide>
+
+  <slide>
+    <title>O conjunto $S$ não existe no mundo real</title>
+    Nos capítulos anteriores, $S = \{(x_1,y_1),\dots,(x_N,y_N)\}$ aparecia <b>pronto no enunciado</b>.
+    <box type="warning" reveal="true">
+      O que existe são planilhas com células vazias, medições em unidades diferentes, resultados que o laboratório não conseguiu quantificar e estações visitadas com frequências distintas.
+    </box>
+    <b reveal="true">Transformar isso em $(X,y)$ é trabalho — e é onde se decide a qualidade do resultado.</b>
+  </slide>
+
+  <slide>
+    <title>As seis etapas</title>
+    <box>
+      coleta <b>→</b> pré-processamento <b>→</b> escolha do método <b>→</b> treinamento <b>→</b> validação &amp; teste <b>→</b> <i>deploy</i> <b>→</b> <b>coleta</b> ...
+    </box>
+    <box type="warning" reveal="true">
+      A palavra <i>pipeline</i> é péssima: sugere uma linha reta com começo e fim. <b>A última seta aponta de volta para a primeira.</b>
+    </box>
+  </slide>
+
+  <slide>
+    <title>A pergunta em cada etapa</title>
+    <box color="green">
+      O que pode dar errado <em>aqui</em>, e o que isso faz com a estimativa $\hat{f}$?
+    </box>
+    Em cada uma das seis etapas há uma decisão capaz de <b>invalidar tudo o que vem depois</b>.
+  </slide>
+
+  <!-- ==================================================================== -->
+  <section id="sec:coleta">
+    <title>1. Coletando os dados</title>
+
+    <slide>
+      <title>De onde vem o dado</title>
+      <list marker="a" animated="true">
+        <item><em>Portais abertos.</em> Barato, tranquilo — mas você recebe o que <b>eles</b> decidiram coletar.</item>
+        <item><em>APIs.</em> Resolvem o problema. Raramente existem para dado ambiental brasileiro.</item>
+        <item><em>Raspagem.</em> Frágil e cheia de armadilhas jurídicas.</item>
+        <item><em>Instrumentação.</em> Cara e lenta; a única que dá controle sobre o desenho amostral.</item>
+        <item><em>Rotulação manual.</em> O gargalo do supervisionado — e fonte silenciosa de erro.</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>Qual população esses dados representam?</title>
+      <definition id="def:vies_amostragem">
+        <title>Viés de amostragem</title>
+        Há <em>viés de amostragem</em> quando a coleta induz uma distribuição $\tilde{p}_{X,Y}$ diferente da $p_{X,Y}$ sob a qual o modelo será usado. Minimizar o risco empírico aproxima o risco populacional <b>sob $\tilde{p}$</b>, não sob $p$.
+      </definition>
+      <b reveal="true">Quem decide se a hipótese i.i.d. vale não é o método. É a coleta.</b>
+    </slide>
+
+    <slide>
+      <title>Viés de coleta não aparece no erro de teste</title>
+      <box type="danger">
+        <list marker="a">
+          <item>O erro irredutível ${\rm Var}(\varepsilon)$ é <b>visível</b>: vira um piso no MSE de teste.</item>
+          <item>O viés de coleta é <b>invisível</b>: o teste saiu da mesma amostra enviesada.</item>
+        </list>
+        Ele não faz o erro de teste subir. Ele faz o erro de teste <em>mentir</em>.
+      </box>
+      <b reveal="true">A única defesa é conhecer o processo que gerou os dados.</b>
+    </slide>
+
+    <slide>
+      <title>O que é uma linha?</title>
+      A <em>unidade de observação</em> no IGAM é uma <b>campanha</b>: um par (estação, data). A BV035 aparece dezenas de vezes na série.
+      <box type="warning" reveal="true">
+        Logo as linhas <b>não são independentes</b>: há correlação espacial (estações vizinhas) e temporal (trimestres consecutivos).
+      </box>
+      <b reveal="true">Isso não impede ajustar um modelo. Impede estimar honestamente a performance por sorteio uniforme.</b>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:pre">
+    <title>2. Pré-processamento</title>
+
+    <slide>
+      <title>Tabela organizada</title>
+      <box color="green">
+        Uma linha por observação, uma coluna por variável, uma célula por valor.
+      </box>
+      <table id="tab:tidy">
+        <header>
+          <column>Estação</column>
+          <column>Trimestre</column>
+          <column align="right" mono="true">pH</column>
+        </header>
+        <row><column>BV035</column><column>T1</column><column>7,1</column></row>
+        <row><column>BV035</column><column>T2</column><column>7,0</column></row>
+        <row><column>BV062</column><column>T1</column><column>6,8</column></row>
+        <caption>Na forma "larga" (<c>pH T1</c>, <c>pH T2</c>, …) o trimestre está no <b>nome</b> da coluna: não pode virar <i>feature</i>, nem filtro, nem critério de partição.</caption>
+      </table>
+    </slide>
+
+    <slide>
+      <title>Variáveis categóricas</title>
+      Numerar bacias (Velhas $=1$, Doce $=2$, …) põe Doce <em>entre</em> as outras duas — para o KNN, isso altera a métrica por acidente.
+      <b reveal="true">A alternativa é <i>one-hot</i>: $m$ níveis, $m$ colunas indicadoras, todas equidistantes.</b>
+      <equation id="eq:onehot" reveal="true">
+        \sum_{j=1}^m D_j = \mathbf{1}
+      </equation>
+      <box type="warning" reveal="true">
+        Mas $\mathbf{1}$ é o intercepto: <b>posto deficiente</b>. Descarte a categoria de <i>referência</i>.
+      </box>
+    </slide>
+
+    <slide>
+      <title>A escala das <i>features</i></title>
+      <equations id="eq:dist_bruta">
+        \|x_{\text{BV062}} - x_{\text{BV153}}\|^2 & = \underbrace{(6{,}8-7{,}6)^2}_{\text{pH}} + \underbrace{(141-9)^2}_{\text{turb.}} + \underbrace{(320-45)^2}_{\text{cond.}} + \underbrace{(5{,}1-7{,}9)^2}_{\text{OD}} \\
+        & = 0{,}64 + 17\,424 + 75\,625 + 7{,}84 = 93\,057{,}48
+      </equations>
+      <b reveal="true">Condutividade: $81\%$. Turbidez: $19\%$. pH: <em>$0{,}0007\%$</em>. Quem escolheu isso foi o fabricante da sonda.</b>
+    </slide>
+
+    <slide>
+      <title>Padronizar</title>
+      <equation id="eq:padroniza">
+        z_{ij} = \frac{x_{ij} - \hat{\mu}_j}{\hat{\sigma}_j}
+      </equation>
+      <b reveal="true">Cada coluna com média zero e desvio um. A alternativa <i>min-max</i> confina a $[0,1]$ — mas um único <i>outlier</i> comprime todo o resto contra uma borda.</b>
+    </slide>
+
+    <slide>
+      <title>Quando a escala importa</title>
+      <columns>
+        <column reveal="true">
+          <b>Importa</b>
+          <list>
+            <item>KNN e métodos por distância</item>
+            <item>Regularização ($\beta$ tem unidade!)</item>
+            <item>Métodos iterativos</item>
+          </list>
+        </column>
+        <column reveal="true">
+          <b>Não importa</b>
+          <list>
+            <item>OLS sem penalização</item>
+            <item>Árvores (só usam a ordem)</item>
+          </list>
+        </column>
+      </columns>
+      <b reveal="true">Escalonar não é ritual: saber <em>por que</em> vale mais do que saber <em>que</em>.</b>
+    </slide>
+
+    <slide>
+      <title>O pré-processamento faz parte do modelo</title>
+      Os $\hat{\mu}_j$, $\hat{\sigma}_j$, as categorias vistas, as médias de imputação — todos foram <b>estimados a partir dos dados</b>. O que se serve é
+      <equation id="eq:pipeline_modelo">
+        \hat{f} \circ T_{\hat{\theta}}
+      </equation>
+      <b reveal="true">$\hat{\theta}$ é parte do modelo. Logo deve ser estimado <em>só</em> com o treino.</b>
+    </slide>
+
+    <slide>
+      <title>Separar o ajuste da aplicação</title>
+      <code lang="python">
+        class Padronizador:
+            def ajustar(self, X):          # só o treino entra aqui
+                p, N = len(X[0]), len(X)
+                self.mu = [sum(x[j] for x in X) / N for j in range(p)]
+                self.sigma = []
+                for j in range(p):
+                    v = sum((x[j] - self.mu[j])**2 for x in X) / N
+                    self.sigma.append(v**0.5 if v > 0 else 1.0)
+                return self
+            def aplicar(self, X):          # teste e produção: os mesmos
+                return [[(x[j] - self.mu[j]) / self.sigma[j]
+                         for j in range(len(x))] for x in X]
+      </code>
+    </slide>
+
+    <slide>
+      <title>A regra</title>
+      <box type="danger">
+        Nada que dependa do conjunto de teste pode influenciar o treinamento — e isso inclui <b>a média de uma coluna</b>.
+      </box>
+      <b reveal="true">Se você precisou olhar o teste para calcular um número que entra no modelo, o teste deixou de medir generalização.</b>
+      <box type="warning" reveal="true">
+        Dentro de uma validação cruzada, o <c>ajustar</c> roda de novo <em>a cada fold</em>.
+      </box>
+    </slide>
+
+    <slide>
+      <title>Os mecanismos de ausência</title>
+      <definition id="def:mcar">
+        <title>MCAR, MAR e MNAR</title>
+        Com $R \in \{0,1\}^{N\times p}$ a matriz de ausência, a ausência é
+        <list marker="a">
+          <item><em>MCAR</em> se $P(R \mid X, Y) = P(R)$;</item>
+          <item><em>MAR</em> se $P(R \mid X, Y) = P(R \mid X_{\rm obs})$;</item>
+          <item><em>MNAR</em> caso contrário — depende do valor não observado.</item>
+        </list>
+      </definition>
+      <b reveal="true">A pergunta decisiva não é <i>quantos</i> faltam, é <b>por quê</b>.</b>
+    </slide>
+
+    <slide>
+      <title>O arsênio é MNAR</title>
+      Quando o orçamento aperta, o ensaio de laboratório cai — e continua sendo feito <b>nas estações com histórico de problema</b>.
+      <columns>
+        <column reveal="true">
+          <b>Descartar as linhas</b>
+          <list animated="true">
+            <item>Amostra enviesada <em>para cima</em>: sobram as suspeitas.</item>
+          </list>
+        </column>
+        <column reveal="true">
+          <b>Imputar pela média</b>
+          <list animated="true">
+            <item>Enviesada <em>para baixo</em> nas suspeitas, para cima nas demais.</item>
+          </list>
+        </column>
+      </columns>
+      <b reveal="true">Não existe opção neutra. Existe a opção que você entende e documenta.</b>
+    </slide>
+
+    <slide>
+      <title>Deletar custa mais do que parece</title>
+      Se cada uma das $p$ colunas falta independentemente com probabilidade $q$, a fração de linhas completas é
+      <equation id="eq:completos">
+        (1-q)^p.
+      </equation>
+      <box type="warning" reveal="true">
+        Com $q = 0{,}05$ e $p = 12$: sobram <b>$54\%$</b> das linhas. Metade da amostra foi embora por causa de "só $5\%$".
+      </box>
+    </slide>
+
+    <slide>
+      <title>Censura: o <c>&lt; 0,003</c></title>
+      O laboratório <b>não</b> disse "não sei". Disse $0 \le x \lt \text{LQ}$ — uma restrição, isto é, <em>informação</em>. Isso é dado <em>censurado à esquerda</em>.
+      <b reveal="true">Trocar por $0$, LQ ou LQ$/2$ inventa uma precisão que não existe e encolhe a variância.</b>
+      <equation id="eq:verossim_censura" reveal="true">
+        P\left(Y_i \lt \text{LQ} \mid X_i = x_i ; f\right)
+      </equation>
+      <b reveal="true">Máxima verossimilhança: use a <em>acumulada</em> em LQ, não a densidade em um ponto inventado.</b>
+    </slide>
+
+    <slide>
+      <title>O dado é pior justamente onde a decisão acontece</title>
+      <columns>
+        <column reveal="true">
+          <b>Limite legal</b>
+          $$0{,}010\ \text{mg/L}$$
+        </column>
+        <column reveal="true">
+          <b>Limite de quantificação</b>
+          $$\approx 0{,}003\ \text{mg/L}$$
+        </column>
+      </columns>
+      <box type="danger" reveal="true">
+        Mesma ordem de grandeza. A fronteira de decisão cai bem perto da região em que o dado deixa de ser um número e vira um intervalo.
+      </box>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:metodo">
+    <title>3. A escolha do método</title>
+
+    <slide>
+      <title>Seis perguntas antes de escolher</title>
+      <list marker="number" animated="true">
+        <item>Qual é a <em>tarefa</em>? Regressão, classificação, ou não-supervisionado.</item>
+        <item><em>Previsão ou inferência</em>? Alerta público precisa ser justificado.</item>
+        <item>Quanto dado, e em que <em>forma</em>? A relação entre $N$ e $p$ governa quase tudo.</item>
+        <item>Qual o <em>orçamento computacional</em> — e onde ele é gasto?</item>
+        <item>Qual <em>perda</em> reflete o custo real do erro?</item>
+        <item>Qual a <em>estrutura</em> do dado? Tabular, temporal, espacial, texto, imagem, grafo.</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>Treinar é caro uma vez; prever é caro sempre</title>
+      <columns>
+        <column reveal="true">
+          <b>KNN</b>
+          <list animated="true">
+            <item>Treino: $O(1)$ — só guarda os dados.</item>
+            <item>Previsão: $O(Np)$, e carrega a base inteira.</item>
+          </list>
+        </column>
+        <column reveal="true">
+          <b>Regressão linear</b>
+          <list animated="true">
+            <item>Treino: $O(Np^2 + p^3)$, uma vez.</item>
+            <item>Previsão: $O(p)$. O modelo são $p+1$ números.</item>
+          </list>
+        </column>
+      </columns>
+      <box type="warning" reveal="true">
+        Uma restrição de <i>deploy</i> (etapa 6) acabou de determinar a escolha do método (etapa 3). <b>As etapas não são independentes.</b>
+      </box>
+    </slide>
+
+    <slide>
+      <title>Sempre comece pelo <i>baseline</i></title>
+      <code lang="python">
+        def baseline_media(y_treino):
+            media = sum(y_treino) / len(y_treino)
+            return lambda x: media
+
+        def mse(f, dados):
+            return sum((y - f(x))**2 for x, y in dados) / len(dados)
+      </code>
+      <b reveal="true">$\text{MSE}(\bar{y}) = \widehat{\rm Var}(y)$ — o baseline não é comparação arbitrária: é o <em>zero da régua</em>.</b>
+    </slide>
+
+    <slide>
+      <title>Se não bater o baseline, o problema não é o método</title>
+      <box type="tip">
+        Um modelo que não supera a constante está dizendo que as <i>features</i> não carregam informação, que há erro no <i>pipeline</i>, ou que o erro irredutível domina. <b>Nenhuma se resolve trocando de algoritmo.</b>
+      </box>
+      <columns reveal="true">
+        <column>
+          <b>Parâmetros</b> — determinados pelo <em>treinamento</em> ($\beta$).
+        </column>
+        <column>
+          <b>Hiperparâmetros</b> — determinados pela <em>validação</em> ($k$, $\lambda$, $\eta$, grau).
+        </column>
+      </columns>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:treino">
+    <title>4. Treinamento</title>
+
+    <slide>
+      <title>Quando existe fórmula fechada</title>
+      <equation id="eq:er_matricial">
+        \text{ER}(\beta) = \frac{1}{N}\left\| y - X\beta \right\|^2
+      </equation>
+      <equation id="eq:normais" reveal="true">
+        \nabla\text{ER}(\beta) = 0 \iff X^\top X \hat{\beta} = X^\top y
+      </equation>
+      <b reveal="true">Com $X$ de posto completo, a solução é única — a mesma hipótese que o <i>one-hot</i> ingênuo viola.</b>
+    </slide>
+
+    <slide>
+      <title>Não inverta a matriz</title>
+      <box type="warning">
+        $\hat\beta = \left(X^\top X\right)^{-1}X^\top y$ é uma afirmação matemática, não uma receita de implementação. Calcular $(X^\top X)^{-1}$ explicitamente é numericamente ruim: resolva o sistema por QR sobre $X$, ou Cholesky sobre $X^\top X$.
+      </box>
+      <b reveal="true">E o número de condição de $X^\top X$ é o <em>quadrado</em> do de $X$ — padronizar não muda a solução, mas muda a qualidade com que ela é computada.</b>
+    </slide>
+
+    <slide>
+      <title>Quando não existe: gradiente</title>
+      <equation id="eq:gd">
+        \beta^{(t+1)} = \beta^{(t)} - \eta\,\nabla \text{ER}\left(\beta^{(t)}\right)
+      </equation>
+      <list animated="true">
+        <item>$\eta$ é a <em>taxa de aprendizado</em> — hiperparâmetro. Quem escolhe é a validação.</item>
+        <item><b>Convexidade:</b> a hessiana $\frac{2}{N}X^\top X$ é semidefinida positiva; todo mínimo local é global.</item>
+        <item><b>Estocástico:</b> $\nabla\text{ER}$ é uma <em>média</em>; a média de uma subamostra é estimador não-viesado dela.</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>Reprodutibilidade</title>
+      Registre com cada modelo: semente, versão do dado, parâmetros do pré-processamento, hiperparâmetros e métricas.
+      <box type="warning" reveal="true">
+        <title>O treino vê só o treino</title>
+        Se o código de treino recebe a base inteira em algum ponto, há um vazamento esperando para acontecer.
+      </box>
+      <b reveal="true">E convergir não é acertar: o otimizador achou um mínimo da função que você <em>escreveu</em>.</b>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:validacao">
+    <title>5. Validação &amp; Teste</title>
+
+    <slide>
+      <title>Por que três conjuntos e não dois</title>
+      Treinar KNN com $k = 1,3,\dots,21$, medir o teste de cada um e ficar com o melhor: você usou o teste para <b>decidir</b>.
+      <box type="warning" reveal="true">
+        Com $\hat{r}_m = r_m + \xi_m$ não-viesados, por Jensen
+        $$\mathbb{E}\left[\min_m \hat{r}_m\right] \le \min_m r_m.$$
+        Você escolheu o melhor modelo <em>e</em> a estimativa mais otimista — e reportou as duas juntas.
+      </box>
+    </slide>
+
+    <slide>
+      <title>Um papel para cada conjunto</title>
+      <list marker="a" animated="true">
+        <item><em>Treino</em> — ajusta os parâmetros ($\hat\beta$, e o $\hat\theta$ do pré-processador).</item>
+        <item><em>Validação</em> — escolhe os hiperparâmetros, comparando modelos já treinados.</item>
+        <item><em>Teste</em> — estima a performance final, <b>uma única vez</b>.</item>
+      </list>
+      <box type="danger" reveal="true">
+        <title>O conjunto de teste tem um uso só</title>
+        Não há como "desusá-lo". Se acontecer, o caminho honesto é dizer no relatório que o número é otimista.
+      </box>
+    </slide>
+
+    <slide>
+      <title>A busca por hiperparâmetros</title>
+      <list marker="number" animated="true">
+        <item>Separe o teste e <b>esqueça que ele existe</b>.</item>
+        <item>Para cada candidato e cada <i>fold</i>: ajuste pré-processador <b>e</b> modelo na parte de treino.</item>
+        <item>Média sobre os <i>folds</i> $\Rightarrow$ $\text{CV}(\lambda)$; escolha $\lambda^* = \arg\min_\lambda \text{CV}(\lambda)$.</item>
+        <item>Reajuste com $\lambda^*$ no treino <b>inteiro</b>.</item>
+        <item>Meça uma única vez no teste.</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>Validação cruzada em código</title>
+      <code lang="python">
+        def cv_score(dados, k_folds, treinar, hiper):
+            tam, erros = len(dados) // k_folds, []
+            for f in range(k_folds):
+                ini, fim = f*tam, (f+1)*tam
+                val    = dados[ini:fim]
+                treino = dados[:ini] + dados[fim:]
+                # treinar() ajusta pré-processador E modelo
+                erros.append(mse(treinar(treino, hiper), val))
+            return sum(erros) / len(erros)
+      </code>
+      <b reveal="true">Grade de 10 com 5 <i>folds</i>: <em>50 treinos</em> para escolher um número.</b>
+    </slide>
+
+    <slide>
+      <title>Partir os dados honestamente</title>
+      A BV035 tem cem campanhas. Sorteando linhas, junho/2019 vai para o teste e março/2019 para o treino — <b>e são quase o mesmo ponto</b>.
+      <columns reveal="true">
+        <column>
+          <b>Por grupo</b><br/>
+          "Funciona em uma estação que nunca viu?"
+        </column>
+        <column>
+          <b>Temporal</b><br/>
+          "Funciona no próximo trimestre?"
+        </column>
+      </columns>
+      <box type="tip" reveal="true">
+        <title>A partição deve imitar o uso</title>
+        Vai prever o futuro? Teste no futuro. Vai operar em estações novas? Teste em estações novas.
+      </box>
+    </slide>
+
+    <slide>
+      <title>Regressão: MSE, MAE e $R^2$</title>
+      <list marker="a" animated="true">
+        <item><em>RMSE</em> — mesma unidade de $y$; compara direto com $0{,}01$ mg/L.</item>
+        <item><em>MAE</em> — perda $\ell_1$, menos sensível a extremos.</item>
+        <item><em>$R^2$</em> — compara o modelo com o <i>baseline</i>.</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>O $R^2$ mede contra a média</title>
+      <equation id="eq:r2">
+        R^2 = 1 - \frac{\sum_i \left(y_i - \hat{f}(x_i)\right)^2}{\sum_i \left(y_i - \bar{y}\right)^2}
+      </equation>
+      <b reveal="true">Numerador: erro do modelo. Denominador: erro da constante.</b>
+      <box color="green" reveal="true">
+        $R^2 = 0$ significa "empatou com a média". $R^2 \lt 0$, calculado no teste, significa "<em>perdeu</em> para a média" — perfeitamente possível, e bastante informativo.
+      </box>
+    </slide>
+
+    <slide>
+      <title>A armadilha da acurácia</title>
+      Versão de classificação: a amostra ultrapassa $0{,}01$ mg/L?
+      <box type="danger" reveal="true">
+        Se só $2\%$ das campanhas estão acima do limite, o classificador que responde <i>"nunca contaminada"</i> tem <b>acurácia de $98\%$</b>.
+      </box>
+      <b reveal="true">Não olha os dados, não precisa de treino, derrota qualquer modelo honesto — e erra <em>todos</em> os casos que motivaram o projeto.</b>
+    </slide>
+
+    <slide>
+      <title>Matriz de confusão</title>
+      <table id="tab:confusao">
+        <header>
+          <column></column>
+          <column>Previsto: contaminada</column>
+          <column>Previsto: não-contaminada</column>
+        </header>
+        <row>
+          <column><b>Real: contaminada</b></column>
+          <column>verdadeiro positivo (VP)</column>
+          <column>falso negativo (FN)</column>
+        </row>
+        <row>
+          <column><b>Real: não-contaminada</b></column>
+          <column>falso positivo (FP)</column>
+          <column>verdadeiro negativo (VN)</column>
+        </row>
+        <caption>A acurácia é $(\text{VP}+\text{VN})/N$ e mistura em um número duas colunas de erro com consequências radicalmente diferentes.</caption>
+      </table>
+    </slide>
+
+    <slide>
+      <title>Precisão, recall, $F_1$</title>
+      <equations id="eq:prec_rec">
+        \text{precisão} &= \frac{\text{VP}}{\text{VP}+\text{FP}}, \qquad \text{recall} = \frac{\text{VP}}{\text{VP}+\text{FN}}, \\
+        F_1 &= 2\cdot\frac{\text{precisão}\cdot\text{recall}}{\text{precisão}+\text{recall}}
+      </equations>
+      <b reveal="true"><em>Precisão:</em> dos alarmes, quantos eram reais? · <em>Recall:</em> dos casos reais, quantos peguei?</b>
+      <box color="green" reveal="true">
+        FN é água contaminada distribuída; FP é uma coleta extra. Maximize o <b>recall</b>.
+      </box>
+    </slide>
+
+    <slide>
+      <title>O limiar é uma escolha sua</title>
+      Quase todo classificador produz uma <b>pontuação contínua</b>; a classe sai da comparação com um <em>limiar</em>.
+      <box type="warning" reveal="true">
+        O limiar não é saída do modelo. É escolha feita <b>depois do treino</b>, e movê-lo troca precisão por recall ao longo de uma curva.
+      </box>
+      <b reveal="true">Escolher o limiar é escolher a razão entre os custos dos dois erros.</b>
+    </slide>
+
+    <slide>
+      <title>Métrica e perda não precisam coincidir</title>
+      <box type="tip">
+        É legítimo treinar com uma perda diferenciável, por conveniência de otimização, e avaliar com uma métrica que reflete o custo real — treinar com log-verossimilhança e avaliar por <em>recall</em>, por exemplo.
+      </box>
+      <b reveal="true">O que não pode acontecer é as duas apontarem para lados opostos, com o treino otimizando algo que a avaliação penaliza.</b>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:deploy">
+    <title>6. Deploy</title>
+
+    <slide>
+      <title>O artefato é o <i>pipeline</i>, não o modelo</title>
+      O que entra em operação é a composição inteira $\hat{f}\circ T_{\hat\theta}$. Viajam junto com os coeficientes:
+      <list animated="true">
+        <item>categorias e categoria de referência do <i>one-hot</i>;</item>
+        <item>os $\hat\mu_j$, $\hat\sigma_j$ e as médias de imputação;</item>
+        <item>as transformações por coluna e <b>o limiar de decisão</b>.</item>
+      </list>
+      <box type="danger" reveal="true">
+        Salvar só $\hat\beta$ é traiçoeiro porque o sistema <b>funciona</b>: devolve um número plausível, não levanta exceção. Só que está errado.
+      </box>
+    </slide>
+
+    <slide>
+      <title><i>Skew</i> treino/serviço</title>
+      O primo mais comum: reimplementar o pré-processamento "do lado de produção", em outra linguagem ou por outra pessoa.
+      <box type="warning" reveal="true">
+        Duas implementações do mesmo $T_{\hat\theta}$, que começam idênticas e divergem no primeiro ajuste feito em uma só delas.
+      </box>
+      <b reveal="true">A defesa é ter uma <em>única</em> implementação, exercitada nos dois contextos.</b>
+    </slide>
+
+    <slide>
+      <title>Formas de servir</title>
+      <list marker="a" animated="true">
+        <item><em>Em lote.</em> Uma vez por campanha trimestral, todas as estações de uma vez. É o que o caso do IGAM pede — e o mais simples de operar e monitorar.</item>
+        <item><em>Sob demanda.</em> Um serviço por consulta; necessário quando a previsão acompanha uma interação.</item>
+        <item><em>Embarcado.</em> Na própria sonda, sem conexão. Memória, energia e latência viram restrições <b>duras</b> — e eliminam métodos.</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>O mundo não assinou contrato de estacionariedade</title>
+      <columns>
+        <column reveal="true">
+          <b>Deriva de dados</b>
+          <list animated="true">
+            <item>$p_X$ muda, $p_{Y|X}$ permanece.</item>
+            <item>Barragem nova, seca, sonda recalibrada.</item>
+            <item>Detecta-se <em>sem rótulo nenhum</em>.</item>
+          </list>
+        </column>
+        <column reveal="true">
+          <b>Deriva de conceito</b>
+          <list animated="true">
+            <item>$p_{Y|X}$ muda — $f$ mudou.</item>
+            <item>Nova fonte de contaminação.</item>
+            <item>Detectar <em>exige rótulos</em>.</item>
+          </list>
+        </column>
+      </columns>
+      <b reveal="true">No arsênio os rótulos existem — só chegam tarde. O laboratório continua medindo.</b>
+    </slide>
+
+    <slide>
+      <title>Não desligue a medição que o modelo substitui</title>
+      <box type="tip">
+        A tentação, uma vez que o modelo funciona, é cortar o ensaio de laboratório — afinal, era essa a economia prometida.
+      </box>
+      <b reveal="true">Mas a medição que continua é o <em>único conjunto de teste que você terá depois do deploy</em>.</b>
+      <box type="danger" reveal="true">
+        Reduzir a frequência do ensaio é economia. Eliminá-lo é ficar cego.
+      </box>
+    </slide>
+
+    <slide>
+      <title>A previsão vira decisão</title>
+      $\hat{f}(x)$ deixa de ser um número avaliado por MSE: ele dispara uma ação — ou <b>dispensa</b> um ensaio.
+      <list marker="a" animated="true">
+        <item>O papel honesto do modelo é <b>priorizar onde medir</b>, não substituir a medição.</item>
+        <item>A previsão deve vir com <em>incerteza</em>: $0{,}009 \pm 0{,}006$ e $0{,}009 \pm 0{,}0005$ autorizam decisões diferentes.</item>
+        <item>O limiar é escolha de <b>política pública</b>, não detalhe de implementação.</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>O laço de retroalimentação</title>
+      Se o modelo decide <b>onde</b> o laboratório mede, então os rótulos da próxima rodada são os que ele julgou interessantes.
+      <box type="danger" reveal="true">
+        O treino seguinte herda as crenças do modelo atual; o modelo seguinte é treinado para concordar com o anterior. O erro de teste segue excelente <em>enquanto a cobertura real encolhe</em>.
+      </box>
+      <b reveal="true">Defesa barata e deliberada: reserve uma fração das medições para ser <em>sorteada ao acaso</em>.</b>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:fecho">
+    <title>Fechamento</title>
+
+    <slide>
+      <title>O <i>pipeline</i> é o <i>loop</i>, de novo</title>
+      <box>
+        <em>Dados</em> são a coleta e o pré-processamento. <em>Método</em> é a escolha e o treinamento. <em>Medida de performance</em> é a validação e o teste. E o <i>deploy</i> devolve o resultado ao mundo — de onde vêm os dados da próxima volta.
+      </box>
+      <b reveal="true">Um modelo não é um produto acabado. É um estado momentâneo de um processo que continua girando enquanto o problema existir.</b>
+    </slide>
+
+    <slide>
+      <title>Para casa</title>
+      <list animated="true">
+        <item>Escreva um plano de coleta para 50 estações novas e liste três vieses que ele introduz.</item>
+        <item>Meça o próprio vazamento: padronizar antes <i>vs.</i> depois de particionar, 200 repetições.</item>
+        <item>Leia uma matriz de confusão e decida se vale baixar o limiar.</item>
+        <item>Simule o laço de retroalimentação e ache o menor $\rho$ que evita a degradação.</item>
+      </list>
+    </slide>
+  </section>
+
+</document>

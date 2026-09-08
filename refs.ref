@@ -80,4 +80,68 @@
     <link to="https://bvsms.saude.gov.br/bvs/saudelegis/gm/2021/prt0888_07_05_2021.html">Texto oficial</link>
   </paper>
 
+  <paper id="lgpd">
+    <author>BRASIL</author>
+    <title>Lei nº 13.709, de 14 de agosto de 2018 — Lei Geral de Proteção de Dados Pessoais (LGPD)</title>
+    <journal>Diário Oficial da União. Define o que é dado pessoal e as bases legais para seu tratamento</journal>
+    <year>2018</year>
+    <link to="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm">Texto oficial</link>
+  </paper>
+
+  <!-- ===================== Preparação e organização dos dados ==================== -->
+
+  <paper id="wickham2014">
+    <author>WICKHAM, H.</author>
+    <title>Tidy Data</title>
+    <journal>Journal of Statistical Software, v. 59, n. 10, p. 1–23</journal>
+    <year>2014</year>
+    <link to="https://www.jstatsoft.org/article/view/v059i10">Journal of Statistical Software</link>
+  </paper>
+
+  <paper id="kaufman2012">
+    <author>KAUFMAN, S.; ROSSET, S.; PERLICH, C.; STITELMAN, O.</author>
+    <title>Leakage in data mining: formulation, detection, and avoidance</title>
+    <journal>ACM Transactions on Knowledge Discovery from Data, v. 6, n. 4, art. 15. Versão estendida do artigo apresentado no KDD 2011</journal>
+    <year>2012</year>
+  </paper>
+
+  <!-- ======================= Dados faltantes e censurados ====================== -->
+
+  <paper id="rubin1976">
+    <author>RUBIN, D. B.</author>
+    <title>Inference and missing data</title>
+    <journal>Biometrika, v. 63, n. 3, p. 581–592. Artigo que introduz a taxonomia MCAR/MAR/MNAR</journal>
+    <year>1976</year>
+  </paper>
+
+  <paper id="little-rubin2019">
+    <author>LITTLE, R. J. A.; RUBIN, D. B.</author>
+    <title>Statistical Analysis with Missing Data</title>
+    <journal>3. ed. Hoboken: Wiley. Referência canônica sobre mecanismos de ausência e imputação múltipla</journal>
+    <year>2019</year>
+  </paper>
+
+  <paper id="helsel2005">
+    <author>HELSEL, D. R.</author>
+    <title>Nondetects and Data Analysis: Statistics for Censored Environmental Data</title>
+    <journal>Hoboken: Wiley. Tratamento estatístico de resultados abaixo do limite de quantificação em dados ambientais</journal>
+    <year>2005</year>
+  </paper>
+
+  <!-- ===================== Sistemas de ML em produção ====================== -->
+
+  <paper id="sculley2015">
+    <author>SCULLEY, D.; HOLT, G.; GOLOVIN, D.; DAVYDOV, E.; PHILLIPS, T.; EBNER, D.; CHAUDHARY, V.; YOUNG, M.; CRESPO, J.-F.; DENNISON, D.</author>
+    <title>Hidden technical debt in machine learning systems</title>
+    <journal>Advances in Neural Information Processing Systems (NeurIPS), v. 28, p. 2503–2511</journal>
+    <year>2015</year>
+  </paper>
+
+  <paper id="gama2014">
+    <author>GAMA, J.; ŽLIOBAITĖ, I.; BIFET, A.; PECHENIZKIY, M.; BOUCHACHIA, A.</author>
+    <title>A survey on concept drift adaptation</title>
+    <journal>ACM Computing Surveys, v. 46, n. 4, art. 44</journal>
+    <year>2014</year>
+  </paper>
+
 </bibliography>

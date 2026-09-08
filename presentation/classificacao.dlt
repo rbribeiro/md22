@@ -1,0 +1,158 @@
+<document type="presentation" lang="pt" theme-accent="red" theme="slides.css">
+  <title>MD22 — Problemas de classificação</title>
+
+  <import src="regression" />
+
+  <progress/>
+
+  <floating>
+    <toc>
+      <title>Roteiro</title>
+    </toc>
+  </floating>
+
+  <cover>
+    <title>Problemas de <em>classificação</em></title>
+    <subtitle>Quando a resposta é um rótulo</subtitle>
+    <author>Rodrigo Ribeiro</author>
+    <affiliation>IMPA Tech</affiliation>
+    <event>Aprendizado de Máquina I (MD22)</event>
+    <date>2026.2</date>
+  </cover>
+
+  <slide>
+    <toc depth="1">
+      <title>Roteiro</title>
+    </toc>
+  </slide>
+
+  <!-- ==================================================================== -->
+  <section id="sec:erro">
+    <title>Quando a resposta é um rótulo</title>
+
+    <slide>
+      <title>Quando $Y$ é categórico</title>
+      A resposta é um <b>rótulo</b>: $y \in \{\text{contaminada}, \text{não-contaminada}\}$.
+      <box type="warning" reveal="true">
+        Expressões como $y_i - \hat{y}_i$ deixam de fazer sentido. É preciso outra perda.
+        Com $p \le 3$, visualizamos plotando os $x_i$ e colorindo por rótulo.
+      </box>
+    </slide>
+
+    <slide>
+      <title>Taxa de erro</title>
+      <equation id="eq:ind">
+        \ell(y,\hat{y}) := \mathbb{1}\{y \neq \hat{y}\}
+      </equation>
+      O risco empírico dessa perda conta a proporção de erros:
+      $$
+      \frac{1}{N}\sum_{i=1}^N \mathbb{1}\{y_i \neq \hat{f}(x_i)\}.
+      $$
+    </slide>
+
+    <slide>
+      <title>Nem todo erro custa o mesmo</title>
+      <table id="tab:custo">
+        <header>
+          <column>Observado \ Previsto</column>
+          <column align="right" mono="true">contaminada</column>
+          <column align="right" mono="true">não-contaminada</column>
+        </header>
+        <row><column>contaminada</column><column>0</column><column>2</column></row>
+        <row><column>não-contaminada</column><column>1</column><column>0</column></row>
+        <caption>Dizer <i>não-contaminada</i> quando a água está contaminada é o erro grave: peso dobrado.</caption>
+      </table>
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:bayes">
+    <title>O classificador de Bayes</title>
+
+    <slide>
+      <title>O melhor classificador possível</title>
+      <definition id="def:bayes">
+        <title>Classificador de Bayes</title>
+        $$
+        \hat{Y}_{\text{Bayes}}(x) = \arg\max_{j \in \mathcal{C}}P(Y=j \, | \, X=x).
+        $$
+      </definition>
+      Ele minimiza o risco de classificação $\text{Risco}(\hat{Y}) = P(Y \neq \hat{Y})$ — nenhum classificador faz melhor.
+    </slide>
+
+    <slide>
+      <title>Um exemplo</title>
+      <example id="ex:binomial">
+        Se $X \in [0,1]$ e $Y \,|\, X \sim {\rm bin}(K,x)$, então
+        $$
+        P(Y=j \, | \, X=0{,}5) = \binom{K}{j}\frac{1}{2^K}
+        $$
+        é máxima em $j = \lfloor K/2 \rfloor$, logo $\hat{Y}_{\text{Bayes}}(0{,}5) = \lfloor K/2 \rfloor$.
+      </example>
+    </slide>
+
+    <slide>
+      <title>Por que ele é apenas teórico</title>
+      <box type="warning">
+        Na prática, <b>não conhecemos</b> a distribuição condicional de $Y \,|\, X$.
+      </box>
+      Ele serve de <em>referência de excelência</em>: bons métodos tentam aproximá-lo.
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:knn">
+    <title>Os $K$ vizinhos mais próximos</title>
+
+    <slide>
+      <title>O algoritmo</title>
+      <list marker="number" animated="true">
+        <item>Calcule a distância entre a entrada $x$ e <b>todos</b> os pontos observados.</item>
+        <item>Fixe os $K$ pontos mais próximos de $x$.</item>
+        <item>Classifique $x$ com o rótulo da <b>maioria</b> entre esses $K$.</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>Experimente</title>
+      <interactive id="in:knn">
+        <knn-example k="3" />
+        <caption>A linha tracejada aponta os $K$ vizinhos.</caption>
+      </interactive>
+    </slide>
+
+    <slide>
+      <title>KNN imita Bayes</title>
+      Pela Lei dos Grandes Números, a probabilidade condicional é aproximada por uma proporção. Como raramente há pontos com entrada <b>exatamente</b> $x_0$, usamos os $K$ vizinhos $N_K(x_0)$:
+      <equation id="eq:prop_k">
+        P(Y = j \, | \, X=x_0) \approx \frac{\left|\left\lbrace (x,y) \in S \, : \, x\in N_K(x_0) \text{ e } y=j\right\rbrace\right|}{K}
+      </equation>
+      Maximizar o lado direito é escolher o rótulo da maioria.
+    </slide>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:fecho">
+    <title>Fechamento</title>
+
+    <slide>
+      <title>O que fica</title>
+      <list animated="true">
+        <item>Mudou a <em>perda</em>, não o modelo mental: continua sendo ERM.</item>
+        <item>A taxa de erro é a perda $0$–$1$; erros assimétricos pedem pesos assimétricos.</item>
+        <item>Bayes é o teto teórico — inatingível porque exige $P(Y \,|\, X)$.</item>
+        <item>KNN aproxima esse teto trocando "exatamente $x_0$" por "perto de $x_0$".</item>
+      </list>
+    </slide>
+
+    <slide>
+      <title>Para casa</title>
+      <list animated="true">
+        <item>Mostre que o classificador de Bayes minimiza $\text{Risco}(\hat{Y}) = P(Y \neq \hat{Y})$.</item>
+        <item>Implemente em <i>Python</i> o classificador de Bayes do exemplo binomial.</item>
+        <item>Implemente o KNN em <i>Python</i>, sem importar nenhuma biblioteca.</item>
+      </list>
+    </slide>
+  </section>
+
+</document>

@@ -1,0 +1,1295 @@
+<document lang="pt" type="article" theme-accent="red" theme-mode="light" theme="../theme.css">
+  <title>Estudo dirigido I</title>
+  <meta>
+    <meta-item key="Autor">Rodrigo Ribeiro</meta-item>
+    <meta-item key="Curso">Aprendizado de Máquina I (MD22)</meta-item>
+    <meta-item key="Instituição">IMPA Tech</meta-item>
+    <meta-item key="Período">2026.2</meta-item>
+  </meta>
+
+  <import src="regression" />
+
+  <floating>
+    <toc depth="2" />
+  </floating>
+
+  <intro>
+    Olá pessoas, como prometido, aqui está o estudo dirigido!
+    Ele percorre, na ordem das notas de aula, os capítulos <i>O que significa aprender?</i>, <i>Visão geral de Aprendizado de Máquina supervisionado</i> e <i>Regressão Linear</i>. Cada seção abre com a leitura recomendada e uma lista do que você deve saber, seguida de exercícios de quatro tipos: 
+    <list>
+      <item><b>Conceitual</b>: relacionar conceitos e entender o que cada definição mede e para que serve.</item>
+      <item><b>Prático</b>: cálculo à mão ou experimentação com os widgets.</item>
+      <item><b>Demonstração</b>: provar.</item>
+      <item><b>Programação</b>: implementar; código correto basta, sem preocupação com eficiência; Python puro, NumPy permitido, sem <c>scikit-learn</c>.</item>
+    </list>
+    Alguns exercícios (ou itens) estão marcados como <b>Desafio</b>: exigem mais de um passo ou um resultado que não está nas notas. Não são obrigatórios, mas quem fizer vai entender o resto com muito mais folga.
+
+  </intro>
+
+  <!-- ==================================================================== -->
+  <section id="sec:aprender">
+    <title>O que significa aprender?</title>
+
+    <b>Leitura:</b> capítulo <i>O que significa aprender?</i>.
+    <box type="note">
+      <title>Você deve saber</title>
+      <list>
+        <item>Enunciar o laço <i>dados → método → medida de performance</i> e dizer o que cada componente codifica.</item>
+        <item>Explicar por que aprender exige os três, e o que falha quando um falta.</item>
+        <item>Reconhecer os três componentes em um problema descrito em palavras.</item>
+      </list>
+    </box>
+
+    <exercise>
+      <title>Três problemas</title>
+      <meta>
+        <meta-item key="Tipo">Conceitual</meta-item>
+        <meta-item key="Uso de IA">Não recomendado</meta-item>
+      </meta>
+      Para cada cenário, responda: é regressão ou classificação? O interesse é previsão ou inferência? Quais são $N$ e $p$? O que são os <i>dados</i>, o que seria um <i>método</i> e qual <i>medida de performance</i> você usaria?
+      <list marker="a">
+        <item>O IGAM quer entender <em>quais</em> parâmetros medidos em campo (pH, turbidez, condutividade, OD, temperatura) explicam a concentração de arsênio nas suas cerca de 660 estações.</item>
+        <item>Um banco quer decidir se novos clientes vão ou não pagar um empréstimo, a partir de 10 mil empréstimos passados descritos por 8 variáveis.</item>
+        <item>Um fundo quer prever a variação percentual semanal do Ibovespa a partir das variações semanais de três índices estrangeiros, usando 5 anos de dados.</item>
+      </list>
+    </exercise>
+
+    <exercise>
+      <title>A medida é uma decisão</title>
+      <meta>
+        <meta-item key="Tipo">Conceitual</meta-item>
+        <meta-item key="Uso de IA">Não recomendado</meta-item>
+      </meta>
+      Considere um filtro de spam.
+      <list marker="a">
+        <item>Descreva dois filtros $A$ e $B$ e duas medidas de performance $m_1$ e $m_2$ tais que $m_1$ prefere $A$ e $m_2$ prefere $B$.</item>
+        <item>O que a escolha entre $m_1$ e $m_2$ diz sobre o problema, e não sobre os filtros?</item>
+        <item>Por que "porcentagem de acertos nos e-mails usados para construir o filtro" não é uma medida de <em>aprendizado</em>? O que ela mede, então?</item>
+      </list>
+    </exercise>
+
+    <exercise>
+      <title>Sistema de recomendação com medida</title>
+      <meta>
+        <meta-item key="Tipo">Programação</meta-item>
+        <meta-item key="Uso de IA">Permitido</meta-item>
+      </meta>
+      Retome o recomendador de filmes do capítulo.
+      <list marker="a">
+        <item>Gere um catálogo fictício (título, gênero, diretor) e um conjunto de usuários, cada um com uma lista de filmes assistidos e uma nota.</item>
+        <item>Implemente o recomendador aleatório e o ponderado (que conta gêneros e diretores preferidos).</item>
+        <item>Defina uma medida de performance, por exemplo a fração de recomendações cujo gênero coincide com o gênero mais bem avaliado por um usuário <em>que não foi usado</em> para ajustar os pesos. Compare os dois recomendadores.</item>
+      </list>
+    </exercise>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:sup">
+    <title>Aprendizado de máquina supervisionado</title>
+
+    <!-- ================================================================== -->
+    <subsection id="subsec:problema">
+      <title>Do problema concreto ao problema matemático</title>
+
+      <b>Leitura:</b> capítulo <i>Visão geral de AM supervisionado</i>, seções <i>Um problema concreto</i>, <i>Um problema matemático</i> e <i>O problema concreto e o problema matemático</i>.
+      <box type="note">
+        <title>Você deve saber</title>
+        <list>
+          <item>Identificar preditores e resposta; distinguir regressão de classificação.</item>
+          <item>Enunciar o modelo $Y = f(X) + \varepsilon$ e dizer o que $f$ e $\varepsilon$ representam.</item>
+          <item>Explicar por que interpolar os dados não é aprender $f$ (fenômeno de Runge).</item>
+        </list>
+      </box>
+
+      <exercise>
+        <title>O modelo $Y = f(X) + \varepsilon$</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>No problema do arsênio, o que a função $f$ representa? Ela existe mesmo que ninguém a conheça?</item>
+          <item>Mostre que exigir $\mathbb{E}[\varepsilon] = 0$ é uma <em>convenção</em>, não uma hipótese: se $\mathbb{E}[\varepsilon] = c \neq 0$, redefina $f$ e $\varepsilon$ para que valha.</item>
+          <item>Há duas fontes de $\varepsilon$: variáveis relevantes que não foram medidas e o erro de medição do laboratório. Qual delas diminui coletando <em>mais amostras</em>? E coletando <em>mais variáveis</em>? Qual delas nenhum método consegue reduzir?</item>
+          <item>Suponha que ${\rm Var}(\varepsilon)$ dependa de $x$ (rios limpos têm medições mais precisas). O que muda na previsão de $f$? E na avaliação do erro de uma estimativa $\hat{f}$?</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:interpolar">
+        <title>Interpolar não é aprender</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        O polinômio interpolador de grau $N-1$ passa por todos os $N$ pontos: seu risco empírico é zero.
+        <list marker="a">
+          <item>Por que isso não faz dele uma boa estimativa de $f$? O que ele "aprende" além de $f$?</item>
+          <item>Usando o fenômeno de Runge, explique por que aumentar $N$ pode <em>piorar</em> o interpolador, quando um bom método deveria melhorar com mais dados.</item>
+          <item>Que hipótese sobre $f$ e sobre $\varepsilon$ tornaria interpolar razoável?</item>
+          <item>Reamostrar apenas o ruído $\varepsilon$ (mantendo os $x_i$) muda muito o interpolador. Que nome esse fenômeno vai receber mais adiante?</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:vandermonde">
+        <title>Existência e unicidade do interpolador</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Sejam $x_1, \dots, x_N$ distintos. Mostre que a matriz de Vandermonde $V_{ij} = x_i^{\,j-1}$ é invertível, e conclua que existe um único polinômio de grau no máximo $N-1$ passando por $(x_i, y_i)$, $i = 1, \dots, N$. O que acontece se dois $x_i$ coincidem?
+        <hint>Um polinômio não nulo de grau no máximo $N-1$ tem no máximo $N-1$ raízes. Use isso para mostrar que o núcleo de $V$ é trivial.</hint>
+      </exercise>
+
+      <exercise>
+        <title>Interpolação de Lagrange e sua instabilidade</title>
+        <meta>
+          <meta-item key="Tipo">Programação</meta-item>
+          <meta-item key="Uso de IA">Permitido</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Implemente <c>lagrange(xs, ys)</c>, que devolve uma função <c>p(x)</c> avaliando o polinômio interpolador $\sum_i y_i L_i(x)$.</item>
+          <item>Fixe $x_1, \dots, x_{10}$ igualmente espaçados em $[-1, 1]$ e $f(x) = \sin(3x)$. Gere $y_i = f(x_i) + \varepsilon_i$ com $\varepsilon_i \sim \mathcal{N}(0, 0{,}1^2)$, interpole e avalie em $x_0 = 0{,}95$.</item>
+          <item>Repita (b) 100 vezes, reamostrando apenas o ruído. Reporte a média e o desvio padrão de $p(x_0)$ e compare com $f(x_0)$.</item>
+        </list>
+      </exercise>
+    </subsection>
+
+    <!-- ================================================================== -->
+    <subsection id="subsec:estimar">
+      <title>Por que e como estimar $f$</title>
+
+      <b>Leitura:</b> seções <i>Por que estimar $f$?</i> e <i>Como estimar $f$?</i> (minimização do risco empírico, máxima verossimilhança, modelos paramétricos e não-paramétricos, não há almoço grátis).
+      <box type="note">
+        <title>Você deve saber</title>
+        <list>
+          <item>Distinguir previsão de inferência e dizer o que cada uma exige de $\hat{f}$.</item>
+          <item>Definir função perda, risco empírico e o estimador ERM; explicar o papel da classe $\mathcal{G}$.</item>
+          <item>Mostrar que máxima verossimilhança com ruído gaussiano é ERM com perda quadrática.</item>
+          <item>Distinguir paramétrico de não-paramétrico, e parâmetro de hiperparâmetro.</item>
+          <item>Comparar as perdas $\ell_1$ e $\ell_2$.</item>
+        </list>
+      </box>
+
+      <exercise>
+        <title>O que o risco empírico mede?</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Em palavras, o que $\frac{1}{N}\sum_{i=1}^N \ell(y_i, \hat{y}_i)$ mede? Por que é uma <em>média</em>? Que resultado de probabilidade justifica usá-la?</item>
+          <item>O ERM tem dois ingredientes, a perda $\ell$ e a classe $\mathcal{G}$. Qual deles codifica <em>o que nos importa</em> e qual codifica <em>o que acreditamos sobre $f$</em>?</item>
+          <item>O que o ERM devolve se $\mathcal{G}$ é o conjunto de todas as funções? E se $\mathcal{G}$ é o conjunto das funções constantes?</item>
+          <item>Conclua: o risco empírico mede a qualidade do <em>ajuste</em>. Que quantidade mediria <em>aprendizado</em>?</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>Previsão ou inferência?</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Para o arsênio (em mg/L), o modelo $\hat{f}_A(x) = 15{,}2\cdot\text{pH} - 2{,}1\cdot\text{turbidez} - 5$ tem erro de teste maior que um kNN com $k = 7$, $\hat{f}_B$.
+        <list marker="a">
+          <item>Qual dos dois você entrega ao laboratório que quer parar de medir arsênio? Por quê?</item>
+          <item>Qual você entrega ao órgão ambiental que pergunta "reduzir a turbidez ajuda?"</item>
+          <item>Interprete o coeficiente $15{,}2$, com unidades. O sinal de $-2{,}1$ significa que turbidez <em>causa</em> menos arsênio?</item>
+          <item>Por que não há nada análogo a interpretar em $\hat{f}_B$?</item>
+          <item>Descreva um cenário em que o modelo com <em>maior</em> erro de teste é a escolha certa.</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>Paramétrico versus não-paramétrico</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Liste vantagens e desvantagens de um método paramétrico frente a um não-paramétrico. Em que situação (tamanho de $N$, conhecimento sobre $f$) você prefere cada um?</item>
+          <item>"O kNN não tem parâmetros." Corrija a frase. Qual a diferença entre parâmetro e hiperparâmetro?</item>
+          <item>Por que $k$ não pode ser escolhido minimizando o risco empírico nos dados de treino? Que $k$ sairia?</item>
+          <item>Em que sentido a "quantidade de informação" que o kNN guarda cresce com $N$, enquanto a da regressão linear não?</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>Escolhendo a perda</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Algumas estações têm concentrações de arsênio dezenas de vezes maiores que as demais.
+        <list marker="a">
+          <item>Sabendo que, entre as funções constantes, $\ell_2$ escolhe a média e $\ell_1$ a mediana (<ref to="exerc:media_mediana" />), qual perda você usaria para prever uma estação "típica"? E para não subestimar as estações críticas?</item>
+          <item>O que se perde ao trocar $\ell_2$ por $\ell_1$ do ponto de vista de <em>como</em> encontrar o minimizador?</item>
+          <item>Proponha uma perda que penalize mais <em>subestimar</em> o arsênio do que superestimá-lo. Que efeito ela tem sobre a $\hat{f}$ obtida por ERM?</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:sem_intercepto">
+        <title>Regressão sem intercepto à mão</title>
+        <meta>
+          <meta-item key="Tipo">Prático</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Considere $Y = \beta X + \varepsilon$ e os dados abaixo.
+        <table>
+          <header>
+            <column align="right" mono="true">$x$</column>
+            <column align="right" mono="true">$y$</column>
+          </header>
+          <row><column>1</column><column>3</column></row>
+          <row><column>2</column><column>4</column></row>
+          <row><column>3</column><column>8</column></row>
+          <row><column>4</column><column>10</column></row>
+        </table>
+        <list marker="a">
+          <item>Encontre $\hat{\beta}$ que minimiza o risco empírico com perda quadrática.</item>
+          <item>Mostre que $\hat{\beta} x$ é a projeção ortogonal do vetor $y \in \mathbb{R}^4$ sobre a reta gerada por $x \in \mathbb{R}^4$. O que o vetor $y - \hat{\beta}x$ tem de especial?</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>Verossimilhança é risco empírico</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Se $\varepsilon \sim \mathcal{N}(0, \sigma^2)$, mostre que maximizar a verossimilhança condicional de $y_1, \dots, y_N$ dado $x_1, \dots, x_N$ é minimizar o risco empírico com perda quadrática.</item>
+          <item>Se $\varepsilon$ tem densidade de Laplace $\frac{1}{2b}e^{-|t|/b}$, que perda aparece?</item>
+          <item>Conclua: o que a escolha da perda revela sobre a nossa crença a respeito do ruído?</item>
+        </list>
+        <hint>Tome $-\log$ da verossimilhança e descarte os termos que não dependem de $f$.</hint>
+      </exercise>
+
+      <exercise id="exerc:media_mediana">
+        <title>Média e mediana como ERM</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Seja $\mathcal{G}$ o conjunto das funções constantes $g(x) = c$. Mostre que o ERM com $\ell_2(y, \hat{y}) = (y - \hat{y})^2$ devolve $c = \bar{y}$, e que com $\ell_1(y, \hat{y}) = |y - \hat{y}|$ devolve uma mediana de $y_1, \dots, y_N$. Por que isso explica a robustez de $\ell_1$ a valores extremos?
+        <hint>Para $\ell_1$, a função $c \mapsto \sum_i |y_i - c|$ é convexa e linear por partes; compare as inclinações à esquerda e à direita de cada $y_i$.</hint>
+      </exercise>
+
+      <exercise id="exerc:funcao_regressao">
+        <title>A função de regressão minimiza o risco</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Seja $(X, Y)$ um par aleatório com $\mathbb{E}[Y^2] \lt\infty$ e defina $f(x) = \mathbb{E}[Y \mid X = x]$.
+        <list marker="a">
+          <item>Para qualquer função $g$, mostre que
+            $$
+              \mathbb{E}\left[(Y - g(X))^2\right] = \mathbb{E}\left[(Y - f(X))^2\right] + \mathbb{E}\left[(f(X) - g(X))^2\right].
+            $$
+            Conclua que $f$ minimiza o risco com perda quadrática sobre <em>todas</em> as funções, e que o valor mínimo é $\mathbb{E}[{\rm Var}(Y \mid X)]$, o erro irredutível.</item>
+          <item>Compare com o <ref to="exerc:media_mediana" />: qual dos dois é a versão <em>populacional</em> e qual é a <em>empírica</em>? Por que o ERM precisa restringir $\mathcal{G}$, se o minimizador sobre todas as funções é conhecido?</item>
+          <item><b>(Desafio)</b> Mostre que, com a perda $\ell_1$, o minimizador é a mediana condicional de $Y$ dado $X = x$.</item>
+        </list>
+        <hint>Em (a), some e subtraia $f(X)$, condicione em $X$ e use $\mathbb{E}[Y - f(X) \mid X] = 0$ para matar o termo cruzado.</hint>
+      </exercise>
+
+      <exercise>
+        <title>ERM em uma classe finita</title>
+        <meta>
+          <meta-item key="Tipo">Programação</meta-item>
+          <meta-item key="Uso de IA">Permitido</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Implemente <c>erm(X, y, G, loss)</c>, que recebe uma lista de funções <c>G</c> e uma perda <c>loss(y, y_hat)</c> e devolve a função de menor risco empírico.</item>
+          <item>Use-a com $\mathcal{G} = \{ g_\beta(x) = \beta x : \beta \in \{0, 0{,}1, 0{,}2, \dots, 5\} \}$ e os dados do <ref to="exerc:sem_intercepto" />, com $\ell_2$ e com $\ell_1$. Compare com o $\hat{\beta}$ calculado à mão.</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:knn_reg">
+        <title>kNN de regressão</title>
+        <meta>
+          <meta-item key="Tipo">Programação</meta-item>
+          <meta-item key="Uso de IA">Permitido</meta-item>
+        </meta>
+        Implemente, sem bibliotecas além de <c>math</c> e <c>random</c>, <c>knn_reg(X, y, x0, k)</c>, que devolve a média dos $y_i$ dos $k$ pontos mais próximos de <c>x0</c>. Gere $N = 100$ pontos de $y = \sin(2\pi x) + \varepsilon$ em $[0, 1]$ e avalie $\hat{f}$ em uma grade fina para $k \in \{1, 5, 20\}$. Descreva o que muda.
+      </exercise>
+    </subsection>
+
+    <!-- ================================================================== -->
+    <subsection id="subsec:precisao">
+      <title>Quão precisa é a estimativa?</title>
+
+      <b>Leitura:</b> seção <i>Quão precisa é a estimativa de $f$?</i> (partição dos dados, LOOCV, $k$-fold, vazamento de dados, a natureza dos erros, trade-off viés-variância, sobreajuste e regularização).
+      <box type="note">
+        <title>Você deve saber</title>
+        <list>
+          <item>Definir MSE de treino e de teste e dizer o que cada um mede.</item>
+          <item>Decompor o risco em erro redutível e irredutível, e o redutível em viés² e variância.</item>
+          <item>Explicar a curva em U do erro de teste e situar qualquer método nela.</item>
+          <item>Descrever partição simples, LOOCV e $k$-fold, com custos e variâncias.</item>
+          <item>Reconhecer vazamento de dados e explicar o que a regularização faz.</item>
+        </list>
+      </box>
+
+      <exercise>
+        <title>O que o MSE mede?</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>No problema do arsênio, em que unidade está o MSE? Por que se costuma reportar a raiz quadrada (RMSE)?</item>
+          <item>$\text{MSE}_{\text{treino}}$ e $\text{MSE}_{\text{teste}}$ medem coisas diferentes. Nomeie cada uma e explique por que a primeira é sistematicamente otimista.</item>
+          <item>Um modelo tem $\text{MSE}_{\text{teste}} = 10^{-4}$. É bom? Responda comparando com o limite legal de $0{,}01$ mg/L e com ${\rm Var}(\varepsilon)$.</item>
+          <item>Por que nenhum método consegue, em média, MSE de teste abaixo de ${\rm Var}(\varepsilon)$?</item>
+          <item>O que $\text{MSE}_{\text{treino}} \to 0$ indica sobre o método? E sobre o quanto ele aprendeu?</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>As cinco curvas</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Esboce, em um mesmo gráfico com a flexibilidade de $\mathcal{G}$ no eixo horizontal, as curvas de viés², variância, erro de treino, erro de teste e erro irredutível. Explique a forma de cada curva e por que $\text{erro de teste} = \text{viés}^2 + \text{variância} + \text{irredutível}$. Marque onde ficam o interpolador do <ref to="exerc:interpolar" />, a função constante e a regressão linear.
+      </exercise>
+
+      <exercise id="exerc:flexivel">
+        <title>Flexível ou rígido?</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Para cada situação, diga se espera que uma classe $\mathcal{G}$ flexível ou rígida tenha menor erro de teste, justificando com viés e variância.
+        <list marker="a">
+          <item>$N$ enorme e $p$ pequeno.</item>
+          <item>$p$ enorme e $N$ pequeno.</item>
+          <item>$f$ altamente não-linear.</item>
+          <item>${\rm Var}(\varepsilon)$ enorme.</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:diagnostico">
+        <title>Diagnóstico por viés e variância</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Dois métodos foram ajustados aos mesmos dados. Método $A$: $\text{MSE}_{\text{treino}} = 0{,}1$, $\text{MSE}_{\text{teste}} = 2{,}0$. Método $B$: $\text{MSE}_{\text{treino}} = 0{,}9$, $\text{MSE}_{\text{teste}} = 1{,}1$.
+        <list marker="a">
+          <item>Qual sofre de sobreajuste e qual de subajuste? O que você pode dizer sobre ${\rm Var}(\varepsilon)$?</item>
+          <item>Para cada método, diga o que fazer (coletar mais dados, aumentar a flexibilidade, regularizar) e preveja o efeito nos dois erros.</item>
+          <item>Se $N$ dobrar, o que acontece com o viés, a variância, o erro irredutível e a flexibilidade ótima?</item>
+          <item>Se você acrescentar um preditor puramente aleatório, o que acontece com o viés e com a variância?</item>
+          <item>No kNN, quando $k$ cresce, o que acontece com viés e variância? Qual $k$ é o "interpolador"? Qual é a "função constante"?</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>Validação cruzada</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Descreva como o $k$-fold é implementado e quantos ajustes ele exige.</item>
+          <item>Vantagens e desvantagens do $k$-fold em relação a uma única partição treino/teste.</item>
+          <item>Vantagens e desvantagens do $k$-fold em relação ao LOOCV. Por que o LOOCV pode ter <em>maior</em> variância, apesar de usar quase todos os dados em cada ajuste?</item>
+          <item>O erro de validação cruzada estima o erro de qual modelo: o ajustado com $N$ pontos ou com $N(1 - 1/k)$? Isso enviesa a estimativa para cima ou para baixo?</item>
+        </list>
+        <hint>Em (c), pense na correlação entre os $N$ ajustes do LOOCV: eles compartilham $N-2$ pontos.</hint>
+      </exercise>
+
+      <exercise>
+        <title>Vazamento de dados</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        O conjunto de teste deve simular dados <em>futuros</em>. Para cada procedimento, diga se há vazamento, por quê, e qual seria o sintoma.
+        <list marker="a">
+          <item>Padronizar cada coluna usando a média e o desvio padrão de <em>todos</em> os dados, e só depois separar treino e teste.</item>
+          <item>Escolher o $k$ do kNN pelo erro no conjunto de teste e reportar esse erro como performance.</item>
+          <item>Medições trimestrais da mesma estação aparecem tanto no treino quanto no teste.</item>
+          <item>Preencher valores ausentes de uma coluna pela média da coluna inteira antes de separar.</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>O que a regularização faz</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Considere o lasso, $\hat{\beta}_\lambda \in \arg\min_\beta \sum_i (y_i - \beta_0 - \beta_1 x_i - \dots - \beta_d x_i^d)^2 + \lambda \sum_{j=1}^d |\beta_j|$, com $\lambda$ crescendo a partir de zero.
+        <list marker="a">
+          <item>Para cada quantidade, diga se ela aumenta sempre, diminui sempre, tem forma de U ou fica constante, e justifique: erro de treino, erro de teste, variância, viés², erro irredutível.</item>
+          <item>Por que $\beta_0$ não é penalizado?</item>
+          <item>Se a coluna $x$ for medida em outra unidade (por exemplo, gramas em vez de quilos), a solução muda? O que isso sugere fazer antes de regularizar?</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:overfit_widget">
+        <title>Sobreajuste ao vivo</title>
+        <meta>
+          <meta-item key="Tipo">Prático</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <interactive id="in:overfitting">
+          <overfitting xfixed="0" />
+          <caption>Ajuste polinomial de grau variável. Os pontos de treino e de teste vêm da mesma $f$ com o mesmo ruído.</caption>
+        </interactive>
+        Varie o grau do polinômio e registre, em uma tabela, o MSE de treino e de teste para cada grau. Localize o mínimo do erro de teste e explique, em termos de viés e variância, o que acontece à esquerda e à direita dele. Reamostre o ruído com o grau fixo: qual dos dois erros muda mais? Por quê?
+      </exercise>
+
+      <exercise>
+        <title>Erro redutível e irredutível</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Fixe $x$ e seja $Y(x) = f(x) + \varepsilon$. Mostre que
+        $$
+          \mathbb{E}\left[(Y(x) - \hat{f}(x))^2\right] = \mathbb{E}\left[(f(x) - \hat{f}(x))^2\right] + {\rm Var}(\varepsilon),
+        $$
+        indicando exatamente onde se usa $\mathbb{E}[\varepsilon] = 0$ e onde se usa a independência entre $\varepsilon$ e $\hat{f}(x)$. Por que $\hat{f}(x)$ é uma variável aleatória?
+      </exercise>
+
+      <exercise>
+        <title>Viés e variância</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Mostre que
+        $$
+          \mathbb{E}\left[(f(x) - \hat{f}(x))^2\right] = \left(f(x) - \mathbb{E}[\hat{f}(x)]\right)^2 + {\rm Var}(\hat{f}(x)).
+        $$
+        Em relação a que distribuição são tomadas essas esperanças?
+        <hint>Some e subtraia $\mathbb{E}[\hat{f}(x)]$ dentro do quadrado.</hint>
+      </exercise>
+
+      <exercise id="exerc:kfold">
+        <title>$k$-fold genérico</title>
+        <meta>
+          <meta-item key="Tipo">Programação</meta-item>
+          <meta-item key="Uso de IA">Permitido</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Reescreva <c>particao_dados</c> do capítulo para matrizes NumPy, devolvendo índices de treino e teste.</item>
+          <item>Implemente <c>k_fold(X, y, k, fit, predict, loss)</c>, em que <c>fit(X, y)</c> devolve um modelo, <c>predict(modelo, X)</c> devolve previsões e <c>loss</c> é a perda. A função devolve o erro médio de validação cruzada.</item>
+          <item>Use-a para escolher o $k$ do kNN do <ref to="exerc:knn_reg" /> em dados sintéticos. Compare com o $k$ que minimiza o erro de treino.</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>Simulando viés e variância</title>
+        <meta>
+          <meta-item key="Tipo">Programação</meta-item>
+          <meta-item key="Uso de IA">Permitido</meta-item>
+        </meta>
+        Fixe $f(x) = \sin(2\pi x)$, $x_0 = 0{,}3$ e ${\rm Var}(\varepsilon) = 0{,}1$. Repita 200 vezes: amostre um conjunto de treino com $N = 50$, ajuste o kNN e calcule $\hat{f}(x_0)$. Com as 200 previsões, estime $\left(f(x_0) - \mathbb{E}[\hat{f}(x_0)]\right)^2$ e ${\rm Var}(\hat{f}(x_0))$. Repita para $k \in \{1, 3, 10, 30, 50\}$ e confira suas respostas ao <ref to="exerc:diagnostico" />(e).
+      </exercise>
+    </subsection>
+
+    <!-- ================================================================== -->
+    <subsection id="subsec:classificacao">
+      <title>Classificação</title>
+
+      <b>Leitura:</b> seção <i>Problemas de Classificação</i> (perda 0-1, classificador de Bayes, $K$ vizinhos mais próximos).
+      <box type="note">
+        <title>Você deve saber</title>
+        <list>
+          <item>Definir a perda 0-1 e a taxa de erro; construir perdas assimétricas.</item>
+          <item>Definir o classificador de Bayes e explicar por que ele é ótimo e por que não é utilizável.</item>
+          <item>Explicar por que o kNN aproxima o classificador de Bayes, e o que $K$ controla.</item>
+        </list>
+      </box>
+
+      <exercise id="exerc:perda01">
+        <title>O que a perda 0-1 mede?</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Por que $y - \hat{y}$ não faz sentido quando $y \in \{\text{contaminada}, \text{não-contaminada}\}$? O que a perda $\mathbb{1}\{y \neq \hat{y}\}$ mede em seu lugar?</item>
+          <item>Apenas $3\%$ das estações são contaminadas. Qual a taxa de erro do classificador constante "não-contaminada"? Ele é bom?</item>
+          <item>Escreva uma perda assimétrica do capítulo (errar uma estação contaminada custa $2$, errar uma limpa custa $1$) como uma matriz $2 \times 2$ e calcule o risco empírico do classificador constante sob ela.</item>
+          <item>Que perda tornaria um classificador com taxa de erro $20\%$ preferível ao constante? O que isso diz sobre "taxa de erro" como medida de performance?</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>O classificador de Bayes como barreira</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Defina o classificador de Bayes.</item>
+          <item>Mostre que ele minimiza o risco de classificação equivocada definida como:
+            $$
+              R(\widehat{Y}) = \mathbb{P}(Y \neq \widehat{Y})
+            $$
+          </item>
+          <item>Por que ele não pode ser usado na prática? O que um método de aprendizado tenta fazer em relação a ele?</item>
+          
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>kNN à mão</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Seis estações foram descritas por três preditores padronizados e rotuladas.
+        <table>
+          <header>
+            <column>Obs.</column>
+            <column align="right" mono="true">$X_1$</column>
+            <column align="right" mono="true">$X_2$</column>
+            <column align="right" mono="true">$X_3$</column>
+            <column>$Y$</column>
+          </header>
+          <row><column>1</column><column>0</column><column>3</column><column>0</column><column>Limpa</column></row>
+          <row><column>2</column><column>2</column><column>0</column><column>0</column><column>Limpa</column></row>
+          <row><column>3</column><column>0</column><column>1</column><column>3</column><column>Limpa</column></row>
+          <row><column>4</column><column>0</column><column>1</column><column>2</column><column>Contaminada</column></row>
+          <row><column>5</column><column>−1</column><column>0</column><column>1</column><column>Contaminada</column></row>
+          <row><column>6</column><column>1</column><column>1</column><column>1</column><column>Limpa</column></row>
+        </table>
+        Queremos classificar uma nova estação com $X_1 = X_2 = X_3 = 0$.
+        <list marker="a">
+          <item>Calcule a distância euclidiana de cada observação ao ponto de teste.</item>
+          <item>Qual a previsão com $K = 1$? E com $K = 3$?</item>
+          <item>Se a fronteira de Bayes for muito não-linear, o melhor $K$ tende a ser grande ou pequeno? Por quê?</item>
+          <item>Com a perda assimétrica do <ref to="exerc:perda01" />, a decisão com $K = 3$ muda? E se errar uma estação contaminada custasse $3$?</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>kNN em regressão e em classificação</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>O que o kNN de regressão e o kNN classificador têm em comum e o que muda? Que quantidade populacional cada um aproxima: $\mathbb{E}[Y \mid X = x]$ ou $\arg\max_j P(Y = j \mid X = x)$?</item>
+          <item>Suponha $N$ pontos uniformes em $[0, 1]^p$ e um ponto de teste no interior. Para prever, selecionamos apenas os pontos dentro de um hipercubo centrado no ponto de teste que se estende $10\%$ do intervalo em <em>cada</em> coordenada. Que fração dos dados fica dentro deste hipercubo para $p = 1$? $p = 2$? $p = 100$?</item>
+          <item>O que isso implica para o kNN com muitos preditores? Em termos de viés e variância, o que acontece com os "vizinhos" quando $p$ cresce?</item>
+          <item>Para $p = 100$, qual deve ser o lado de um hipercubo centrado no ponto de teste para conter $10\%$ dos dados? Comente.</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>Bayes com resposta binomial</title>
+        <meta>
+          <meta-item key="Tipo">Prático</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Seja $Y \mid X = x \sim \text{bin}(4, x)$, com $x \in [0, 1]$. Calcule $\hat{Y}_{\text{Bayes}}(x)$ e o erro de Bayes $P(Y \neq \hat{Y}_{\text{Bayes}}(x) \mid X = x)$ para $x \in \{0{,}1;\; 0{,}5;\; 0{,}9\}$. 
+      </exercise>
+
+      <exercise>
+        <title>Fronteiras do kNN</title>
+        <meta>
+          <meta-item key="Tipo">Prático</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <interactive id="in:knn">
+          <knn-example k="3" />
+          <caption>Classificador kNN. Clique para acrescentar pontos e use o controle para variar $K$.</caption>
+        </interactive>
+        Com os pontos já presentes (acrescente mais, se quiser, com alguma sobreposição), observe as fronteiras para $K = 1$, $K = 3$ e $K = 15$. Descreva o que muda e traduza em viés e variância. Acrescente um ponto isolado no meio da outra classe e repita: para qual $K$ ele mais altera a fronteira?
+      </exercise>
+
+      
+      <exercise>
+        <title>kNN versus Bayes</title>
+        <meta>
+          <meta-item key="Tipo">Programação</meta-item>
+          <meta-item key="Uso de IA">Permitido</meta-item>
+        </meta>
+        Tome $X \sim U[0, 1]^2$ e $\eta(x) = P(Y = 1 \mid X = x) = \sigma\!\left(10\,(x_1 - x_2)\right)$, com $\sigma(t) = 1/(1 + e^{-t})$.
+        <list marker="a">
+          <item>Implemente <c>knn_class(X, y, x0, k)</c> com distância parametrizável e desempate pelo menor rótulo, e <c>bayes(x0)</c> usando $\eta$.</item>
+          <item>Gere dados dessa lei e compare, em um conjunto de teste grande, a taxa de erro do kNN (com $k$ escolhido por validação cruzada) com a do classificador de Bayes, para $N \in \{50, 200, 1000, 5000\}$. Para onde a diferença converge?</item>
+        </list>
+      </exercise>
+    </subsection>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section id="sec:linear">
+    <title>Regressão linear</title>
+
+    <!-- ================================================================== -->
+    <subsection id="subsec:mq1">
+      <title>Mínimos quadrados, caso $p = 1$</title>
+
+      <b>Leitura:</b> capítulo <i>Regressão Linear</i>, seções <i>Estimando os coeficientes</i> e <i>Caso $p = 1$</i>.
+      <box type="note">
+        <title>Você deve saber</title>
+        <list>
+          <item>Definir RSS e relacioná-la ao MSE.</item>
+          <item>Deduzir as equações normais para $p = 1$ e resolvê-las.</item>
+          <item>Justificar que o ponto crítico é mínimo global (convexidade, Hessiana).</item>
+          <item>Escrever $\hat{\beta}_1 = {\rm Cov}(x, y) / {\rm Var}(x)$ e interpretar.</item>
+        </list>
+      </box>
+
+      <exercise>
+        <title>O que RSS e $\hat{\beta}$ medem?</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>RSS e MSE diferem por um fator $N$. Qual das duas serve para comparar ajustes em conjuntos de tamanhos diferentes? Qual aparece naturalmente na verossimilhança?</item>
+          <item>Por que mínimos quadrados soma distâncias <em>verticais</em> e não perpendiculares à reta? Relacione com o que é aleatório no modelo $Y = \beta_0 + \beta_1 X + \varepsilon$.</item>
+          <item>Em $\hat{\beta}_1 = {\rm Cov}(x, y) / {\rm Var}(x)$, quais as unidades de $\hat{\beta}_1$? Se $\hat{\beta}_1 = 0$, $Y$ é independente de $X$? Dê um contraexemplo.</item>
+          <item>O vetor de resíduos $r = y - \hat{y}$ é ortogonal ao vetor de uns e ao vetor $x$. Traduza cada ortogonalidade em uma frase sobre o ajuste.</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:linear_cubico">
+        <title>Linear ou cúbico?</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Suponha que a relação verdadeira seja $Y = \beta_0 + \beta_1 X + \varepsilon$ e que ajustemos, aos mesmos dados, uma reta e um polinômio cúbico.
+        <list marker="a">
+          <item>Qual dos dois tem menor RSS de treino, ou não é possível dizer? Justifique.</item>
+          <item>E RSS de teste?</item>
+          <item>Repita (a) e (b) supondo que a relação verdadeira é não-linear, mas não sabemos o quanto.</item>
+        </list>
+        Relacione as respostas com o <ref to="exerc:flexivel" />.
+      </exercise>
+
+      <exercise>
+        <title>Com intercepto, à mão</title>
+        <meta>
+          <meta-item key="Tipo">Prático</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Para os dados do <ref to="exerc:sem_intercepto" />, ajuste $Y = \beta_0 + \beta_1 X + \varepsilon$: calcule $\hat{\beta}_0$, $\hat{\beta}_1$ e a RSS. Compare com a RSS do ajuste sem intercepto. Por que a RSS não pode ter aumentado?
+      </exercise>
+
+      <exercise id="exerc:alavancagem">
+        <title>Alavancagem</title>
+        <meta>
+          <meta-item key="Tipo">Prático</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <interactive id="in:simple_regression">
+          <simple-regression beta0="2" beta1="1.5" sample-size="30" noise-variance="4" />
+          <caption>Regressão linear simples. A reta tracejada é a verdadeira; a cheia, o ajuste. Clique para acrescentar um ponto e arraste-o.</caption>
+        </interactive>
+        <list marker="a">
+          <item>Reamostre várias vezes com $N = 10$ e depois com $N = 120$. O que acontece com a dispersão de $\hat{\beta}_1$? Qual termo da decomposição viés-variância isso ilustra?</item>
+          <item>Acrescente um ponto no centro da nuvem e arraste-o verticalmente; depois faça o mesmo com um ponto na borda. Qual altera mais a reta? Explique com os pesos $(x_i - \bar{x})$ na fórmula de $\hat{\beta}_1$.</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:normais_p1">
+        <title>Equações normais para $p = 1$</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Derive as equações normais para $\text{RSS}(\beta_0, \beta_1)$ e resolva-as, obtendo $\hat{\beta}_1$ e $\hat{\beta}_0 = \bar{y} - \hat{\beta}_1 \bar{x}$.</item>
+          <item>Conclua que a reta ajustada passa por $(\bar{x}, \bar{y})$ e que os resíduos satisfazem $\sum_i r_i = 0$ e $\sum_i x_i r_i = 0$.</item>
+          <item>No ajuste sem intercepto, mostre que $\hat{y}_i = \sum_{i'} a_{i'} y_{i'}$ e encontre os $a_{i'}$. Em que sentido "a previsão é uma combinação linear dos $y$"? Que $y_{i'}$ pesam mais?</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>O ponto crítico é mínimo</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Mostre que a Hessiana de $\text{RSS}(\beta_0, \beta_1)$ é definida positiva se, e somente se, existem $i, j$ com $x_i \neq x_j$. O que acontece com $\hat{\beta}$ quando todos os $x_i$ são iguais? Interprete geometricamente.
+        <hint>O determinante da Hessiana é $4\left(N\sum x_i^2 - (\sum x_i)^2\right)$; use Cauchy-Schwarz.</hint>
+      </exercise>
+
+      <exercise id="exerc:var_beta1">
+        <title>Média e variância de $\hat{\beta}_1$</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Suponha $Y_i = \beta_0 + \beta_1 x_i + \varepsilon_i$ com os $x_i$ fixos e os $\varepsilon_i$ independentes, de média zero e variância $\sigma^2$.
+        <list marker="a">
+          <item>Mostre que $\hat{\beta}_1 = \sum_i w_i y_i$ com $w_i = (x_i - \bar{x}) / \sum_j (x_j - \bar{x})^2$. Onde se usa $\sum_i w_i = 0$?</item>
+          <item>Mostre que $\mathbb{E}[\hat{\beta}_1] = \beta_1$ e ${\rm Var}(\hat{\beta}_1) = \sigma^2 / \sum_i (x_i - \bar{x})^2$.</item>
+          <item>Interprete: o que acontece com a variância quando $N$ cresce? E quando os $x_i$ ficam mais espalhados? Relacione com o que você observou no <ref to="exerc:alavancagem" />.</item>
+          <item>Mostre que $\mathbb{E}[\hat{\beta}_0] = \beta_0$ e ${\rm Var}(\hat{\beta}_0) = \sigma^2\left(\frac{1}{N} + \frac{\bar{x}^2}{\sum_i (x_i - \bar{x})^2}\right)$. Por que centrar os $x_i$ torna $\hat{\beta}_0$ mais preciso?</item>
+        </list>
+        <hint>Em (b), $\hat{\beta}_1$ é uma combinação linear de variáveis independentes; use $\sum_i w_i x_i = 1$.</hint>
+      </exercise>
+
+      <exercise id="exerc:pitagoras_r2">
+        <title>Pitágoras e $R^2$</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Defina $\text{TSS} = \sum_i (y_i - \bar{y})^2$, $\text{RSS} = \sum_i (y_i - \hat{y}_i)^2$ e $R^2 = 1 - \text{RSS}/\text{TSS}$.
+        <list marker="a">
+          <item>Usando as identidades do <ref to="exerc:normais_p1" />(b), mostre que $\text{TSS} = \sum_i (\hat{y}_i - \bar{y})^2 + \text{RSS}$. Interprete como o teorema de Pitágoras em $\mathbb{R}^N$: quais são os três vetores do triângulo?</item>
+          <item>Conclua que $0 \leq R^2 \leq 1$ e mostre que, para $p = 1$, $R^2 = {\rm Cor}(x, y)^2$. O que $R^2 = 0$ diz sobre a reta ajustada?</item>
+          <item>Padronize $x$ e $y$ (média $0$, variância $1$). Mostre que $\hat{\beta}_0 = 0$ e $\hat{\beta}_1 = {\rm Cor}(x, y)$. A regressão de $x$ sobre $y$ é a inversa da regressão de $y$ sobre $x$? Explique por que isso justifica o nome <em>regressão</em> (à média).</item>
+        </list>
+        <hint>Em (a), escreva $y_i - \bar{y} = (y_i - \hat{y}_i) + (\hat{y}_i - \bar{y})$ e use $\hat{y}_i - \bar{y} = \hat{\beta}_1 (x_i - \bar{x})$ para mostrar que o termo cruzado é zero.</hint>
+      </exercise>
+
+      <exercise id="exerc:ols_p1">
+        <title>Implementando $p = 1$</title>
+        <meta>
+          <meta-item key="Tipo">Programação</meta-item>
+          <meta-item key="Uso de IA">Permitido</meta-item>
+        </meta>
+        Implemente <c>ols_p1(x, y)</c> devolvendo $(\hat{\beta}_0, \hat{\beta}_1)$ pelas fórmulas fechadas. Em dados sintéticos, verifique numericamente as três identidades do <ref to="exerc:normais_p1" />(b).
+      </exercise>
+    </subsection>
+
+    <!-- ================================================================== -->
+    <subsection id="subsec:mqgeral">
+      <title>Caso geral</title>
+
+      <b>Leitura:</b> seção <i>Caso geral</i>.
+      <box type="note">
+        <title>Você deve saber</title>
+        <list>
+          <item>Montar a matriz design e escrever $\text{RSS}(\beta) = (y - X\beta)^T(y - X\beta)$.</item>
+          <item>Deduzir $\hat{\beta} = (X^TX)^{-1}X^Ty$ e dizer quando $X^TX$ é invertível.</item>
+          <item>Mostrar que a Hessiana $2X^TX$ é semidefinida positiva.</item>
+          <item>Interpretar $\hat{y} = X\hat{\beta}$ como a projeção ortogonal de $y$ sobre o espaço das colunas de $X$.</item>
+        </list>
+      </box>
+
+      <exercise id="exerc:identificabilidade">
+        <title>Identificabilidade</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Mostre que $X^TX$ é invertível se, e somente se, as colunas de $X$ são linearmente independentes.</item>
+          <item>Traduza a condição em termos dos preditores.</item>
+          <item>Dê um exemplo com $p = 2$ em que uma coluna é múltipla da outra. Quantas soluções o problema de mínimos quadrados tem? O ajuste $\hat{y} = X\hat{\beta}$ é único?</item>
+          <item>Explique por que (c) é um problema para inferência, mas não necessariamente para previsão.</item>
+          <item>Se $N < p + 1$, o que acontece com $X^TX$ e com a RSS mínima? Relacione com o interpolador do <ref to="exerc:interpolar" />.</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>Cálculo matricial e equações normais</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Mostre que $\frac{\partial}{\partial x}(v^Tx) = v$ e que $\frac{\partial}{\partial x}(x^TAx) = 2Ax$ para $A$ simétrica.</item>
+          <item>Deduza as equações normais $X^TX\beta = X^Ty$ e mostre que $2X^TX$ é semidefinida positiva.</item>
+          <item>Monte $X^TX$ e $X^Ty$ explicitamente para $p = 1$ e recupere as equações do <ref to="exerc:normais_p1" />.</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:projecao">
+        <title>$\hat{y}$ é a projeção ortogonal</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Seja $X$ a matriz design, $N \times (p+1)$, com colunas linearmente independentes. Escreva $\hat{\beta} = (X^TX)^{-1}X^Ty$, $\hat{y} = X\hat{\beta}$, $r = y - \hat{y}$ e $H = X(X^TX)^{-1}X^T$, a <em>matriz chapéu</em>, de modo que $\hat{y} = Hy$.
+        <list marker="a">
+          <item>Mostre que $H$ é simétrica e idempotente ($H^2 = H$), que $HX = X$ e que $(I - H)X = 0$.</item>
+          <item>Mostre que $r$ é ortogonal a cada coluna de $X$, e portanto a todo vetor de $\text{col}(X)$. Reconheça as equações normais nessa afirmação. O que $r \perp \mathbf{1}$ diz sobre a média dos resíduos?</item>
+          <item>Para qualquer $\beta$, mostre que $\|y - X\beta\|^2 = \|y - \hat{y}\|^2 + \|\hat{y} - X\beta\|^2$. Conclua, sem derivadas nem Hessiana, que $\hat{\beta}$ minimiza a RSS e que $\hat{y}$ é o ponto de $\text{col}(X)$ mais próximo de $y$.</item>
+          <item>Suponha agora que as colunas de $X$ são linearmente <em>dependentes</em>. Mostre que $\hat{y}$ continua único, embora $\hat{\beta}$ não seja: a projeção depende do subespaço, não da base. Compare com o <ref to="exerc:identificabilidade" />(c).</item>
+          <item>Mostre que ${\rm tr}(H) = p + 1$. Como $\hat{y}_i = \sum_j h_{ij} y_j$, isso diz que, em média, cada observação pesa $(p+1)/N$ na sua própria previsão. Compare com o <ref to="exerc:normais_p1" />(c).</item>
+          <item><b>(Desafio)</b> Mostre que $0 \leq h_{ii} \leq 1$. O que significa $h_{ii} = 1$ para a previsão $\hat{y}_i$ e para o resíduo $r_i$? Ligue com o ponto de borda do <ref to="exerc:alavancagem" />.</item>
+        </list>
+        <hint>Em (c), expanda $y - X\beta = r + (\hat{y} - X\beta)$ e use (b). Em (e), ${\rm tr}(AB) = {\rm tr}(BA)$. Em (f), $H = H^TH$ dá $h_{ii} = \sum_j h_{ij}^2 \geq h_{ii}^2$.</hint>
+      </exercise>
+
+      <exercise id="exerc:rss_monotona">
+        <title>A RSS nunca aumenta com mais preditores</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Seja $X_1$ uma matriz design $N \times q$ e $X_2 = [\,X_1 \;\; Z\,]$ a matriz obtida acrescentando $m$ novas colunas. Sejam $\text{RSS}_1$ e $\text{RSS}_2$ as somas de quadrados mínimas dos dois ajustes, $H_1$ e $H_2$ as matrizes chapéu e $r_1 = y - H_1 y$.
+        <list marker="a">
+          <item>Mostre que $\text{RSS}_2 \leq \text{RSS}_1$ em uma linha, olhando apenas para os conjuntos sobre os quais cada RSS é minimizada.</item>
+          <item>Prove de novo, geometricamente: $\text{col}(X_1) \subseteq \text{col}(X_2)$, e o ponto mais próximo em um subespaço maior não pode estar mais longe. Use o <ref to="exerc:projecao" />(c).</item>
+          <item>Mostre que $H_2 \hat{y}_1 = \hat{y}_1$, conclua que $\hat{y}_2 - \hat{y}_1 = H_2 r_1$ e daí que $\text{RSS}_1 - \text{RSS}_2 = \|H_2 r_1\|^2$. Deduza que vale a igualdade se, e somente se, $Z^T r_1 = 0$. Traduza: os novos preditores não explicam nada do que <em>sobrou</em> por explicar.</item>
+          <item>Conclua que $R^2$ nunca diminui ao acrescentar preditores. Por que, então, RSS e $R^2$ de <em>treino</em> não servem para escolher entre modelos aninhados? O que serve?</item>
+          <item>O resultado vale para a RSS de <em>teste</em>? Responda com o <ref to="exerc:linear_cubico" />. Acrescente uma coluna de números puramente aleatórios: a RSS de treino cai. Foi viés que diminuiu? Relacione com o <ref to="exerc:diagnostico" />(d).</item>
+        </list>
+        <hint>Em (a), note que $X_2 \binom{\beta}{0} = X_1 \beta$: todo ajuste do modelo menor é um ajuste do maior. Em (c), $\hat{y}_1 \in \text{col}(X_1) \subseteq \text{col}(X_2)$ e $H_2$ fixa $\text{col}(X_2)$.</hint>
+      </exercise>
+
+      <exercise id="exerc:gauss_markov">
+        <title>Gauss–Markov</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Nível">Desafio</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Suponha $y = X\beta + \varepsilon$ com $X$ fixa de colunas linearmente independentes, $\mathbb{E}[\varepsilon] = 0$ e ${\rm Var}(\varepsilon) = \sigma^2 I$.
+        <list marker="a">
+          <item>Mostre que $\mathbb{E}[\hat{\beta}] = \beta$ e ${\rm Var}(\hat{\beta}) = \sigma^2 (X^TX)^{-1}$. Recupere as fórmulas do <ref to="exerc:var_beta1" /> para $p = 1$.</item>
+          <item>Seja $\tilde{\beta} = Cy$ outro estimador <em>linear</em> em $y$ e <em>não-viesado</em> para todo $\beta$. Mostre que $CX = I$.</item>
+          <item>Escreva $C = (X^TX)^{-1}X^T + D$ e mostre que $DX = 0$. Conclua que ${\rm Var}(\tilde{\beta}) = {\rm Var}(\hat{\beta}) + \sigma^2 DD^T$ e, portanto, ${\rm Var}(a^T\tilde{\beta}) \geq {\rm Var}(a^T\hat{\beta})$ para todo vetor $a$: mínimos quadrados é o estimador linear não-viesado de menor variância.</item>
+          <item>O estimador ridge também é linear em $y$ e, para $\lambda > 0$, tem variância menor que $\hat{\beta}$. Isso contradiz (c)? Qual hipótese ele abandona, e o que ganha em troca? Relacione com o trade-off viés-variância.</item>
+        </list>
+        <hint>Em (c), ${\rm Var}(Cy) = \sigma^2 CC^T$; expanda $CC^T$ e use $DX = 0$ para eliminar os termos cruzados.</hint>
+      </exercise>
+
+      <exercise id="exerc:otimismo">
+        <title>O otimismo do erro de treino</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Nível">Desafio</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Nas hipóteses do <ref to="exerc:gauss_markov" />, com $H$ a matriz chapéu e $\hat{y} = Hy$.
+        <list marker="a">
+          <item>Mostre que $r = (I - H)\varepsilon$: o resíduo não enxerga $X\beta$.</item>
+          <item>Mostre que $\mathbb{E}[\text{RSS}] = \sigma^2 (N - p - 1)$. Conclua que $\hat{\sigma}^2 = \text{RSS}/(N - p - 1)$ é um estimador não-viesado de $\sigma^2$ e que $\mathbb{E}[\text{MSE}_{\text{treino}}] = \sigma^2\left(1 - \frac{p+1}{N}\right) \lt\sigma^2$: em média, o erro de treino fica <em>abaixo</em> do erro irredutível.</item>
+          <item>Tome novas respostas $y^\ast = X\beta + \varepsilon^\ast$ nos <em>mesmos</em> $x_i$, com $\varepsilon^\ast$ independente de $\varepsilon$. Mostre que $\frac{1}{N}\mathbb{E}\|y^\ast - \hat{y}\|^2 = \sigma^2\left(1 + \frac{p+1}{N}\right)$.</item>
+          <item>Conclua que a diferença entre erro de teste e erro de treino esperados, o <em>otimismo</em>, é $2\sigma^2 (p+1)/N$. Como ela depende de $p$, de $N$ e de $\sigma^2$? Explique com isso por que a RSS de treino do <ref to="exerc:rss_monotona" /> não pode escolher $p$.</item>
+        </list>
+        <hint>Para $A$ fixa, $\mathbb{E}[\varepsilon^T A \varepsilon] = \sigma^2\,{\rm tr}(A)$, e ${\rm tr}(I - H) = N - p - 1$. Em (c), escreva $y^\ast - \hat{y} = \varepsilon^\ast - H\varepsilon$ e use a independência.</hint>
+      </exercise>
+
+      <exercise id="exerc:loocv_fechado">
+        <title>LOOCV sem reajustar</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Nível">Desafio</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Seja $\hat{\beta}^{(-i)}$ o ajuste de mínimos quadrados sem a observação $i$, e $\hat{y}^{(-i)}_i = x_i^T \hat{\beta}^{(-i)}$ a previsão para o ponto deixado de fora.
+        <list marker="a">
+          <item>Considere o ajuste com <em>todas</em> as $N$ observações, mas com $y_i$ substituído por $\hat{y}^{(-i)}_i$. Mostre que esse ajuste é exatamente $\hat{\beta}^{(-i)}$.</item>
+          <item>Como $\hat{y} = Hy$ é linear em $y$, use (a) para mostrar que $\hat{y}^{(-i)}_i = \sum_{j \neq i} h_{ij} y_j + h_{ii}\, \hat{y}^{(-i)}_i$ e, daí,
+            $$
+              y_i - \hat{y}^{(-i)}_i = \frac{y_i - \hat{y}_i}{1 - h_{ii}}.
+            $$
+          </item>
+          <item>Conclua que o erro de validação cruzada <em>leave-one-out</em> é $\frac{1}{N}\sum_i \left(\frac{r_i}{1 - h_{ii}}\right)^2$, calculável com um único ajuste. Compare o custo com o dos $N$ ajustes.</item>
+          <item>Interprete: pontos de alta alavancagem ($h_{ii}$ perto de $1$) são os que mais penalizam o LOOCV. O que acontece se $h_{ii} = 1$? Use o <ref to="exerc:projecao" />(f).</item>
+        </list>
+        <hint>Em (a), compare a RSS do problema modificado com a RSS sem a observação $i$: elas diferem por um único termo, que vale zero em $\hat{\beta}^{(-i)}$.</hint>
+      </exercise>
+
+      <exercise id="exerc:fwl">
+        <title>Regressão parcial</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Nível">Desafio</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Escreva $X = [\,X_1 \;\; x_2\,]$, em que $x_2$ é uma única coluna (digamos, turbidez) e $X_1$ reúne o intercepto e os demais preditores. Seja $H_1$ a matriz chapéu de $X_1$, e defina os resíduos $\tilde{x}_2 = (I - H_1)x_2$ e $\tilde{y} = (I - H_1)y$: o que sobra de $x_2$ e de $y$ depois de "descontar" $X_1$.
+        <list marker="a">
+          <item>Mostre que o coeficiente $\hat{\beta}_2$ de $x_2$ na regressão múltipla é o coeficiente da regressão simples, sem intercepto, de $\tilde{y}$ sobre $\tilde{x}_2$:
+            $$
+              \hat{\beta}_2 = \frac{\tilde{x}_2^T\, \tilde{y}}{\tilde{x}_2^T\, \tilde{x}_2}.
+            $$
+          </item>
+          <item>Interprete: $\hat{\beta}_2$ mede o efeito de $x_2$ <em>controlando</em> pelos outros preditores. Explique com isso como o coeficiente da turbidez pode ter um sinal na regressão simples e o sinal oposto na múltipla.</item>
+          <item>Quando o coeficiente da regressão múltipla coincide com o da simples? Mostre que basta $X_1^T x_2 = 0$.</item>
+          <item>Mostre que ${\rm Var}(\hat{\beta}_2) = \sigma^2 / \|\tilde{x}_2\|^2$. O que acontece quando $x_2$ é quase uma combinação linear das colunas de $X_1$? Relacione com o <ref to="exerc:identificabilidade" /> e com o <ref to="exerc:gauss_markov" />(a).</item>
+        </list>
+        <hint>Em (a), parta de $y = X_1\hat{\beta}_1 + x_2\hat{\beta}_2 + r$, aplique $(I - H_1)$ dos dois lados, note que $(I - H_1)r = r$ e que $\tilde{x}_2^T r = x_2^T r = 0$. Em (d), $\hat{\beta}_2$ é o produto interno de $y$ com um vetor fixo.</hint>
+      </exercise>
+
+      <exercise id="exerc:ols">
+        <title>Implementando o caso geral</title>
+        <meta>
+          <meta-item key="Tipo">Programação</meta-item>
+          <meta-item key="Uso de IA">Permitido</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Implemente <c>ols(X, y)</c> com NumPy: acrescente a coluna de uns e resolva as equações normais com <c>np.linalg.solve</c> (não inverta a matriz).</item>
+          <item>Valide contra <c>ols_p1</c> do <ref to="exerc:ols_p1" />.</item>
+          <item>Duplique uma coluna de $X$ e rode de novo. O que acontece? Relacione com o <ref to="exerc:identificabilidade" />.</item>
+        </list>
+      </exercise>
+    </subsection>
+
+    <!-- ================================================================== -->
+    <subsection id="subsec:acuracia_coef">
+      <title>Acurácia dos coeficientes</title>
+
+      <b>Leitura:</b> seção <i>Medindo acurácia</i>, parte <i>Acurácia dos coeficientes</i> (erro-padrão, intervalo de confiança, teste de hipótese, estatística $t$ e valor-$p$).
+      <box type="note">
+        <title>Você deve saber</title>
+        <list>
+          <item>Distinguir o coeficiente verdadeiro $\beta_j$ do estimado $\hat{\beta}_j$, e dizer o que varia de amostra para amostra.</item>
+          <item>Definir o erro-padrão ${\rm SE}(\hat{\beta}_j)$, dizer o que ele mede e do que depende.</item>
+          <item>Construir e interpretar corretamente um intervalo de confiança de $95\%$.</item>
+          <item>Formular $H_0 : \beta_j = 0$, calcular a estatística $t$ e interpretar o valor-$p$.</item>
+          <item>Separar significância estatística de relevância prática.</item>
+        </list>
+      </box>
+
+      <exercise id="exerc:se_mede">
+        <title>O que o erro-padrão mede?</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>No modelo $Y = \beta_0 + \beta_1 X + \varepsilon$, quais objetos são fixos e quais são aleatórios: $\beta_1$, $\hat{\beta}_1$, $x_i$, $y_i$, $\varepsilon_i$? Em relação a qual experimento imaginário se fala em "distribuição de $\hat{\beta}_1$"?</item>
+          <item>Você já viu ${\rm SE}(\hat{\beta}_1)$ desenhado: é a largura de qual figura do <ref to="exerc:alavancagem" />? Que fórmula do <ref to="exerc:var_beta1" /> ele estima?</item>
+          <item>A fórmula de ${\rm SE}(\hat{\beta}_1)$ tem $\sigma^2 = {\rm Var}(\varepsilon)$, que ninguém conhece. Pelo que se troca e por que a troca é honesta (<ref to="exerc:otimismo" />(b))?</item>
+          <item>Para cada mudança, diga se ${\rm SE}(\hat{\beta}_1)$ aumenta, diminui ou não muda: dobrar $N$ mantendo a dispersão dos $x_i$; medir estações com pH mais variado; usar um laboratório com medições mais precisas; trocar a unidade do pH.</item>
+          <item>É possível reduzir ${\rm SE}(\hat{\beta}_1)$ coletando mais <em>variáveis</em> em vez de mais <em>amostras</em>? Em que sentido sim (o que acontece com $\sigma^2$?) e em que sentido não (<ref to="exerc:fwl" />(d))?</item>
+          <item>${\rm SE}(\hat{\beta}_1)$ pequeno significa que o modelo prevê bem? Distinga "conhecer $\beta_1$ com precisão" de "prever $Y$ com precisão".</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:ic">
+        <title>Intervalos de confiança</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Para o arsênio em $\mu$g/L, uma regressão com $N = 660$ estações deu $\hat{\beta}_{\text{pH}} = 15{,}2$ com intervalo de $95\%$ igual a $[10{,}3;\; 20{,}1]$, e $\hat{\beta}_{\text{turb}} = -2{,}1$ com intervalo $[-5{,}2;\; 1{,}0]$.
+        <list marker="a">
+          <item>O que é aleatório na frase "o intervalo contém $\beta$ com probabilidade $95\%$": o intervalo ou $\beta$? Descreva o experimento repetido em que os $95\%$ fazem sentido.</item>
+          <item>Critique: "há $95\%$ de chance de $\beta_{\text{pH}}$ estar entre $10{,}3$ e $20{,}1$" e "$95\%$ das estações têm efeito do pH nesse intervalo".</item>
+          <item>Interprete o intervalo do pH, com unidades, para o órgão ambiental. O que o intervalo da turbidez permite concluir? E o que ele <em>não</em> permite concluir?</item>
+          <item>Se $N$ passar a $2640$ estações com a mesma dispersão de pH, aproximadamente quanto encolhe cada intervalo? Use a fórmula do <ref to="exerc:var_beta1" />.</item>
+          <item>Explique por que a regra "$\hat{\beta} \pm 2\,{\rm SE}$" dá aproximadamente $95\%$, e de onde vem o $2$. O que muda se $N = 8$?</item>
+          <item>Além do intervalo para $\beta_1$, há um intervalo para $f(x_0) = \beta_0 + \beta_1 x_0$ e outro para uma <em>nova</em> observação $Y$ em $x_0$. Ordene os três por largura e explique qual deles não encolhe quando $N \to \infty$. Qual interessa ao laboratório e qual ao órgão ambiental do <ref to="sec:aprender" />?</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:teste">
+        <title>Testando $\beta_j = 0$</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Escreva $H_0$ e $H_1$ para a pergunta "a turbidez tem alguma relação com o arsênio?". Por que a hipótese testada é a de <em>ausência</em> de efeito, e não a de presença?</item>
+          <item>A estatística é $t = \hat{\beta}_j / {\rm SE}(\hat{\beta}_j)$. Em palavras: o que ela compara? Por que $\hat{\beta}_j = 3$ pode ser forte evidência contra $H_0$ em um conjunto de dados e nenhuma evidência em outro?</item>
+          <item>Defina valor-$p$. Critique cada leitura: "é a probabilidade de $H_0$ ser verdadeira"; "é a probabilidade de o resultado ter ocorrido por acaso"; "$p = 0{,}30$ prova que a turbidez não importa".</item>
+          <item>O coeficiente da condutividade foi $\hat{\beta} = 0{,}0007$ com $p \lt 0{,}001$. Ele é significativo? Ele é relevante? Que informação falta para responder a segunda pergunta?</item>
+          <item>Mostre que trocar a unidade de um preditor (por exemplo, mS/cm em vez de $\mu$S/cm) multiplica $\hat{\beta}_j$ e ${\rm SE}(\hat{\beta}_j)$ pela mesma constante. O que acontece com $t$ e com o valor-$p$? O que isso diz sobre julgar importância pelo tamanho do coeficiente?</item>
+          <item>Você testa $p = 20$ preditores, todos sem relação alguma com $Y$, ao nível de $5\%$. Quantos "significativos" espera encontrar? Que conclusão sobre "o modelo explica alguma coisa" isso invalida, e que estatística resolve o problema?</item>
+          <item>O valor-$p$ do coeficiente linear de $X$ foi $0{,}8$, mas a relação verdadeira é $Y = X^2 + \varepsilon$ com $X$ simétrico em torno de zero. O teste "errou"? O que exatamente ele testou? Relacione com o <ref to="exerc:poly_rss" />(b).</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:tabela">
+        <title>Lendo uma tabela de regressão</title>
+        <meta>
+          <meta-item key="Tipo">Prático</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Regressão do arsênio ($\mu$g/L) sobre três preditores, $N = 660$.
+        <table>
+          <header>
+            <column>Coeficiente</column>
+            <column align="right" mono="true">$\hat{\beta}$</column>
+            <column align="right" mono="true">${\rm SE}$</column>
+            <column align="right" mono="true">$t$</column>
+            <column align="right" mono="true">valor-$p$</column>
+          </header>
+          <row><column>Intercepto</column><column>−12,0</column><column>3,1</column><column>?</column><column>&lt; 0,001</column></row>
+          <row><column>pH</column><column>15,2</column><column>2,5</column><column>?</column><column>&lt; 0,001</column></row>
+          <row><column>Turbidez (NTU)</column><column>−2,1</column><column>1,6</column><column>?</column><column>0,19</column></row>
+          <row><column>Condutividade ($\mu$S/cm)</column><column>0,030</column><column>0,004</column><column>?</column><column>&lt; 0,001</column></row>
+        </table>
+        <list marker="a">
+          <item>Complete a coluna $t$. Confira que os valores-$p$ são coerentes com a regra "$|t| \gt2$ é significativo a $5\%$".</item>
+          <item>Construa o intervalo de $95\%$ para cada coeficiente. Quais contêm zero?</item>
+          <item>Escreva uma frase para o órgão ambiental sobre cada preditor, com unidades e com o cuidado devido a respeito de causalidade (<ref to="exerc:fwl" />(b)).</item>
+          <item>Preveja o arsênio de uma estação com pH $7$, turbidez $20$ NTU e condutividade $300\ \mu$S/cm. Essa previsão tem erro-padrão? Ele é maior ou menor que o erro de uma nova medição nessa estação?</item>
+          <item>Reescreva a linha da condutividade em mS/cm. O que muda e o que não muda?</item>
+          <item>"A turbidez não é significativa, então retiramos do modelo." Que hipótese essa decisão assume sobre o que aconteceria com os outros coeficientes? Quando ela é falsa (<ref to="exerc:fwl" />(c))?</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:se_demo">
+        <title>Erro-padrão, $t$ e $F$ no caso $p = 1$</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Seja $\hat{\sigma}^2 = \text{RSS}/(N - 2)$ e ${\rm SE}(\hat{\beta}_1)^2 = \hat{\sigma}^2 / \sum_i (x_i - \bar{x})^2$.
+        <list marker="a">
+          <item>Justifique a fórmula a partir do <ref to="exerc:var_beta1" />(b) e do <ref to="exerc:otimismo" />(b). Por que $N - 2$ e não $N$?</item>
+          <item>Mostre que a estatística $t = \hat{\beta}_1 / {\rm SE}(\hat{\beta}_1)$ é invariante por mudança de unidade de $x$ ($x \mapsto cx$) e de $y$ ($y \mapsto cy$).</item>
+          <item>Usando o <ref to="exerc:pitagoras_r2" />(a), mostre que
+            $$
+              t^2 = \frac{\sum_i (\hat{y}_i - \bar{y})^2}{\text{RSS}/(N - 2)} = \frac{(\text{TSS} - \text{RSS})/1}{\text{RSS}/(N - 2)},
+            $$
+            que é a estatística $F$ para $p = 1$. Interprete: $t^2$ compara o que a reta <em>explicou</em> com o que ela <em>deixou</em> por explicar, por grau de liberdade.</item>
+          <item>Mostre que $t^2 = (N - 2)\,\frac{R^2}{1 - R^2}$. Conclua que, com $N$ grande, qualquer $R^2 \gt0$ acaba sendo "significativo". O que isso diz sobre valor-$p$ como medida de acurácia do modelo?</item>
+          <item><b>(Desafio)</b> Se $\varepsilon \sim \mathcal{N}(0, \sigma^2)$, mostre que $\hat{\beta}_1$ é gaussiana e que $(\hat{\beta}_1 - \beta_1)/\sqrt{\sigma^2/\sum_i (x_i - \bar{x})^2} \sim \mathcal{N}(0, 1)$. Por que, ao trocar $\sigma$ por $\hat{\sigma}$, a distribuição passa a ser $t$ de Student, com caudas mais pesadas? O que acontece com ela quando $N \to \infty$?</item>
+        </list>
+        <hint>Em (c), $\hat{y}_i - \bar{y} = \hat{\beta}_1 (x_i - \bar{x})$. Em (e), $\hat{\beta}_1$ é uma combinação linear de gaussianas independentes.</hint>
+      </exercise>
+
+      <exercise id="exerc:se_sim">
+        <title>Simulando o erro-padrão e a cobertura</title>
+        <meta>
+          <meta-item key="Tipo">Programação</meta-item>
+          <meta-item key="Uso de IA">Permitido</meta-item>
+        </meta>
+        Fixe $x_1, \dots, x_{30}$ e $\beta_0 = 2$, $\beta_1 = 1{,}5$, $\sigma = 2$, como no <ref to="exerc:alavancagem" />.
+        <list marker="a">
+          <item>Repita $2000$ vezes: gere $y$, ajuste com <c>ols_p1</c> e guarde $\hat{\beta}_1$ e ${\rm SE}(\hat{\beta}_1)$. Compare o desvio padrão dos $\hat{\beta}_1$ com a média dos ${\rm SE}$ e com a fórmula exata $\sigma / \sqrt{\sum_i (x_i - \bar{x})^2}$.</item>
+          <item>Em cada repetição, construa $\hat{\beta}_1 \pm 2\,{\rm SE}(\hat{\beta}_1)$ e conte em que fração das vezes ele contém $1{,}5$. Repita com $N = 8$: a cobertura ainda é $95\%$? Relacione com o <ref to="exerc:ic" />(e).</item>
+          <item>Agora ponha $\beta_1 = 0$ ($H_0$ verdadeira). Guarde $t$ em cada repetição e calcule a fração de $|t| \gt2$. Faça um histograma dos $t$.</item>
+          <item>Gere $20$ preditores aleatórios sem relação com $y$, ajuste com <c>ols</c> do <ref to="exerc:ols" /> e conte quantos têm $|t| \gt2$. Repita várias vezes. Confira sua resposta ao <ref to="exerc:teste" />(f).</item>
+        </list>
+      </exercise>
+    </subsection>
+
+    <!-- ================================================================== -->
+    <subsection id="subsec:acuracia_modelo">
+      <title>Acurácia do modelo</title>
+
+      <b>Leitura:</b> seção <i>Medindo acurácia</i>, parte <i>Acurácia do modelo</i> (RSE, $R^2$, estatística $F$).
+      <box type="note">
+        <title>Você deve saber</title>
+        <list>
+          <item>Definir RSE e $R^2$, dizer em que unidade cada um está e o que cada um mede.</item>
+          <item>Explicar por que $R^2$ nunca diminui com mais preditores e o que o $R^2$ ajustado corrige.</item>
+          <item>Enunciar a hipótese testada pela estatística $F$ e explicar por que ela não é substituível por $p$ testes $t$.</item>
+          <item>Distinguir acurácia do <em>modelo</em> (treino) de acurácia da <em>previsão</em> (teste), e as três fontes de erro de uma previsão.</item>
+        </list>
+      </box>
+
+      <exercise id="exerc:rse_r2">
+        <title>RSE e $R^2$</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Defina $\text{RSE} = \sqrt{\text{RSS}/(N - p - 1)}$ e $R^2 = 1 - \text{RSS}/\text{TSS}$.
+        <list marker="a">
+          <item>Em que unidade está cada um? Para o arsênio, o que significa $\text{RSE} = 2{,}2\ \mu$g/L em uma frase? Como julgar se é grande: comparando com o limite legal, com $\bar{y}$ ou com $\sigma$?</item>
+          <item>$\text{RSE}$ e $\sqrt{\text{MSE}_{\text{treino}}}$ diferem pelo denominador. Qual dos dois é um estimador não-viesado de $\sigma$ (<ref to="exerc:otimismo" />)? Quando a diferença importa?</item>
+          <item>$R^2 = 0{,}30$ é bom ou ruim? Dê um contexto em que é excelente e outro em que é inaceitável. O que $R^2$ mede, afinal: a qualidade de $\hat{f}$ ou o tamanho de $\sigma^2$ relativo à variação de $f$?</item>
+          <item>Pelo <ref to="exerc:rss_monotona" />, $R^2$ nunca diminui ao acrescentar preditores. Defina o $R^2$ ajustado, $1 - \frac{\text{RSS}/(N - p - 1)}{\text{TSS}/(N - 1)}$, e explique o que ele penaliza. Ele pode ser negativo? Ele substitui a validação cruzada?</item>
+          <item>É possível ter $R^2$ baixo com todos os coeficientes significativos? E $R^2$ alto sem nenhum coeficiente significativo? Construa um cenário para cada (pense em $N$ e em colinearidade).</item>
+          <item>$R^2$ de treino igual a $0{,}95$ garante boa previsão em novas estações? O que pode dar errado, e que medida do <ref to="subsec:precisao" /> você olharia antes de acreditar?</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:f_stat">
+        <title>A estatística $F$</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Defina $F = \dfrac{(\text{TSS} - \text{RSS})/p}{\text{RSS}/(N - p - 1)}$.
+        <list marker="a">
+          <item>Escreva $H_0$ para $F$. Ela é a mesma de $p$ testes $t$ simultâneos? Em que ela difere de "$\beta_j = 0$ para <em>algum</em> $j$"?</item>
+          <item>Sob $H_0$, numerador e denominador estimam a mesma quantidade. Qual? Conclua que $F \approx 1$ sob $H_0$ e explique por que $F$ grande é evidência contra ela.</item>
+          <item>Use o <ref to="exerc:rss_monotona" />: a RSS <em>sempre</em> cai ao acrescentar $p$ preditores. Em que sentido $F$ pergunta se ela caiu "mais do que cairia por acaso"? Relacione com o <ref to="exerc:otimismo" />(d).</item>
+          <item>Escreva a versão de $F$ para comparar dois modelos aninhados: o completo, com $p$ preditores, e o reduzido, com $q \lt p$. O que vai em cada parte da fração? Quando essa comparação é mais adequada do que olhar os $p - q$ testes $t$ individuais?</item>
+          <item>Com $N = 10^6$ estações, obteve-se $F = 3{,}2$ e $p \lt 0{,}001$. O modelo é útil? O que o $F$ não mede?</item>
+          <item>Por que $F$ pode ser calculada quando $p \gt N$? O que quebra e como isso se relaciona com o <ref to="exerc:identificabilidade" />(e)?</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:tres_erros">
+        <title>Três fontes de erro em uma previsão</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Ajustamos $\hat{f}(x) = \hat{\beta}_0 + \hat{\beta}_1 x$ e queremos prever o arsênio em uma estação nova, $x_0$.
+        <list marker="a">
+          <item>Decomponha o erro $Y_0 - \hat{f}(x_0)$ em três parcelas: a diferença entre a melhor reta e $f$ (a relação pode não ser linear), a diferença entre $\hat{\beta}$ e $\beta$ (amostra finita) e $\varepsilon_0$. Nomeie cada uma com o vocabulário do <ref to="subsec:precisao" />.</item>
+          <item>Qual das três parcelas o intervalo de confiança para $f(x_0)$ captura? E o intervalo de previsão para $Y_0$? Qual nenhuma das duas captura?</item>
+          <item>Qual parcela diminui com $N$, qual diminui com uma classe $\mathcal{G}$ mais flexível, e qual não diminui com nada?</item>
+          <item>Mostre que a variância de $\hat{f}(x_0)$ é $\sigma^2\left(\frac{1}{N} + \frac{(x_0 - \bar{x})^2}{\sum_i (x_i - \bar{x})^2}\right)$ e conclua que o intervalo para $f(x_0)$ é mais largo longe de $\bar{x}$. Por que extrapolar é perigoso mesmo quando o modelo está certo? E quando está errado?</item>
+          <item>Do ponto de vista do <em>laboratório</em>, que só quer parar de medir arsênio, qual das três parcelas mais importa, e que medida do estudo dirigido a estima?</item>
+        </list>
+        <hint>Em (d), $\hat{f}(x_0) = \bar{y} + \hat{\beta}_1 (x_0 - \bar{x})$, e $\bar{y}$ e $\hat{\beta}_1$ são não-correlacionados (verifique usando $\sum_i w_i = 0$).</hint>
+      </exercise>
+
+      <exercise id="exerc:acuracia_pratico">
+        <title>Acurácia à mão</title>
+        <meta>
+          <meta-item key="Tipo">Prático</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Para o arsênio ($\mu$g/L), $N = 660$ e $\text{TSS} = 5000$. O modelo com pH, turbidez e condutividade deu $\text{RSS} = 3200$; o modelo só com pH deu $\text{RSS} = 3500$; o modelo com os três preditores mais outros $16$ parâmetros físico-químicos deu $\text{RSS} = 3150$.
+        <list marker="a">
+          <item>Calcule RSE, $R^2$ e $R^2$ ajustado dos três modelos. Qual deles o $R^2$ prefere? E o ajustado?</item>
+          <item>Calcule a estatística $F$ do modelo com três preditores contra o modelo nulo (só intercepto). Ela é grande?</item>
+          <item>Calcule a $F$ do modelo com três preditores contra o modelo só com pH. Turbidez e condutividade, juntas, acrescentam algo? Compare com o valor-$p$ da turbidez na tabela do <ref to="exerc:tabela" />.</item>
+          <item>Calcule a $F$ do modelo com $19$ preditores contra o de $3$. Os $16$ parâmetros extras valem a pena? Que resultado do <ref to="exerc:rss_monotona" /> explica por que a RSS caiu mesmo assim?</item>
+          <item>Se você tivesse que escolher entre os três modelos por validação cruzada, que ordem espera? Justifique com viés e variância.</item>
+        </list>
+        <hint>Para $F$ entre modelos aninhados: $\frac{(\text{RSS}_{\text{red}} - \text{RSS}_{\text{comp}})/(p_{\text{comp}} - p_{\text{red}})}{\text{RSS}_{\text{comp}}/(N - p_{\text{comp}} - 1)}$. Valores acima de $4$ costumam ser significativos a $5\%$ com $N$ grande e numerador de poucos graus de liberdade.</hint>
+      </exercise>
+
+      <exercise id="exerc:summary_prog">
+        <title>Tabela de regressão à mão</title>
+        <meta>
+          <meta-item key="Tipo">Programação</meta-item>
+          <meta-item key="Uso de IA">Permitido</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Estenda <c>ols</c> do <ref to="exerc:ols" /> para uma função <c>summary(X, y)</c> que devolve, para cada coeficiente, $\hat{\beta}_j$, ${\rm SE}(\hat{\beta}_j) = \sqrt{\hat{\sigma}^2 [(X^TX)^{-1}]_{jj}}$ e $t_j$, além de RSE, $R^2$, $R^2$ ajustado e $F$. Para o valor-$p$, use a aproximação normal $2\,(1 - \Phi(|t|))$ quando $N$ é grande, ou estime-o por simulação sob $H_0$.</item>
+          <item>Gere dados com $p = 3$ preditores, dois relevantes e um irrelevante, e $N = 100$. Confira que a tabela identifica o irrelevante e que $F$ é grande.</item>
+          <item>Torne dois preditores relevantes quase colineares (correlação $0{,}99$). O que acontece com os ${\rm SE}$, os $t$ e o $F$? Explique com o <ref to="exerc:fwl" />(d) e responda de novo ao <ref to="exerc:rse_r2" />(e).</item>
+          <item>Repita (b) $1000$ vezes com todos os $\beta_j = 0$ e faça o histograma de $F$. Que fração ultrapassa o limiar que você usou em (b)?</item>
+        </list>
+      </exercise>
+    </subsection>
+
+    <!-- ================================================================== -->
+    <subsection id="subsec:ridge">
+      <title>Regularização: ridge</title>
+
+      <b>Leitura:</b> seções <i>Regularização</i> e <i>Ridge Regression</i>.
+      <box type="note">
+        <title>Você deve saber</title>
+        <list>
+          <item>Escrever a função objetivo do ridge e sua solução fechada.</item>
+          <item>Explicar o efeito de $\lambda$ sobre viés, variância e erro de teste.</item>
+          <item>Explicar por que ridge resolve o problema de $X^TX$ singular.</item>
+        </list>
+      </box>
+
+      <exercise id="exerc:ridge_tradeoff">
+        <title>Ridge e o trade-off</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Complete e justifique: "em relação a mínimos quadrados, ridge é <em>mais / menos</em> flexível e melhora a previsão quando <em>o aumento do viés / a redução da variância</em> é menor que <em>…</em>".</item>
+          <item>Com $\lambda$ crescendo a partir de zero, diga se cada quantidade aumenta sempre, diminui sempre, tem forma de U ou é constante: erro de treino, erro de teste, variância, viés², erro irredutível.</item>
+          <item>Tome $N = p$ e $X = I$ (sem intercepto). Mostre que a solução ridge é $\hat{\beta}_j = y_j / (1 + \lambda)$. Interprete a palavra <em>encolhimento</em> e ligue ao item (b).</item>
+          <item>Por que se padroniza os preditores antes de aplicar ridge? O que aconteceria com um preditor medido em uma unidade mil vezes menor?</item>
+        </list>
+      </exercise>
+
+      <exercise>
+        <title>Solução fechada e colunas idênticas</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Considere ridge sem intercepto: $L(\beta) = (y - X\beta)^T(y - X\beta) + \lambda \beta^T\beta$.
+        <list marker="a">
+          <item>Mostre que $\hat{\beta}_{\text{ridge}} = (X^TX + \lambda I)^{-1}X^Ty$ e que $X^TX + \lambda I$ é invertível para todo $\lambda > 0$, mesmo quando $X^TX$ não é. Compare com o <ref to="exerc:identificabilidade" />.</item>
+          <item>Suponha que duas colunas de $X$ são idênticas. Mínimos quadrados tem infinitas soluções; mostre que ridge tem uma única, e que nela os dois coeficientes são iguais.</item>
+        </list>
+        <hint>Em (a), $v^T(X^TX + \lambda I)v = \|Xv\|^2 + \lambda\|v\|^2$. Em (b), $L$ é estritamente convexa e invariante pela troca dos dois coeficientes.</hint>
+      </exercise>
+
+      <exercise id="exerc:ridge_dentro">
+        <title>Ridge por dentro</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Nível">Desafio</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Ridge sem intercepto, $\hat{\beta}_\lambda = (X^TX + \lambda I)^{-1}X^Ty$, com $X$ de dimensão $N \times p$.
+        <list marker="a">
+          <item><b>Dados aumentados.</b> Mostre que $\hat{\beta}_\lambda$ é a solução de mínimos quadrados <em>ordinários</em> para a matriz $\tilde{X} = \binom{X}{\sqrt{\lambda}\, I_p}$ e o vetor $\tilde{y} = \binom{y}{0}$. Interprete as $p$ observações fictícias. Mostre que $\tilde{X}$ tem sempre colunas linearmente independentes, mesmo que $X$ não tenha.</item>
+          <item><b>Colunas ortonormais.</b> Se $X^TX = I$, mostre que $\hat{\beta}_\lambda = \hat{\beta}_{\text{MQ}} / (1 + \lambda)$. Isso generaliza o <ref to="exerc:ridge_tradeoff" />(c).</item>
+          <item><b>Viés.</b> Sob as hipóteses do <ref to="exerc:gauss_markov" />, mostre que $\mathbb{E}[\hat{\beta}_\lambda] = (X^TX + \lambda I)^{-1}X^TX\,\beta$. Conclua que ridge é viesado para todo $\lambda > 0$ e determine para onde o viés vai quando $\lambda \to \infty$.</item>
+          <item><b>(Desafio) Variância.</b> Mostre que ${\rm Var}(\hat{\beta}_\lambda) = \sigma^2 (X^TX + \lambda I)^{-1} X^TX\, (X^TX + \lambda I)^{-1}$. Diagonalize $X^TX = Q\Lambda Q^T$ e mostre que os autovalores de ${\rm Var}(\hat{\beta}_\lambda)$ são $\sigma^2 \lambda_j / (\lambda_j + \lambda)^2$, decrescentes em $\lambda$. Quais direções ridge encolhe mais: as de $\lambda_j$ grande ou pequeno? Por que isso é bom quando há colinearidade?</item>
+          <item><b>(Desafio) Monotonicidade.</b> Sem calcular nada, mostre que $\lambda \mapsto \|\hat{\beta}_\lambda\|$ é não-crescente e $\lambda \mapsto \text{RSS}(\hat{\beta}_\lambda)$ é não-decrescente. Ligue com as curvas do <ref to="exerc:ridge_tradeoff" />(b).</item>
+        </list>
+        <hint>Em (a), calcule $\tilde{X}^T\tilde{X}$ e $\tilde{X}^T\tilde{y}$. Em (e), tome $\lambda_1 \lt\lambda_2$ e escreva as duas desigualdades de otimalidade, $L_{\lambda_1}(\hat{\beta}_{\lambda_1}) \leq L_{\lambda_1}(\hat{\beta}_{\lambda_2})$ e $L_{\lambda_2}(\hat{\beta}_{\lambda_2}) \leq L_{\lambda_2}(\hat{\beta}_{\lambda_1})$; some-as.</hint>
+      </exercise>
+
+      <exercise id="exerc:ridge_prog">
+        <title>Implementando ridge</title>
+        <meta>
+          <meta-item key="Tipo">Programação</meta-item>
+          <meta-item key="Uso de IA">Permitido</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Implemente <c>ridge(X, y, lam)</c> pela solução fechada, sem penalizar o intercepto.</item>
+          <item>Gere dados com $p = 5$ preditores fortemente correlacionados e $N = 40$. Para uma grade de $\lambda$, tabele $\|\hat{\beta}\|$, o MSE de treino e o MSE de teste.</item>
+          <item>Escolha $\lambda$ com o <c>k_fold</c> do <ref to="exerc:kfold" />. Ele coincide com o mínimo do MSE de teste?</item>
+        </list>
+      </exercise>
+    </subsection>
+
+    <!-- ================================================================== -->
+    <subsection id="subsec:alem">
+      <title>Além de aproximações lineares</title>
+
+      <b>Leitura:</b> seção <i>Além de aproximações lineares</i>.
+      <box type="note">
+        <title>Você deve saber</title>
+        <list>
+          <item>Explicar que "linear" se refere aos parâmetros, não aos preditores.</item>
+          <item>Montar a matriz design de modelos polinomiais, com transformações e com interações.</item>
+          <item>Interpretar coeficientes na presença de interação.</item>
+        </list>
+      </box>
+
+      <exercise>
+        <title>Interação e linearidade nos parâmetros</title>
+        <meta>
+          <meta-item key="Tipo">Conceitual</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Considere $\hat{\text{As}} = \beta_0 + \beta_1\,\text{pH} + \beta_2\,\text{turb} + \beta_3\,\text{pH}\cdot\text{turb}$.
+        <list marker="a">
+          <item>O que $\beta_1$ mede quando $\beta_3 \neq 0$? Escreva o efeito de aumentar o pH em uma unidade como função da turbidez.</item>
+          <item>Para quais valores de turbidez o efeito do pH é positivo?</item>
+          <item>"$\hat{\beta}_3$ é pequeno, logo a interação não importa." Critique, pensando na escala das variáveis.</item>
+          <item>Para cada modelo, diga se é linear nos parâmetros e, quando for, escreva a matriz design: $\beta_0 + \beta_1 x + \beta_2 x^2$; $\beta_0 + \beta_1 \log x$; $\beta_0 e^{\beta_1 x}$; $\beta_0 + \beta_1 x_1 x_2$.</item>
+          <item>Regressão polinomial de grau $d$ <em>é</em> regressão linear. Então por que ela sobreajusta quando $d$ cresce? O que mede a "flexibilidade" aqui?</item>
+        </list>
+      </exercise>
+
+      <exercise id="exerc:poly_rss">
+        <title>Polinômios e a RSS</title>
+        <meta>
+          <meta-item key="Tipo">Demonstração</meta-item>
+          <meta-item key="Uso de IA">Não recomendado</meta-item>
+        </meta>
+        Seja $\text{RSS}(d)$ a soma dos quadrados dos resíduos do ajuste polinomial de grau $d$ a $N$ pontos com $x_i$ distintos.
+        <list marker="a">
+          <item>Mostre que $\text{RSS}(d)$ é não-crescente em $d$ e que $\text{RSS}(N - 1) = 0$. Junte o <ref to="exerc:rss_monotona" /> com o <ref to="exerc:vandermonde" />. Que $\text{RSS}(d)$ o <ref to="exerc:overfit_widget" /> mostra?</item>
+          <item>Mostre que, se os $x_i$ são simétricos em torno de $0$ (isto é, $-x_i$ também é um dos pontos), então as colunas de potências pares e ímpares são ortogonais. O que isso implica para $\hat{\beta}_1$ ao passar do grau $1$ para o grau $2$? E ao passar para o grau $3$?</item>
+          <item>Por que a matriz $[\,1, x, x^2, \dots, x^d\,]$ com $x_i \in [0, 1]$ tem $X^TX$ quase singular quando $d$ cresce? Usando o <ref to="exerc:gauss_markov" />(a), o que isso faz com a variância dos coeficientes? O que centrar os $x_i$ resolve, e o que não resolve?</item>
+        </list>
+        <hint>Em (b), $\sum_i x_i^{a}$ é zero quando $a$ é ímpar. Em (c), compare as colunas $x^{d}$ e $x^{d+1}$ em $[0, 1]$.</hint>
+      </exercise>
+
+      <exercise>
+        <title>Fechando o ciclo</title>
+        <meta>
+          <meta-item key="Tipo">Programação</meta-item>
+          <meta-item key="Uso de IA">Permitido</meta-item>
+        </meta>
+        <list marker="a">
+          <item>Escreva <c>poly_design(x, d)</c>, que monta a matriz design $[1, x, x^2, \dots, x^d]$, e use <c>ols</c> e <c>ridge</c> para ajustar polinômios.</item>
+          <item>Com dados sintéticos de $y = \sin(2\pi x) + \varepsilon$, reproduza a curva em U do <ref to="exerc:overfit_widget" />: MSE de treino e de teste em função de $d$.</item>
+          <item>Escolha o par $(d, \lambda)$ por validação cruzada. Compare o polinômio de grau alto com $\lambda$ bem escolhido ao polinômio de grau ótimo sem regularização. Qual tem menor erro de teste? Explique com viés e variância.</item>
+        </list>
+      </exercise>
+    </subsection>
+  </section>
+</document>

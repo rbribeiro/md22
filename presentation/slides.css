@@ -1,4 +1,4 @@
-/* Deck-local theme for presentation/chapter_1.dlt.
+/* Deck-local theme, shared by every deck in presentation/.
    The built-in presentation theme sizes a slide for prose; a slide clips whatever
    overflows it (height: 100dvh; overflow: hidden), so the two things that don't fit
    on their own — the plotting widgets and the cover block — are capped here.
