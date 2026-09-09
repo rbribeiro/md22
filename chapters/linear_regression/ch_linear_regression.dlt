@@ -10,6 +10,11 @@
             <meta-item key="Período"> 2026.2 </meta-item>
         </meta>
 
+        <box type="warning">
+            <title>Capítulo em construção!</title>
+            Este capítulo ainda está em construção. Você vai encontrar seções vazias, frases incompletas e, possivelmente, referências quebradas.
+        </box>
+
         <intro>O objetivo deste capítulo é apresentar o modelo de regressão linear, que é um dos modelos mais importantes e amplamente utilizados em aprendizado de máquina. A regressão linear é usada para modelar a relação entre uma variável dependente e uma ou mais variáveis independentes, assumindo que essa relação seja linear.
         </intro>
 
@@ -188,7 +193,7 @@
                 <equation id="eq:linear_regression_matrix">
                 Y = X \beta + \varepsilon,
                 </equation>
-                onde $Y$ é um vetor coluna de tamanho $N \times 1$, $\beta$ é um vetor coluna de tamanho $(p+1) \times 1$, $X$ é uma matriz de tamanho $N \times (p+1)$ e $\varepsilon$ é um vetor coluna de tamanho $N \times 1$. A matriz $X$ é chamada de matriz de desenho (<i>design matrix</i>, do inglês) e é dada por:
+                onde $Y$ é um vetor coluna de tamanho $N \times 1$, $\beta$ é um vetor coluna de tamanho $(p+1) \times 1$, $X$ é uma matriz de tamanho $N \times (p+1)$ e $\varepsilon$ é um vetor coluna de tamanho $N \times 1$. A matriz $X$ é chamada de matriz design (<i>design matrix</i>, do inglês) e é dada por:
                 <equation id="eq:design_matrix">
                 X = \begin{bmatrix}
                 1 & x_{11} & x_{12} & \ldots & x_{1p} \\
@@ -236,7 +241,6 @@
                     \frac{\partial h}{\partial \beta_1} & \frac{\partial h}{\partial \beta_2} & \ldots & \frac{\partial h}{\partial \beta_n}
                     \end{bmatrix}.
                     </equation>
-                    Em linhas gerais, derivar $h$ com respeito a 
                     Prove as seguintes fórmulas de cálculo matricial:
                     <list marker="a">
                         <item>Dados dois vetores coluna de mesmo tamanho $v$ e $x$. Então,
@@ -282,6 +286,50 @@
             <title>Medindo Acurácia</title>
             <subsection id="subsec:acuracia_coef">
                 <title>Acurácia dos Coeficientes</title>
+                A primeira consequência da <ref to="prop:least_squares_matrix" /> é que o estimador $\hat{\beta}$ é não-viesado, ou seja, $\mathbb{E}[\hat{\beta}] = \beta$. De fato, temos que:
+                <equation id="eq:unbiased_estimator" numbered="false">
+                    \begin{split}
+                    \mathbb{E}[\hat{\beta}] & = \mathbb{E}[(X^T X)^{-1} X^T y] \\
+                    & = \mathbb{E}[(X^T X)^{-1} X^T (X \beta + \varepsilon)] \\
+                    & = \mathbb{E}[(X^T X)^{-1} X^T X \beta + (X^T X)^{-1} X^T \varepsilon] \\
+                    & = \beta + (X^T X)^{-1} X^T \mathbb{E}[\varepsilon] \\
+                    & = \beta,
+                \end{split}
+                </equation>
+                onde usamos que o ruído $\varepsilon$ tem média zero. Além disso, podemos calcular a variância de $\hat{\beta}$ como:
+                <equation id="eq:variance_estimator">
+                    \begin{split}
+                    \text{Var}(\hat{\beta}) & = \text{Var}((X^T X)^{-1} X^T y) \\
+                    & = \text{Var}((X^T X)^{-1} X^T (X \beta + \varepsilon)) \\
+                    & = \text{Var}((X^T X)^{-1} X^T \varepsilon) \\
+                    & = (X^T X)^{-1} X^T \text{Var}(\varepsilon) X (X^T X)^{-1} \\
+                    & = \sigma^2 (X^T X)^{-1}.
+                    \end{split}
+                </equation>
+                Note que da expressão acima obtemos a variância de cada coeficiente $\hat{\beta}_j$ como o elemento $(j,j)$ da matriz $\sigma^2 (X^T X)^{-1}$. De posse dessa informação, podemos construir intervalos de confiança para cada coeficiente $\beta_j$ da seguinte forma:
+                <equation id="eq:confidence_interval_beta">
+                \hat{\beta}_j \pm z_{\alpha/2} \sqrt{\text{Var}(\hat{\beta}_j)},
+                </equation>
+                onde $z_{\alpha/2}$ é o quantil da distribuição normal padrão correspondente ao nível de confiança desejado. Por exemplo, para um nível de confiança de $95\%$, temos que $z_{0.025} \approx 1.96$. Isso se a variância do ruído $\sigma^2$ for conhecida. Caso contrário, podemos estimá-la usando o estimador de variância dos resíduos:
+                <equation id="eq:residual_variance_estimator">
+                \hat{\sigma}^2 = \frac{1}{N - p - 1} \sum_{i=1}^{N} (y_i - \hat{y_i})^2,
+                </equation>
+                onde $\hat{y}_i = \hat{\beta}_0 + \hat{\beta}_1 x_{i1} + \ldots + \hat{\beta}_p x_{ip}$ é o valor predito pelo modelo para a observação $i$. Com isso, construímos o estimador da variância de $\hat{\beta}_j$:
+                <equation id="eq:estimated_variance_beta_j">
+                \widehat{\text{Var}}(\hat{\beta}_j) = \hat{\sigma}^2\left[(X^T X)^{-1}\right]_{jj}.
+                </equation>
+                Assim, quando $\sigma^2$ é desconhecida, usamos a distribuição $t$ de Student com $N - p - 1$ graus de liberdade para construir os intervalos de confiança:
+                <equation id="eq:confidence_interval_beta_t">
+                \hat{\beta}_j \pm t_{\alpha/2, N - p - 1} \sqrt{\widehat{\text{Var}}(\hat{\beta}_j)},
+                </equation>
+                onde $t_{\alpha/2, N - p - 1}$ é o quantil da distribuição $t$ de Student com $N - p - 1$ graus de liberdade correspondente ao nível de confiança desejado. De modo prático, usamos o seguinte intervalo para $\beta_j$:
+                <box type="info">
+                    <title>Intervalo de Confiança de 95%</title>
+                    <equation id="eq:confidence_interval_beta_95">
+                    \left[\hat{\beta}_j - 2 \sqrt{\widehat{\text{Var}}(\hat{\beta}_j)}, \hat{\beta}_j + 2 \sqrt{\widehat{\text{Var}}(\hat{\beta}_j)}\right].
+                    </equation>
+                </box>
+                Isso se deve ao fato de que para $N$ grande, o quantil da distribuição $t$ de Student converge para o quantil da distribuição normal padrão, ou seja,  $t_{0.025, N - p - 1} \approx 2$ para $N$ grande.
             </subsection>
             <subsection id="subsec:acuracia_modelo">
                 <title>Acurácia do Modelo</title>
@@ -295,18 +343,50 @@
             Nesta seção discutiremos duas formas de regularização: a <em>ridge regression</em> e a <em>lasso regression</em>. 
 
             <subsection id="ss:ridge">
-                <title>Ridge Regression</title>
+                <title>Ridge</title>
                 A ridge regression é uma forma de regularização que adiciona uma penalidade à soma dos quadrados dos coeficientes do modelo. Diferentemente dos mínimos quadrados, a ideia é minimizar a seguinte função
                 <equation id="eq:ridge_loss_2">
-                L(\beta) = \sum_{i=1}^{N} (y_i - \beta_0 - \sum_{j=1}^{p} \beta_j x_{ij })^2 + \lambda \sum_{j=1}^{p} \beta_j^2,
+                R(\beta) = \sum_{i=1}^{N} (y_i - \beta_0 - \sum_{j=1}^{p} \beta_j x_{ij })^2 + \lambda \sum_{j=1}^{p} \beta_j^2,
                 </equation>
-                onde $\lambda \geq 0$ é um parâmetro de regularização que controla a força da penalidade. Note que a penalidade é a norma $L_2$ do vetor de coeficientes $\beta$, excluindo o intercepto $\beta_0$, enquanto o primeiro termo é a soma dos quadrados dos resíduos, como nos mínimos quadrados. 
+                onde $\lambda \geq 0$ é um (hiper)parâmetro de regularização que controla a força da penalidade. Note que a penalidade é a norma $L_2$ do vetor de coeficientes $\beta$, excluindo o intercepto $\beta_0$, enquanto o primeiro termo é a soma dos quadrados dos resíduos, como nos mínimos quadrados, isto é, ${\rm RSS}$.
 
                 Em termos matriciais, podemos escrever a função acima como
                 <equation id="eq:ridge_loss_matrix">
-                L(\beta) = (y - X \beta)^T (y - X \beta) + \lambda \beta_{-0}^T \beta_{-0},
+                R(\beta) = (y - X \beta)^T (y - X \beta) + \lambda \beta_{-0}^T \beta_{-0},
                 </equation>
-                onde $X$ é a matriz de desenho (design matrix), $\beta_{-0}$ é o vetor de coeficientes excluindo o intercepto $\beta_0$ e $y$ é o vetor de respostas.
+                onde $X$ é a matriz design, $\beta_{-0}$ é o vetor de coeficientes excluindo o intercepto $\beta_0$ e $y$ é o vetor de respostas.
+
+                Em termos práticos, podemos supor que $\beta_0$ é zero e escrever a função de perda como
+                <equation id="eq:ridge_loss_matrix_no_intercept">
+                R(\beta) = \|y - X \beta\|_2^2 + \lambda \|\beta\|_2^2,
+                </equation>
+                onde $\beta$ é o vetor de coeficientes excluindo o intercepto $\beta_0$ e $X$ é a matrix design centralizada e sem a coluna de uns. A solução para o problema de minimização da função acima é dada pela seguinte proposição:
+                <proposition id="prop:ridge_solution">
+                    <title>Solução da Ridge Regression</title>
+                    Seja $R(\beta_0,\beta_{1:p}) = \|y - \beta_0 - X \beta_{1:p}\|_2^2 + \lambda \|\beta_{1:p}\|_2^2$, onde $y$ é um vetor coluna com $N$ linhas e $X$ é a matriz design com $N$ linhas e $p$ colunas. Então, o ponto $(\hat{\beta_0},\hat{\beta}_{1:p})$ que minimiza $R$ é dado por:
+                    <equation id="eq:ridge_solution">
+                    \hat{\beta}_{1:p} = (X^T X + \lambda I)^{-1} X^T y; \quad \hat{\beta}_0 = \bar{y} - \bar{x}^T \hat{\beta},
+                    </equation>
+                    desde que $X^T X + \lambda I$ seja invertível, o que é garantido para $\lambda > 0$.
+                </proposition>
+                <proof>Para qualquer $\beta_{1:p}$ fixo, a função $R$ é convexa em $\beta_0$, e o ponto crítico é dado por:
+                <equation id="eq:ridge_beta0_solution">
+                \hat{\beta}_0 = \bar{y} - \bar{x}^T \beta_{1:p},
+                </equation>
+                onde $\bar{y}$ é a média de $y$ e $\bar{x}$ é a média das colunas de $X$. Substituindo $\hat{\beta}_0$ na função $R$, obtemos a função de perda em termos de $\beta_{1:p}$:
+                <equation id="eq:ridge_loss_beta1p" numbered="false">
+                R(\beta_{1:p}) = \|y - \bar{y} - X \beta_{1:p}\|_2^2 + \lambda \|\beta_{1:p}\|_2^2,
+                </equation>
+                a qual pode ser reescrita trocando $y$ por $y_c = y-\bar{y}$ e $X$ por $X_c$ que é a matriz design centralizada, ou seja, $X_c$ é obtida de $X$  Assim, temos:
+                <equation id="eq:ridge_loss_beta1p_centered" numbered="false">
+                R(\beta) = \|y_c - X_c \beta\|_2^2 + \lambda \|\beta\|_2^2,
+                </equation>
+                em que $\beta$ é o vetor de coeficientes excluindo o intercepto $\beta_0$.
+                </proof>
+            </subsection>
+
+            <subsection>
+                <title>Lasso</title>
             </subsection>
         </section>
 

@@ -7,10 +7,16 @@
   <chapter id="ch:pipeline">
       <title>O <em>pipeline</em> de aprendizado de máquina</title>
       <meta>
-        <meta-item key="Autor"> Rodrigo Ribeiro</meta-item>
+        <meta-item key="Autor"> Rodrigo Ribeiro &amp; Claude </meta-item>
         <meta-item key="Instituição"> IMPA Tech </meta-item>
         <meta-item key="Período"> 2026.2 </meta-item>
       </meta>
+      <box color="red" collapsed="true" collapsible="true">
+        <title>Uso de IA</title>
+        O pipeline de aprendizado de máquina é um processo que envolve várias etapas com diferentes práticas adotadas na indústria. Para não deixar escapar as principais delas, este capítulo foi escrito com o auxílio de ferramentas de inteligência artificial. Nosso amigo, <i>Claude</i>.
+
+        O processo talvez seja o mesmo que vem sendo adotado por muita gente: um loop de interação com o modelo de modo a refinar o texto, melhorar a clareza e a coesão, sugerir melhorias e até mesmo escrever código. 
+      </box>
       <intro>
         Nos capítulos anteriores construímos o modelo mental: aprender é <b>dados + método + medida de performance</b>, e estimar $f$ a partir de $S=\{(x_1,y_1),\dots,(x_N,y_N)\}$ é um problema matemático bem posto assim que decidimos o que significa "boa aproximação". Neste capítulo vamos discutir todas as etapas envolvidas no processo de solucionar um problema de aprendizado de máquina. Esse processo vai desde o dado bruto até o modelo em operação, e é chamado de <em>pipeline</em>.
       </intro>
@@ -435,7 +441,7 @@
             Vale distinguir dois casos, porque a gravidade é diferente:
             <list marker="a">
               <item><em>O valor censurado é um preditor</em> (por exemplo, ferro abaixo do LQ, usado para estimar arsênio). O estrago é limitado: aquela coluna perde resolução na faixa baixa, e uma indicadora "abaixo do LQ" recupera boa parte da informação.</item>
-              <item><em>O valor censurado é a resposta</em> $y$ — que é exatamente o nosso caso. Aqui o problema é estrutural: uma boa parte do conjunto de treino não tem valor de $y$, tem um intervalo. Substituir por LQ$/2$ e seguir em frente é ajustar o modelo a números fabricados.</item>
+              <item><em>O valor censurado é a resposta</em> $y$, que é exatamente o nosso caso. Aqui o problema é estrutural: uma boa parte do conjunto de treino não tem valor de $y$, tem um intervalo. Substituir por LQ$/2$ e seguir em frente é ajustar o modelo a números fabricados.</item>
             </list>
 
             <remark>
@@ -588,7 +594,7 @@
               <column>$O(\text{tamanho da rede})$</column>
               <column><b>Sim</b></column>
             </row>
-            <caption>Um resumo grosseiro, útil para eliminar candidatos cedo. "Paramétrico" aqui é no sentido da <ref to="sss:param" />: existe uma parametrização de dimensão fixa, independente de $N$. Repare que interpretabilidade e flexibilidade tendem a andar em direções opostas — o que é apenas o <i>trade-off</i> da <ref to="sss:vies_var" /> visto de outro ângulo.</caption>
+            <caption>Um resumo grosseiro, útil para eliminar candidatos cedo. "Paramétrico" aqui é no sentido da <ref to="sss:param" />: existe uma parametrização de dimensão fixa, independente de $N$. Repare que interpretabilidade e flexibilidade tendem a andar em direções opostas, o que é apenas o <i>trade-off</i> da <ref to="sss:vies_var" /> visto de outro ângulo.</caption>
           </table>
         </subsection>
 
@@ -664,7 +670,7 @@
             \hat{\beta} = \left(X^\top X\right)^{-1}X^\top y.
           </equation>
 
-          Duas conexões valem a pena. A primeira: essa é a mesma história da solução do <ref to="p:poly" />, em que o sistema linear tinha solução única exatamente quando a matriz de Vandermonde era invertível. A segunda, mais prática: a hipótese de posto completo é precisamente a que o <ref to="exerc:posto" /> mostrou ser violada por uma codificação <i>one-hot</i> ingênua. A etapa de pré-processamento pode, sozinha, tornar o problema de treinamento mal posto.
+          Duas conexões valem a pena. A primeira: essa é a mesma história da solução do <ref to="p:poly" />, em que o sistema linear tinha solução única exatamente quando a matriz de Vandermonde era invertível. A segunda, mais prática: a hipótese de posto completo pode, por exemplo, ser violada por uma codificação <i>one-hot</i> ingênua. A etapa de pré-processamento pode, sozinha, tornar o problema de treinamento mal posto.
 
           <remark>
             <title>Não inverta a matriz</title>
@@ -933,7 +939,7 @@
             <list marker="a">
               <item>Calcule acurácia, precisão, recall e $F_1$.</item>
               <item>Compare a acurácia com a do classificador constante "nunca contaminada". O que você conclui?</item>
-              <item>Baixando o limiar, o modelo passa a $\text{VP}=27$, $\text{FN}=3$, $\text{FP}=180$. Recalcule as métricas. Você recomendaria a mudança? Note que a resposta depende de quanto custa uma coleta de laboratório e de quanto custa não detectar contaminação — e que essa é uma decisão de política pública, não de estatística.</item>
+              <item>Baixando o limiar, o modelo passa a $\text{VP}=27$, $\text{FN}=3$, $\text{FP}=180$. Recalcule as métricas. Você recomendaria a mudança? Note que a resposta depende de quanto custa uma coleta de laboratório e de quanto custa não detectar contaminação e que essa é uma decisão de política pública, não de estatística.</item>
             </list>
           </exercise>
 
@@ -970,7 +976,7 @@
       <section id="subsec:deploy">
         <title>Deploy</title>
 
-        Um modelo que existe apenas no seu <i>notebook</i> não poupou nenhum ensaio de laboratório, não acelerou nenhuma resposta a contaminação e não economizou um centavo. Toda a promessa do <ref to="p:concrete_problem" /> — medir mais rápido, mais barato, e responder mais ágil — se realiza ou se perde nesta última etapa.
+        Um modelo que existe apenas no seu <i>notebook</i> não poupou nenhum ensaio de laboratório, não acelerou nenhuma resposta a contaminação e não economizou um centavo. Toda a promessa do <ref to="p:concrete_problem" />, medir mais rápido, mais barato, e responder mais ágil, se realiza ou se perde nesta última etapa.
 
         <subsection id="sss:artefato">
           <title>O artefato é o <i>pipeline</i>, não o modelo</title>
@@ -987,8 +993,8 @@
 
           <list marker="a">
             <item><em>Em lote.</em> A cada campanha trimestral, roda-se o modelo sobre todas as estações de uma vez e grava-se o resultado. É o que o caso do IGAM de fato pede: os dados chegam em lotes trimestrais, e não há urgência de milissegundos. É também a forma mais simples de operar e monitorar.</item>
-            <item><em>Sob demanda.</em> Um serviço que responde a consultas individuais. Necessário quando a previsão precisa acompanhar uma interação — um painel em que o técnico digita as medições e vê a estimativa na hora.</item>
-            <item><em>Embarcado.</em> O modelo roda na própria sonda, em campo, sem conexão. É a modalidade mais restritiva: memória, energia e latência viram restrições duras — e é aqui que o custo de previsão discutido na <ref to="sss:custo" /> deixa de ser detalhe e passa a eliminar métodos.</item>
+            <item><em>Sob demanda.</em> Um serviço que responde a consultas individuais. Necessário quando a previsão precisa acompanhar uma interação, um painel em que o técnico digita as medições e vê a estimativa na hora.</item>
+            <item><em>Embarcado.</em> O modelo roda na própria sonda, em campo, sem conexão. É a modalidade mais restritiva: memória, energia e latência viram restrições duras e é aqui que o custo de previsão discutido na <ref to="sss:custo" /> deixa de ser detalhe e passa a eliminar métodos.</item>
           </list>
         </subsection>
 
@@ -998,30 +1004,30 @@
           Todo o capítulo anterior foi construído sobre $Y = f(X) + \varepsilon$, com $f$ fixa e $p_{X,Y}$ fixa. Em operação, essas hipóteses têm prazo de validade. Distinguem-se dois tipos de mudança <cite paper="gama2014"/>:
 
           <list marker="a">
-            <item><em>Deriva de dados</em> (<i>data drift</i>): a distribuição das entradas $p_X$ muda, mas a relação $p_{Y\mid X}$ permanece. Uma barragem nova a montante, um período de seca prolongada, uma sonda recalibrada — as entradas passam a vir de outra região do espaço, possivelmente onde o modelo nunca foi treinado. A boa notícia é que isso se detecta <b>sem rótulo nenhum</b>: basta comparar a distribuição das entradas que chegam com a do conjunto de treino.</item>
-            <item><em>Deriva de conceito</em> (<i>concept drift</i>): a própria $p_{Y\mid X}$ muda, isto é, a função $f$ mudou. Uma nova fonte de contaminação altera a relação entre os parâmetros de campo e o arsênio: os mesmos valores de pH, turbidez e condutividade passam a corresponder a outra concentração. Aqui não há atalho — detectar exige rótulos, ou seja, exige medir arsênio de verdade.</item>
+            <item><em>Deriva de dados</em> (<i>data drift</i>): a distribuição das entradas $p_X$ muda, mas a relação $p_{Y\mid X}$ permanece. Uma barragem nova a montante, um período de seca prolongada, uma sonda recalibrada, as entradas passam a vir de outra região do espaço, possivelmente onde o modelo nunca foi treinado. A boa notícia é que isso se detecta <b>sem rótulo nenhum</b>: basta comparar a distribuição das entradas que chegam com a do conjunto de treino.</item>
+            <item><em>Deriva de conceito</em> (<i>concept drift</i>): a própria $p_{Y\mid X}$ muda, isto é, a função $f$ mudou. Uma nova fonte de contaminação altera a relação entre os parâmetros de campo e o arsênio: os mesmos valores de pH, turbidez e condutividade passam a corresponder a outra concentração. Aqui não há atalho, detectar exige rótulos, ou seja, exige medir arsênio de verdade.</item>
           </list>
 
-          E é aqui que o caso do arsênio tem uma propriedade que muitos problemas não têm: <b>os rótulos existem, apenas chegam tarde</b>. O laboratório continua operando; nada impede que ele siga medindo arsênio em uma subamostra das campanhas. Quando esses resultados voltam, semanas depois, você tem exatamente o que precisa — um fluxo permanente de pares $(x, y)$ verdadeiros, coletados sob operação real, para comparar com o que o modelo previu.
+          E é aqui que o caso do arsênio tem uma propriedade que muitos problemas não têm: <b>os rótulos existem, apenas chegam tarde</b>. O laboratório continua operando; nada impede que ele siga medindo arsênio em uma subamostra das campanhas. Quando esses resultados voltam, semanas depois, você tem exatamente o que precisa, um fluxo permanente de pares $(x, y)$ verdadeiros, coletados sob operação real, para comparar com o que o modelo previu.
 
           <box type="tip">
             <title>Não desligue a medição que o modelo substitui</title>
-            A tentação, uma vez que o modelo funciona, é cortar o ensaio de laboratório por completo — afinal, era essa a economia prometida. Mas a medição que continua sendo feita é o único conjunto de teste que você terá depois do <i>deploy</i>, e ela é o que separa "o modelo está funcionando" de "o modelo está devolvendo números". Reduzir a frequência do ensaio é economia; eliminá-lo é ficar cego.
+            A tentação, uma vez que o modelo funciona, é cortar o ensaio de laboratório por completo, afinal, era essa a economia prometida. Mas a medição que continua sendo feita é o único conjunto de teste que você terá depois do <i>deploy</i>, e ela é o que separa "o modelo está funcionando" de "o modelo está devolvendo números". Reduzir a frequência do ensaio é economia; eliminá-lo é ficar cego.
           </box>
         </subsection>
 
         <subsection id="sss:consequencia">
           <title>A previsão vira decisão</title>
 
-          Há uma diferença de natureza entre o modelo no capítulo anterior e o modelo em operação. Lá, $\hat{f}(x)$ era um número, avaliado por um MSE. Aqui, $\hat{f}(x)$ dispara uma ação: mandar uma equipe a campo, emitir um alerta, notificar uma prefeitura, ou — o caso perigoso — <b>dispensar</b> um ensaio de laboratório porque a estimativa ficou confortavelmente abaixo do limite.
+          Há uma diferença de natureza entre o modelo no capítulo anterior e o modelo em operação. Lá, $\hat{f}(x)$ era um número, avaliado por um MSE. Aqui, $\hat{f}(x)$ dispara uma ação: mandar uma equipe a campo, emitir um alerta, notificar uma prefeitura, ou, o caso perigoso, <b>dispensar</b> um ensaio de laboratório porque a estimativa ficou confortavelmente abaixo do limite.
 
-          Um falso negativo, nesse contexto, não é uma célula de uma matriz de confusão. É água com arsênio acima de $0{,}01$ mg/L <cite papers="conama357,portaria888"/> sendo distribuída sem que ninguém saiba — em uma região onde concentrações treze vezes acima do limite já foram efetivamente medidas <cite paper="manuelzao2025"/>.
+          Um falso negativo, nesse contexto, não é uma célula de uma matriz de confusão. É água com arsênio acima de $0{,}01$ mg/L <cite papers="conama357,portaria888"/> sendo distribuída sem que ninguém saiba, em uma região onde concentrações treze vezes acima do limite já foram efetivamente medidas <cite paper="manuelzao2025"/>.
 
           Isso tem consequências concretas sobre como o modelo deve ser usado:
           <list marker="a">
             <item>o papel honesto do modelo é <b>priorizar onde medir</b>, e não substituir a medição. Ele transforma um orçamento fixo de ensaios em um orçamento bem alocado, o que é um ganho real e defensável;</item>
             <item>a previsão deve vir acompanhada de uma indicação de incerteza. Uma estimativa de $0{,}009$ mg/L com incerteza de $\pm 0{,}006$ e uma estimativa de $0{,}009$ com incerteza de $\pm 0{,}0005$ autorizam decisões completamente diferentes, e reportar só o $0{,}009$ apaga essa diferença;</item>
-            <item>o limiar de decisão da <ref to="sss:metricas_class" /> é uma escolha de política pública — quantos falsos alarmes a sociedade aceita para não perder uma contaminação —, e não um detalhe de implementação a ser fixado por quem escreve o código.</item>
+            <item>o limiar de decisão da <ref to="sss:metricas_class" /> é uma escolha de política pública, quantos falsos alarmes a sociedade aceita para não perder uma contaminação, e não um detalhe de implementação a ser fixado por quem escreve o código.</item>
           </list>
         </subsection>
 
@@ -1036,7 +1042,7 @@
 
           <box>
             <title>O <i>pipeline</i> é o <i>loop</i>, de novo</title>
-            No <ref to="ch:aprender" /> escrevemos que aprender é <b>dados + método + medida de performance</b>, e que essas três etapas formam um <i>loop</i>. Este capítulo apenas detalhou cada uma delas: <em>dados</em> são a coleta e o pré-processamento, <em>método</em> é a escolha e o treinamento, <em>medida de performance</em> é a validação e o teste. E o <i>deploy</i> é o que devolve o resultado ao mundo — de onde vêm os dados da próxima volta.
+            No <ref to="ch:aprender" /> escrevemos que aprender é <b>dados + método + medida de performance</b>, e que essas três etapas formam um <i>loop</i>. Este capítulo apenas detalhou cada uma delas: <em>dados</em> são a coleta e o pré-processamento, <em>método</em> é a escolha e o treinamento, <em>medida de performance</em> é a validação e o teste. E o <i>deploy</i> é o que devolve o resultado ao mundo, de onde vêm os dados da próxima volta.
 
             Um modelo não é um produto acabado. É um estado momentâneo de um processo que continua girando enquanto o problema existir.
           </box>
