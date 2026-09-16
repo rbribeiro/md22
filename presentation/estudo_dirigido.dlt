@@ -6,7 +6,10 @@
     <meta-item key="Instituição">IMPA Tech</meta-item>
     <meta-item key="Período">2026.2</meta-item>
   </meta>
-
+  <team>
+    <member id="rodrigo" name="Rodrigo Ribeiro" kind="human" color="blue"/>
+    <member id="claude" name="Claude" kind="agent" color="purple"/>
+  </team>
   <import src="regression" />
 
   <floating>
@@ -115,6 +118,22 @@
         </list>
       </exercise>
 
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              $f$ representa a relação de dependência da concentração de arsênio na água em função das variáveis preditoras.
+          </item>
+          <item>
+              Se $\mathbb{E}[\varepsilon] = c \neq 0$, podemos redefinir $f$ como $f'(x) = f(x) + c$ e $\varepsilon' = \varepsilon - c$. Assim, $\mathbb{E}[\varepsilon'] = 0$.
+          </item>
+          <item>
+              A variabilidade devido a variáveis não medidas pode ser reduzida coletando mais variáveis relevantes. O erro de medição do laboratório não pode ser reduzido por nenhum método, pois é inerente ao processo de medição.
+          </item>
+
+          <item> Se a variância de $\varepsilon$ depende de $x$, a previsão de $f$ continua sendo o valor esperado condicional, mas a avaliação do erro muda: métodos que assumem variância constante podem subestimar o erro em regiões de alta variância.</item>
+        </list>
+      </solution>
+
       <exercise id="exerc:interpolar">
         <title>Interpolar não é aprender</title>
         <meta>
@@ -130,6 +149,25 @@
         </list>
       </exercise>
 
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              O polinômio interpolador se ajusta perfeitamente aos dados, incluindo o ruído, o que leva a um modelo que não generaliza bem para novos dados. Ele "aprende" o ruído presente nos dados de treinamento.
+          </item>
+          <item>
+              O fenômeno de Runge mostra que polinômios de alto grau podem oscilar significativamente entre os pontos de interpolação, especialmente em regiões onde os pontos estão mais espaçados. É possível checar isso calculando-se a derivada de um polinômio interpolador de Lagrange. 
+              
+              Isso significa que aumentar $N$ pode levar a um modelo pior, ao invés de melhor.
+          </item>
+          <item>
+              Se $f$ for realmente um polinômio de grau menor ou igual a $N-1$ e se $\varepsilon$ for zero (ou muito pequeno), então interpolar seria razoável.
+          </item>
+          <item>
+              Esse fenômeno é conhecido como alta variância do modelo: pequenas mudanças nos dados de treinamento podem levar a grandes mudanças no modelo ajustado.
+          </item>
+        </list>
+      </solution>
+
       <exercise id="exerc:vandermonde">
         <title>Existência e unicidade do interpolador</title>
         <meta>
@@ -139,6 +177,11 @@
         Sejam $x_1, \dots, x_N$ distintos. Mostre que a matriz de Vandermonde $V_{ij} = x_i^{\,j-1}$ é invertível, e conclua que existe um único polinômio de grau no máximo $N-1$ passando por $(x_i, y_i)$, $i = 1, \dots, N$. O que acontece se dois $x_i$ coincidem?
         <hint>Um polinômio não nulo de grau no máximo $N-1$ tem no máximo $N-1$ raízes. Use isso para mostrar que o núcleo de $V$ é trivial.</hint>
       </exercise>
+      <solution collapsed="true">
+        Assuma que exista um vetor no kernel de $V$ (quando $V$ é visto como um operador, ou seja, $V\beta = 0$). Então o polinômio $p(x) = \sum_{j=1}^{N} \beta_j x^{j-1}$ tem $N$ raízes distintas $x_1, \dots, x_N$. Mas um polinômio de grau no máximo $N-1$ não pode ter mais do que $N-1$ raízes distintas, a menos que seja o polinômio nulo. Portanto, $\beta = 0$, e o kernel de $V$ é trivial. Isso implica que $V$ é invertível.
+
+        Se dois $x_i$ coincidirem, então a matriz $V$ terá duas linhas iguais, o que implica que $\det(V) = 0$ e, portanto, $V$ não será invertível. Lembre-se que a dimensão do espaço coluna é igual à dimensão do espaço linha, e que a dimensão do espaço coluna é igual ao posto da matriz. Se duas linhas são iguais, o posto da matriz diminui, e a matriz não é invertível.
+      </solution>
 
       <exercise>
         <title>Interpolação de Lagrange e sua instabilidade</title>
@@ -152,6 +195,41 @@
           <item>Repita (b) 100 vezes, reamostrando apenas o ruído. Reporte a média e o desvio padrão de $p(x_0)$ e compare com $f(x_0)$.</item>
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              A função <c>lagrange(xs, ys)</c> pode ser implementada usando a fórmula de Lagrange para interpolação. Para cada ponto $x_i$, calculamos o polinômio base $L_i(x)$ e somamos os produtos $y_i L_i(x)$. Em Python, o código pode ser algo como:
+              <code lang="python">
+def lagrange(xs, ys):
+    def L(k, x):
+        result = 1
+        for i, xi in enumerate(xs):
+            if i != k:
+                result *= (x - xi) / (xs[k] - xi)
+        return result
+
+    def p(x):
+        return sum(yi * L(i, x) for i, yi in enumerate(ys))
+
+    return p
+              </code>
+          </item>
+          <item>
+              Ao fixar os pontos $x_1, \dots, x_{10}$ e gerar os valores $y_i$ com ruído, podemos avaliar o polinômio interpolador em $x_0 = 0{,}95$. Devido à presença do ruído, o valor de $p(x_0)$ pode variar significativamente entre as diferentes amostras.
+
+              <code lang="python">
+import numpy as np
+def generate_data(N=10, noise_std=0.1):
+    xs = np.linspace(-1, 1, N)
+    ys = np.sin(3 * xs) + np.random.normal(0, noise_std, size=N)
+    return xs, ys
+              </code>
+          </item>
+          <item>
+              Ao repetir o processo 100 vezes, reamostrando apenas o ruído, podemos calcular a média e o desvio padrão de $p(x_0)$. Espera-se que a média esteja próxima de $f(x_0)$, mas o desvio padrão será relativamente grande devido à instabilidade da interpolação de Lagrange em pontos próximos às extremidades do intervalo.
+          </item>
+        </list>
+      </solution>
     </subsection>
 
     <!-- ================================================================== -->
@@ -183,6 +261,22 @@
           <item>Conclua: o risco empírico mede a qualidade do <em>ajuste</em>. Que quantidade mediria <em>aprendizado</em>?</item>
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              O risco empírico mede a média das perdas entre as previsões do modelo e os valores reais observados nos dados de treinamento. É uma média porque estamos somando as perdas individuais e dividindo pelo número total de observações, o que nos dá uma medida geral de desempenho do modelo. O resultado de probabilidade que justifica seu uso é a Lei dos Grandes Números, que garante que a média amostral converge para a expectativa à medida que o tamanho da amostra aumenta.
+          </item>
+          <item>
+              A perda $\ell$ codifica o que nos importa, ou seja, como queremos penalizar os erros de previsão. A classe $\mathcal{G}$ codifica o que acreditamos sobre $f$, ou seja, as suposições que fazemos sobre a forma da função que estamos tentando estimar.
+          </item>
+          <item>
+              Se $\mathcal{G}$ é o conjunto de todas as funções, o ERM devolve a função que passa exatamente pelos pontos de dados, ou seja, o interpolador. Se $\mathcal{G}$ é o conjunto das funções constantes, o ERM devolve a constante que minimiza a perda média, que geralmente será a média ou mediana dos valores observados, dependendo da escolha da perda.
+          </item>
+          <item>
+              Concluindo, o risco empírico mede a qualidade do <em>ajuste</em> do modelo aos dados de treinamento. A quantidade que mediria o <em>aprendizado</em> seria o risco esperado, ou seja, a expectativa da perda sobre a distribuição verdadeira dos dados.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>Previsão ou inferência?</title>
@@ -199,6 +293,25 @@
           <item>Descreva um cenário em que o modelo com <em>maior</em> erro de teste é a escolha certa.</item>
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+        <item>
+            Para o laboratório que quer parar de medir arsênio, o modelo $\hat{f}_B$ (kNN com $k=7$) é a melhor escolha, pois ele tem um erro de teste menor, o que significa que suas previsões serão mais precisas para novos dados.
+        </item>
+        <item>
+            Para o órgão ambiental que quer entender a relação entre turbidez e concentração de arsênio, o modelo $\hat{f}_A$ é mais adequado, pois ele fornece coeficientes interpretáveis que indicam como cada variável preditora afeta a resposta.
+        </item>
+        <item>
+            O coeficiente $15{,}2$ indica que, mantendo todas as outras variáveis constantes, um aumento de uma unidade na pH está associado a um aumento de $15{,}2$ mg/L na concentração de arsênio. O sinal negativo de $-2{,}1$ para a turbidez indica que, mantendo todas as outras variáveis constantes, um aumento de uma unidade na turbidez está associado a uma diminuição de $2{,}1$ mg/L na concentração de arsênio. No entanto, isso não implica causalidade; apenas mostra uma associação observada nos dados.
+        </item>
+        <item>
+            No modelo $\hat{f}_B$, que é baseado em kNN, não há coeficientes interpretáveis, pois o modelo faz previsões com base na média dos valores de resposta dos vizinhos mais próximos, sem fornecer uma relação explícita entre as variáveis preditoras e a resposta.
+        </item>
+        <item>
+            Um cenário em que o modelo com maior erro de teste é a escolha certa seria quando a interpretabilidade é crucial para a tomada de decisão, como em políticas públicas ou regulamentações ambientais. Nesse caso, mesmo que o modelo $\hat{f}_A$ tenha um erro de teste maior, ele fornece informações valiosas sobre como as variáveis estão relacionadas à concentração de arsênio, permitindo que os tomadores de decisão façam escolhas informadas.
+        </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>Paramétrico versus não-paramétrico</title>
@@ -213,6 +326,30 @@
           <item>Em que sentido a "quantidade de informação" que o kNN guarda cresce com $N$, enquanto a da regressão linear não?</item>
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              <b>Vantagens de métodos paramétricos:</b> geralmente mais simples, mais rápidos de treinar e interpretar, requerem menos dados para estimar os parâmetros. 
+              
+              Desvantagens: podem ser muito rígidos e não capturar a complexidade dos dados se o modelo escolhido não for adequado. 
+              
+              Vantagens de métodos não-paramétricos: mais flexíveis, podem modelar relações complexas sem assumir uma forma específica.
+              
+              Desvantagens: podem exigir mais dados para treinar, podem ser mais lentos e difíceis de interpretar. 
+              
+              Prefiro métodos paramétricos quando tenho conhecimento prévio sobre a forma da função $f$ e quando o tamanho da amostra $N$ é pequeno. Prefiro métodos não-paramétricos quando não tenho conhecimento sobre a forma de $f$ e quando o tamanho da amostra $N$ é grande.
+          </item>
+          <item>
+              A frase correta seria: "O kNN não tem parâmetros no sentido tradicional, mas possui hiperparâmetros, como o número de vizinhos $k$." A diferença é que parâmetros são aprendidos a partir dos dados durante o treinamento, enquanto hiperparâmetros são definidos antes do treinamento e controlam o comportamento do modelo.
+          </item>
+          <item>
+              O $k$ não pode ser escolhido minimizando o risco empírico nos dados de treino porque isso levaria a um overfitting, escolhendo $k=1$, que minimiza o erro nos dados de treino mas não generaliza bem para novos dados. Em vez disso, $k$ deve ser escolhido usando validação cruzada ou um conjunto de validação separado.
+          </item>
+          <item>
+              No kNN, cada novo ponto de dado é armazenado e pode influenciar futuras previsões, aumentando a "quantidade de informação" com $N$. Na regressão linear, a informação é condensada nos parâmetros $\beta$, cujo número não cresce com $N$.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>Escolhendo a perda</title>
@@ -227,6 +364,27 @@
           <item>Proponha uma perda que penalize mais <em>subestimar</em> o arsênio do que superestimá-lo. Que efeito ela tem sobre a $\hat{f}$ obtida por ERM?</item>
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              Para prever uma estação "típica", eu usaria a perda $\ell_1$, pois ela é mais robusta a valores extremos e nos dá a mediana, que representa melhor o comportamento central dos dados. Para não subestimar as estações críticas, eu usaria a perda $\ell_2$, que penaliza mais os erros grandes e nos dá a média, capturando melhor os valores extremos.
+          </item>
+          <item>
+              Ao trocar $\ell_2$ por $\ell_1$, perde-se a conveniência de ter uma solução analítica simples (como a média) e a suavidade da função de perda, tornando o problema de otimização mais difícil, pois $\ell_1$ é não diferenciável em zero.
+          </item>
+          <item>
+              Uma perda assimétrica poderia ser definida como:
+              $$
+              \ell(y, \hat{y}) = 
+              \begin{cases}
+                  (y - \hat{y})^2 & \text{se } y > \hat{y} \\
+                  0.5(y - \hat{y})^2 & \text{se } y \leq \hat{y}
+              \end{cases}
+              $$
+              Essa perda penaliza mais quando subestimamos o valor real do arsênio. O efeito sobre $\hat{f}$ obtida por ERM seria que ela tenderia a superestimar os valores de arsênio para evitar penalizações maiores ao subestimar.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:sem_intercepto">
         <title>Regressão sem intercepto à mão</title>
@@ -264,6 +422,34 @@
         </list>
         <hint>Tome $-\log$ da verossimilhança e descarte os termos que não dependem de $f$.</hint>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              A verossimilhança condicional é dada por:
+              $$
+              L(\beta) = \prod_{i=1}^{N} \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(y_i - \beta x_i)^2}{2\sigma^2}\right).
+              $$
+              Tomando o logaritmo e descartando os termos que não dependem de $\beta$, temos:
+              $$
+              \log L(\beta) = -\frac{1}{2\sigma^2} \sum_{i=1}^{N} (y_i - \beta x_i)^2 + \text{constante}.
+              $$
+              Maximizar a verossimilhança é equivalente a minimizar a soma dos quadrados dos resíduos, que é exatamente o risco empírico com perda quadrática.
+          </item>
+          <item>
+              Se $\varepsilon$ tem densidade de Laplace, a verossimilhança condicional é:
+              $$
+              L(\beta) = \prod_{i=1}^{N} \frac{1}{2b} \exp\left(-\frac{|y_i - \beta x_i|}{b}\right).
+              $$
+              Tomando o logaritmo e descartando os termos que não dependem de $\beta$, temos:
+              $$
+              \log L(\beta) = -\frac{1}{b} \sum_{i=1}^{N} |y_i - \beta x_i| + \text{constante}.
+              $$
+              Portanto, maximizar a verossimilhança é equivalente a minimizar a soma dos valores absolutos dos resíduos, que é o risco empírico com perda $\ell_1$.
+          </item>
+          <item>
+              A escolha da perda revela nossas suposições sobre a distribuição do ruído.
+          </item>
+        </list>      </solution>
 
       <exercise id="exerc:media_mediana">
         <title>Média e mediana como ERM</title>
@@ -274,6 +460,27 @@
         Seja $\mathcal{G}$ o conjunto das funções constantes $g(x) = c$. Mostre que o ERM com $\ell_2(y, \hat{y}) = (y - \hat{y})^2$ devolve $c = \bar{y}$, e que com $\ell_1(y, \hat{y}) = |y - \hat{y}|$ devolve uma mediana de $y_1, \dots, y_N$. Por que isso explica a robustez de $\ell_1$ a valores extremos?
         <hint>Para $\ell_1$, a função $c \mapsto \sum_i |y_i - c|$ é convexa e linear por partes; compare as inclinações à esquerda e à direita de cada $y_i$.</hint>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              Para $\ell_2$, o risco empírico é:
+              $$
+              R(c) = \frac{1}{N} \sum_{i=1}^{N} (y_i - c)^2.
+              $$
+              Derivando em relação a $c$ e igualando a zero, obtemos:
+              $$
+              \frac{dR}{dc} = -\frac{2}{N} \sum_{i=1}^{N} (y_i - c) = 0 \implies c = \bar{y}.
+              $$
+          </item>
+          <item>
+              Para $\ell_1$, o risco empírico é:
+              $$
+              R(c) = \frac{1}{N} \sum_{i=1}^{N} |y_i - c|.
+              $$
+              A função $R(c)$ é convexa e linear por partes. O minimizador ocorre onde o número de pontos à esquerda de $c$ é igual ao número de pontos à direita, ou seja, em uma mediana dos valores $y_i$. 
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:funcao_regressao">
         <title>A função de regressão minimiza o risco</title>
@@ -346,6 +553,25 @@
           <item>O que $\text{MSE}_{\text{treino}} \to 0$ indica sobre o método? E sobre o quanto ele aprendeu?</item>
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              O MSE mede a média dos quadrados dos erros de previsão, então sua unidade é o quadrado da unidade da variável resposta, neste caso, mg²/L². A raiz quadrada do MSE (RMSE) é reportada porque traz a unidade de volta para mg/L, tornando a interpretação mais direta.
+          </item>
+          <item>
+              $\text{MSE}_{\text{treino}}$ mede o erro médio nos dados usados para ajustar o modelo, enquanto $\text{MSE}_{\text{teste}}$ mede o erro médio em novos dados não vistos. O $\text{MSE}_{\text{treino}}$ é sistematicamente otimista porque o modelo foi ajustado para minimizar esse erro específico, podendo se ajustar demais aos ruídos dos dados de treino.
+          </item>
+          <item>
+              Um $\text{MSE}_{\text{teste}} = 10^{-4}$ não necessiaramente é um bom resultado. Comparando com o limite legal de $0{,}01$ mg/L, a RMSE seria $0{,}01$ mg/L, que é exatamente o limite legal.
+          </item>
+          <item>
+              Nenhum método consegue, em média, MSE de teste abaixo de ${\rm Var}(\varepsilon)$ porque este representa a variabilidade inerente ao processo que não pode ser explicada por qualquer modelo. É o limite inferior do erro que podemos alcançar. Isso pode ser visto na decomposição do risco em erro redutível e irredutível, onde o erro irredutível é exatamente ${\rm Var}(\varepsilon)$.
+          </item>
+          <item>
+              Se $\text{MSE}_{\text{treino}} \to 0$, isso indica que o método está se ajustando muito bem aos dados de treino, possivelmente sofrendo de sobreajuste. No entanto, isso não garante que ele aprendeu a generalizar bem para novos dados; ele pode ter aprendido apenas os ruídos específicos do conjunto de treino.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>As cinco curvas</title>
@@ -370,6 +596,22 @@
           <item>${\rm Var}(\varepsilon)$ enorme.</item>
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              Com $N$ enorme e $p$ pequeno, uma classe flexível pode capturar a complexidade dos dados sem sofrer muito de variância, então ela provavelmente terá menor erro de teste.
+          </item>
+          <item>
+              Com $p$ enorme e $N$ pequeno, uma classe rígida é preferível, pois uma classe flexível teria alta variância devido à falta de dados suficientes para estimar os parâmetros de forma confiável.
+          </item>
+          <item>
+              Se $f$ é altamente não-linear, uma classe flexível é necessária para capturar a complexidade da função verdadeira, mesmo que isso aumente a variância.
+          </item>
+          <item>
+              Se ${\rm Var}(\varepsilon)$ é enorme, o erro irredutível domina, e a escolha entre flexível ou rígido tem menos impacto no erro de teste. No entanto, uma classe rígida pode ser preferida para evitar sobreajuste ao ruído.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:diagnostico">
         <title>Diagnóstico por viés e variância</title>
@@ -386,6 +628,25 @@
           <item>No kNN, quando $k$ cresce, o que acontece com viés e variância? Qual $k$ é o "interpolador"? Qual é a "função constante"?</item>
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              O método $A$ sofre de sobreajuste, pois tem um erro de treino muito baixo e um erro de teste muito alto. O método $B$ talvez sofra de subajuste, com ambos os erros relativamente altos. ${\rm Var}(\varepsilon)$ deve ser menor que 1,1, já que o erro de teste do método $B$ é maior que o erro irredutível.
+          </item>
+          <item>
+              Para o método $A$, coletar mais dados ou regularizar pode reduzir a variância e diminuir o erro de teste. Para o método $B$, aumentar a flexibilidade pode reduzir o viés e diminuir o erro de teste.
+          </item>
+          <item>
+              Se $N$ dobrar, a variância tende a diminuir, enquanto o viés permanece aproximadamente o mesmo. O erro irredutível não muda, e a flexibilidade ótima pode aumentar, permitindo modelos mais complexos sem sobreajuste.
+          </item>
+          <item>
+              Acrescentar um preditor puramente aleatório aumenta a variância do modelo, mas não afeta o viés, já que ele não contribui para a previsão da variável resposta.
+          </item>
+          <item>
+              No kNN, quando $k$ cresce, o viés aumenta e a variância diminui. O "interpolador" ocorre quando $k=1$, enquanto a "função constante" ocorre quando $k=N$, onde todos os pontos são considerados vizinhos.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>Validação cruzada</title>
@@ -401,6 +662,22 @@
         </list>
         <hint>Em (c), pense na correlação entre os $N$ ajustes do LOOCV: eles compartilham $N-2$ pontos.</hint>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              O $k$-fold é implementado dividindo os dados em $k$ subconjuntos (folds) de tamanho aproximadamente igual. Para cada fold, o modelo é ajustado usando os $k-1$ folds restantes como conjunto de treino e avaliado no fold restante como conjunto de teste. Isso é repetido $k$ vezes, e o erro final é a média dos erros de teste obtidos em cada iteração. Portanto, são necessários $k$ ajustes do modelo.
+          </item>
+          <item>
+              Vantagens do $k$-fold em relação a uma única partição treino/teste incluem uma estimativa mais robusta do erro de teste, pois utiliza todos os dados para treino e teste. Desvantagens incluem maior custo computacional devido aos múltiplos ajustes do modelo.
+          </item>
+          <item>
+              Vantagens do $k$-fold em relação ao LOOCV incluem menor custo computacional e menor variância na estimativa do erro de teste. O LOOCV pode ter maior variância porque cada ajuste é altamente correlacionado com os outros, já que compartilham quase todos os pontos de treino, o que pode levar a estimativas instáveis do erro.
+          </item>
+          <item>
+              
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>Vazamento de dados</title>
@@ -430,6 +707,21 @@
           <item>Se a coluna $x$ for medida em outra unidade (por exemplo, gramas em vez de quilos), a solução muda? O que isso sugere fazer antes de regularizar?</item>
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              O erro de treino aumenta sempre, pois a penalização força os coeficientes a se aproximarem de zero, reduzindo a capacidade do modelo de se ajustar aos dados de treino. O erro de teste tem forma de U, inicialmente diminuindo devido à redução da variância e depois aumentando devido ao aumento do viés. A variância diminui sempre, enquanto o viés² aumenta sempre. O erro irredutível permanece constante, pois é independente do modelo.
+          </item>
+          <item>
+              $\beta_0$ não é penalizado porque ele representa o intercepto do modelo, que é necessário para ajustar a média dos dados. Penalizar o intercepto poderia levar a um ajuste inadequado da linha base do modelo.
+          </item>
+          <item>
+              Se a coluna $x$ for medida em outra unidade, a solução muda, pois a penalização depende da escala dos coeficientes. Isso sugere que as variáveis devem ser padronizadas (por exemplo, subtraindo a média e dividindo pelo desvio padrão) antes de aplicar a regularização para garantir que todos os coeficientes sejam comparáveis.
+
+              Lembre-se que o coeficiente representa a mudança na variável resposta para uma unidade de mudança na variável preditora. Se as unidades mudarem, a interpretação do coeficiente também muda, afetando a penalização aplicada pelo lasso.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:overfit_widget">
         <title>Sobreajuste ao vivo</title>
@@ -521,6 +813,39 @@
           <item>Que perda tornaria um classificador com taxa de erro $20\%$ preferível ao constante? O que isso diz sobre "taxa de erro" como medida de performance?</item>
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              A diferença $y - \hat{y}$ não faz sentido para rótulos categóricos, pois não há uma ordem ou distância definida entre eles. A perda $\mathbb{1}\{y \neq \hat{y}\}$ mede se a previsão está correta ou não, atribuindo 1 para erro e 0 para acerto.
+          </item>
+          <item>
+              O classificador constante "não-contaminada" teria uma taxa de erro de $3\%$, já que ele sempre prevê a classe majoritária. Embora a taxa de erro seja baixa, ele não é bom, pois falha em identificar as estações contaminadas, que são críticas.
+          </item>
+          <item>
+              A matriz de perda assimétrica seria:
+              $$
+              L = \begin{pmatrix}
+              0 & 2 \\
+              1 & 0
+              \end{pmatrix}
+              $$
+              Como o estimador constante sempre prevê "não-contaminada", o risco empírico seria:
+              <equation numbered="false">
+                \begin{split}
+              R(\hat{y}) = \frac{1}{N} \sum_{i=1}^{N} L(y_i, \hat{y}_i) & = \frac{1}{N} \sum_{i=1}^{N} L(y_i, \text{não-contaminada}) \\
+              & = \frac{1}{N} \sum_{i=1}^{N} \begin{cases}
+              0 & \text{se } y_i = \text{não-contaminada} \\
+              2 & \text{se } y_i = \text{contaminada}
+              \end{cases}
+              \end{split}
+              </equation>
+              Portanto, o risco empírico seria $2 \times 0{,}03 = 0{,}06$.
+          </item>
+          <item>
+              Uma perda que tornaria um classificador com taxa de erro $20\%$ preferível ao constante poderia ser uma matriz onde o custo de errar uma estação contaminada fosse significativamente maior do que errar uma limpa. Isso mostra que a taxa de erro sozinha não captura a gravidade dos erros e que medidas de performance devem considerar os custos associados às decisões.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>O classificador de Bayes como barreira</title>
@@ -539,6 +864,27 @@
           
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+        <item>
+            O classificador de Bayes é definido como:
+            $$
+            \hat{Y}_{\text{Bayes}}(x) = \arg\max_{j} P(Y = j \mid X = x)
+            $$
+            Ele atribui a cada ponto de teste a classe com a maior probabilidade condicional.
+        </item>
+        <item>
+            Calcule o risco como
+            $$
+            R(\hat{Y}) = \mathbb{P}(Y \neq \hat{Y}) = 1 - \mathbb{P}(Y = \hat{Y}) 
+            $$
+            Para a probabilidade do lado direito, condicione em $X = x$.
+        </item>
+        <item>
+            O classificador de Bayes não pode ser usado na prática porque as probabilidades condicionais $P(Y = j \mid X = x)$ são desconhecidas e precisam ser estimadas a partir dos dados. Métodos de aprendizado tentam aproximar essas probabilidades para construir classificadores que se aproximem do desempenho do classificador de Bayes.
+        </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>kNN à mão</title>
@@ -570,6 +916,32 @@
           <item>Com a perda assimétrica do <ref to="exerc:perda01" />, a decisão com $K = 3$ muda? E se errar uma estação contaminada custasse $3$?</item>
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              As distâncias euclidianas são:
+              <equation numbered="false">
+                \begin{split}
+                d_1 &= \sqrt{(0-0)^2 + (3-0)^2 + (0-0)^2} = 3 \\
+                d_2 &= \sqrt{(2-0)^2 + (0-0)^2 + (0-0)^2} = 2 \\
+                d_3 &= \sqrt{(0-0)^2 + (1-0)^2 + (3-0)^2} = \sqrt{10} \approx 3.16 \\
+                d_4 &= \sqrt{(0-0)^2 + (1-0)^2 + (2-0)^2} = \sqrt{5} \approx 2.24 \\
+                d_5 &= \sqrt{(-1-0)^2 + (0-0)^2 + (1-0)^2} = \sqrt{2} \approx 1.41 \\
+                d_6 &= \sqrt{(1-0)^2 + (1-0)^2 + (1-0)^2} = \sqrt{3} \approx 1.73
+                \end{split}
+              </equation>
+          </item>
+          <item>
+              Com $K=1$, a previsão é "Contaminada" (observação 5). Com $K=3$, os vizinhos mais próximos são as observações 5, 6 e 4, resultando em uma previsão de "Limpa" por maioria.
+          </item>
+          <item>
+              Se a fronteira de Bayes for muito não-linear, o melhor $K$ tende a ser pequeno, pois um $K$ grande suavizaria demais a fronteira, perdendo detalhes importantes da estrutura dos dados.
+          </item>
+          <item>
+              Com a perda assimétrica do exercício anterior, a decisão com $K=3$ ainda seria "Limpa", mas se errar uma estação contaminada custasse $3$, a decisão poderia mudar para "Contaminada", dependendo da distribuição das classes entre os vizinhos.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>kNN em regressão e em classificação</title>
@@ -584,6 +956,22 @@
           <item>Para $p = 100$, qual deve ser o lado de um hipercubo centrado no ponto de teste para conter $10\%$ dos dados? Comente.</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="draft" by="rodrigo" for="claude">
+        <list marker="a">
+          <item>
+              Ambos os métodos utilizam a proximidade dos pontos de treino para fazer previsões. O kNN de regressão aproxima $\mathbb{E}[Y \mid X = x]$, enquanto o kNN classificador aproxima $\arg\max_j P(Y = j \mid X = x)$.
+          </item>
+          <item>
+              Para $p=1$, a fração é $0{,}1$ (10%). Para $p=2$, a fração é $0{,}1^2 = 0{,}01$ (1%). Para $p=100$, a fração é $0{,}1^{100}$, que é extremamente pequena, praticamente zero.
+          </item>
+          <item>
+              Isso implica que, com muitos preditores, os vizinhos mais próximos podem estar muito distantes do ponto de teste, aumentando o viés e diminuindo a variância. A densidade de pontos próximos diminui drasticamente à medida que a dimensionalidade aumenta.
+          </item>
+          <item>
+              Para conter 10% dos dados em $p=100$, o lado do hipercubo deve ser aproximadamente $0{,}794$ (pois $(0{,}794)^{100} \approx 0{,}1$). Isso mostra que mesmo um pequeno aumento na dimensão requer um aumento significativo no volume do espaço para capturar uma fração significativa dos dados.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>Bayes com resposta binomial</title>
@@ -593,6 +981,19 @@
         </meta>
         Seja $Y \mid X = x \sim \text{bin}(4, x)$, com $x \in [0, 1]$. Calcule $\hat{Y}_{\text{Bayes}}(x)$ e o erro de Bayes $P(Y \neq \hat{Y}_{\text{Bayes}}(x) \mid X = x)$ para $x \in \{0{,}1;\; 0{,}5;\; 0{,}9\}$. 
       </exercise>
+      <solution collapsed="true" status="draft" by="rodrigo" for="claude">
+        <list marker="a">
+          <item>
+              Para $x=0{,}1$, a distribuição de $Y$ é binomial com parâmetros $n=4$ e $p=0{,}1$. O valor mais provável de $Y$ é 0, então $\hat{Y}_{\text{Bayes}}(0{,}1) = 0$. O erro de Bayes é $P(Y \neq 0 \mid X = 0{,}1) = 1 - P(Y = 0 \mid X = 0{,}1) = 1 - (0{,}9^4) \approx 0{,}3439$.
+          </item>
+          <item>
+              Para $x=0{,}5$, a distribuição de $Y$ é binomial com parâmetros $n=4$ e $p=0{,}5$. O valor mais provável de $Y$ é 2, então $\hat{Y}_{\text{Bayes}}(0{,}5) = 2$. O erro de Bayes é $P(Y \neq 2 \mid X = 0{,}5) = 1 - P(Y = 2 \mid X = 0{,}5) = 1 - (6 * (0{,}5^2) * (0{,}5^2)) = 1 - (6 * 0{,}0625) = 1 - 0{,}375 = 0{,}625$.
+          </item>
+          <item>
+              Para $x=0{,}9$, a distribuição de $Y$ é binomial com parâmetros $n=4$ e $p=0{,}9$. O valor mais provável de $Y$ é 4, então $\hat{Y}_{\text{Bayes}}(0{,}9) = 4$. O erro de Bayes é $P(Y \neq 4 \mid X = 0{,}9) = 1 - P(Y = 4 \mid X = 0{,}9) = 1 - (0{,}9^4) \approx 1 - 0{,}6561 \approx 0{,}3439$.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>Fronteiras do kNN</title>
@@ -620,6 +1021,11 @@
           <item>Gere dados dessa lei e compare, em um conjunto de teste grande, a taxa de erro do kNN (com $k$ escolhido por validação cruzada) com a do classificador de Bayes, para $N \in \{50, 200, 1000, 5000\}$. Para onde a diferença converge?</item>
         </list>
       </exercise>
+      <solution>
+        <todo for="claude" by="rodrigo" priority="high" status="open">
+          Implementar item (a) usando tag <c><code></c>
+        </todo>
+      </solution>
     </subsection>
   </section>
 
@@ -655,6 +1061,22 @@
           <item>O vetor de resíduos $r = y - \hat{y}$ é ortogonal ao vetor de uns e ao vetor $x$. Traduza cada ortogonalidade em uma frase sobre o ajuste.</item>
         </list>
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              O MSE é mais apropriado para comparar ajustes em conjuntos de tamanhos diferentes, pois ele normaliza a soma dos quadrados pelo número de observações. A RSS aparece naturalmente na verossimilhança, pois ela é proporcional à soma dos quadrados dos resíduos.
+          </item>
+          <item>
+              Mínimos quadrados soma distâncias verticais porque o modelo assume que a variável resposta $Y$ é aleatória e sujeita a erro, enquanto $X$ é considerado fixo. Portanto, faz sentido medir o erro na direção de $Y$.
+          </item>
+          <item>
+              As unidades de $\hat{\beta}_1$ são as unidades de $Y$ divididas pelas unidades de $X$. Se $\hat{\beta}_1 = 0$, isso não implica necessariamente que $Y$ seja independente de $X$. Tome $X\sim \mathcal{N}(0, 1)$ e $Y = X^2$. Neste caso, $\hat{\beta}_1 = 0$, mas $Y$ depende de $X$.
+          </item>
+          <item>
+              A ortogonalidade do vetor de resíduos ao vetor de uns significa que a média dos resíduos é zero, indicando que o ajuste não tem viés sistemático. A ortogonalidade ao vetor $x$ significa que não há correlação linear entre os resíduos e os valores preditores, indicando que o modelo capturou toda a relação linear entre $X$ e $Y$.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:linear_cubico">
         <title>Linear ou cúbico?</title>
@@ -670,6 +1092,19 @@
         </list>
         Relacione as respostas com o <ref to="exerc:flexivel" />.
       </exercise>
+      <solution collapsed="true">
+        <list marker="a">
+          <item>
+              O polinômio cúbico terá menor RSS de treino, pois ele tem mais parâmetros e pode se ajustar melhor aos dados de treino. A reta é um caso especial do polinômio cúbico com restrições nos coeficientes.
+          </item>
+          <item>
+              O RSS de teste pode ser maior para o polinômio cúbico se ele estiver superajustando os dados de treino, capturando ruído em vez da relação verdadeira. A reta pode ter melhor desempenho em teste se a relação verdadeira for linear.
+          </item>
+          <item>
+              Se a relação verdadeira é não-linear, o polinômio cúbico ainda terá menor RSS de treino, mas o desempenho em teste dependerá da complexidade da relação verdadeira e do grau do polinômio. Se a relação for muito complexa, o polinômio cúbico pode não capturar bem a estrutura dos dados.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>Com intercepto, à mão</title>
@@ -734,6 +1169,40 @@
         </list>
         <hint>Em (b), $\hat{\beta}_1$ é uma combinação linear de variáveis independentes; use $\sum_i w_i x_i = 1$.</hint>
       </exercise>
+      <solution collapsed="true" status="draft" by="rodrigo" for="claude">
+        <todo for="claude" by="rodrigo" priority="high" status="open">
+          Solução ruim. Refazer rigorosamente.
+        </todo>
+        <list marker="a">
+          <item>
+              A expressão $\sum_i w_i = 0$ é usada para mostrar que a soma ponderada dos resíduos é zero, o que implica que a estimativa de $\hat{\beta}_1$ é imparcial.
+          </item>
+          <item>
+              A esperança de $\hat{\beta}_1$ é calculada como:
+              $$
+              \mathbb{E}[\hat{\beta}_1] = \sum_i w_i \mathbb{E}[y_i] = \sum_i w_i (\beta_0 + \beta_1 x_i) = \beta_1 \sum_i w_i x_i = \beta_1
+              $$
+              A variância é:
+              $$
+              {\rm Var}(\hat{\beta}_1) = \sum_i w_i^2 {\rm Var}(y_i) = \sigma^2 \sum_i w_i^2 = \frac{\sigma^2}{\sum_j (x_j - \bar{x})^2}
+              $$
+          </item>
+          <item>
+              À medida que $N$ cresce, a variância de $\hat{\beta}_1$ diminui, tornando a estimativa mais precisa. Quando os $x_i$ estão mais espalhados, a soma $\sum_i (x_i - \bar{x})^2$ aumenta, o que também reduz a variância de $\hat{\beta}_1$. Isso está relacionado à alavancagem observada no exercício anterior.
+          </item>
+          <item>
+              A esperança de $\hat{\beta}_0$ é:
+              $$
+              \mathbb{E}[\hat{\beta}_0] = \mathbb{E}[\bar{y}] - \mathbb{E}[\hat{\beta}_1] \bar{x} = \beta_0
+              $$
+              A variância é:
+              $$
+              {\rm Var}(\hat{\beta}_0) = {\rm Var}(\bar{y}) + {\rm Var}(\hat{\beta}_1) \bar{x}^2 = \frac{\sigma^2}{N} + \frac{\sigma^2 \bar{x}^2}{\sum_i (x_i - \bar{x})^2}
+              $$
+              Centrar os $x_i$ reduz $\bar{x}$, o que diminui a segunda parcela da variância de $\hat{\beta}_0$, tornando a estimativa mais precisa.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:pitagoras_r2">
         <title>Pitágoras e $R^2$</title>

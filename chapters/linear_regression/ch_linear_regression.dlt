@@ -323,16 +323,40 @@
                 \hat{\beta}_j \pm t_{\alpha/2, N - p - 1} \sqrt{\widehat{\text{Var}}(\hat{\beta}_j)},
                 </equation>
                 onde $t_{\alpha/2, N - p - 1}$ é o quantil da distribuição $t$ de Student com $N - p - 1$ graus de liberdade correspondente ao nível de confiança desejado. De modo prático, usamos o seguinte intervalo para $\beta_j$:
-                <box type="info">
+                <box color="blue">
                     <title>Intervalo de Confiança de 95%</title>
                     <equation id="eq:confidence_interval_beta_95">
                     \left[\hat{\beta}_j - 2 \sqrt{\widehat{\text{Var}}(\hat{\beta}_j)}, \hat{\beta}_j + 2 \sqrt{\widehat{\text{Var}}(\hat{\beta}_j)}\right].
                     </equation>
                 </box>
                 Isso se deve ao fato de que para $N$ grande, o quantil da distribuição $t$ de Student converge para o quantil da distribuição normal padrão, ou seja,  $t_{0.025, N - p - 1} \approx 2$ para $N$ grande.
+
+                <subsubsection>
+                    <title>Testando a relação entre peditores e a resposta</title>
+                    De posse de $\sigma^2$ (ou $\hat{\sigma}^2$), podemos também testar a hipótese de que algum coeficiente $\beta_j$ é nulo. Para isso, construímos o seguinte teste de hipóteses:
+                    <equation id="eq:hypothesis_test_beta_j" numbered="false">
+                    H_0: \beta_j = 0 \quad \text{vs} \quad H_1: \beta_j \neq 0,
+                    </equation>
+                    o qual mede a existência (ou não) de relação entre a variável resposta $Y$ e a variável preditora $X_j$. A estatística de teste é a chamada <em>t</em>-estatística de Student, dada por:
+                    <equation>
+                        \frac{\hat{\beta}_j}{\sqrt{\widehat{\text{Var}}(\hat{\beta}_j)}} = t,
+                    </equation>
+                    a qual segue a distribuição $t$ de Student com $N - p - 1$ graus de liberdade sob a hipótese nula. O valor-p do teste é dado por:
+                    <equation>
+                        p\text{-value} = 2 \cdot P(T_{N - p - 1} \geq |t|),
+                    </equation>
+                    onde $T_{N - p - 1}$ é uma variável aleatória com distribuição $t$ de Student com $N - p - 1$ graus de liberdade. Se o valor-p for menor que o nível de significância $\alpha$ escolhido (tipicamente $0.05$), rejeitamos a hipótese nula e concluímos que há evidências de que $\beta_j$ é diferente de zero, ou seja, que há relação entre $Y$ e $X_j$.
+                </subsubsection>
             </subsection>
             <subsection id="subsec:acuracia_modelo">
                 <title>Acurácia do Modelo</title>
+                Na Seção anterior criamos meios para, a partir da variância do ruído (ou de uma estimativa dela), medir quão longe estão nossas estimativas $\hat{\beta}_j$ dos coeficientes reais (mas desconhecidos). Além disso, podemos testar a hipótese de que não existe relação entre um preditor e a resposta.
+
+                Um outro passo natural é medir a acurácia do modelo como um todo, ou seja, quão bem ele consegue prever a variável resposta $Y$ a partir dos preditores $X_1, X_2, \ldots, X_p$. Para isso, podemos usar o <em>coeficiente de determinação</em> $R^2$, que mede a proporção da variância da variável resposta que é explicada pelo modelo. O $R^2$ é dado por:
+                <equation id="eq:r_squared">
+                R^2 = 1 - \frac{\text{RSS}}{\text{TSS}} = 1 - \frac{\sum_{i=1}^{N} (y_i - \hat{y}_i)^2}{\sum_{i=1}^{N} (y_i - \bar{y})^2}.
+                </equation>
+                 Um valor de $R^2$ próximo de 1 indica que o modelo explica bem a variabilidade dos dados, enquanto um valor próximo de 0 indica que o modelo não explica bem a variabilidade dos dados.
             </subsection>
         </section>
 
