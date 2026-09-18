@@ -14,6 +14,7 @@
 
   <floating>
     <toc depth="2" />
+    <review />
   </floating>
 
   <intro>
@@ -56,6 +57,19 @@
         <item>Um fundo quer prever a variação percentual semanal do Ibovespa a partir das variações semanais de três índices estrangeiros, usando 5 anos de dados.</item>
       </list>
     </exercise>
+    <solution collapsed="true" status="review" by="claude">
+      <list marker="a">
+        <item>
+          <b>Regressão</b> (a resposta, concentração de arsênio, é quantitativa) com interesse em <b>inferência</b>: a pergunta é <em>quais</em> parâmetros explicam, não quanto arsênio há em uma estação nova. $N \approx 660$ estações, $p = 5$ preditores. Os <i>dados</i> são as 660 linhas (pH, turbidez, condutividade, OD, temperatura, arsênio). O <i>método</i> precisa ser interpretável, por exemplo regressão linear, cujos coeficientes dizem o efeito de cada variável. A <i>medida</i> é o erro quadrático em estações não usadas no ajuste, mas, como o interesse é inferência, ela é complementada por medidas sobre os coeficientes (erro-padrão, valor-$p$), que não são medidas de previsão.
+        </item>
+        <item>
+          <b>Classificação</b> (paga / não paga) com interesse em <b>previsão</b>. $N = 10\,000$, $p = 8$. Dados: o histórico de empréstimos com o desfecho. Método: kNN, regressão logística ou qualquer classificador. Medida: taxa de erro em empréstimos <em>fora</em> do ajuste, de preferência ponderada, porque conceder a quem não paga e negar a quem pagaria têm custos diferentes para o banco.
+        </item>
+        <item>
+          <b>Regressão</b> com interesse em <b>previsão</b>. $N \approx 5 \times 52 = 260$ semanas, $p = 3$. Dados: as quatro séries semanais alinhadas. Método: regressão linear (ou kNN). Medida: erro quadrático em semanas <em>futuras</em>. Aqui a partição treino/teste deve respeitar o tempo: ajustar no passado e testar no futuro, sem embaralhar, porque a pergunta é sobre a próxima semana.
+        </item>
+      </list>
+    </solution>
 
     <exercise>
       <title>A medida é uma decisão</title>
@@ -70,6 +84,19 @@
         <item>Por que "porcentagem de acertos nos e-mails usados para construir o filtro" não é uma medida de <em>aprendizado</em>? O que ela mede, então?</item>
       </list>
     </exercise>
+    <solution collapsed="true" status="review" by="claude">
+      <list marker="a">
+        <item>
+          Filtro $A$, agressivo: marca como spam tudo que tem qualquer sinal suspeito; barra $99\%$ do spam, mas manda $5\%$ dos e-mails legítimos para a lixeira. Filtro $B$, conservador: só marca quando tem muita certeza; barra $80\%$ do spam e nunca perde um e-mail legítimo. $m_1$ = fração de spam barrado (ou taxa de acerto global, se quase tudo é spam): prefere $A$. $m_2$ = perda assimétrica em que perder um e-mail legítimo custa $50$ vezes deixar passar um spam: prefere $B$.
+        </item>
+        <item>
+          Diz qual dos dois erros é mais caro <em>para quem usa</em> o filtro: numa caixa de trabalho, perder um e-mail do chefe é grave ($m_2$); num endereço público inundado de spam, o incômodo dominante é o spam que passa ($m_1$). Os filtros são os mesmos; a medida codifica os custos do problema.
+        </item>
+        <item>
+          Porque não mede generalização. Um "filtro" que guarda a lista dos e-mails vistos com seus rótulos acerta $100\%$ deles e não sabe nada sobre um e-mail novo. A porcentagem de acertos no treino mede a qualidade do <em>ajuste</em> (o risco empírico); aprendizado se mede em e-mails que não entraram na construção do filtro.
+        </item>
+      </list>
+    </solution>
 
     <exercise>
       <title>Sistema de recomendação com medida</title>
@@ -84,6 +111,75 @@
         <item>Defina uma medida de performance, por exemplo a fração de recomendações cujo gênero coincide com o gênero mais bem avaliado por um usuário <em>que não foi usado</em> para ajustar os pesos. Compare os dois recomendadores.</item>
       </list>
     </exercise>
+    <solution collapsed="true" status="review" by="claude">
+      Os três componentes aparecem separados no código: os <i>dados</i> (catálogo e usuários), os dois <i>métodos</i> e a <i>medida</i>, calculada em usuários que ficaram de fora do ajuste dos pesos.
+      <list marker="a">
+        <item>
+          Um catálogo pequeno e usuários com um gênero favorito escondido, que dá nota alta aos filmes desse gênero:
+          <code lang="python">
+import random
+
+GENEROS = ["ação", "drama", "comédia", "terror"]
+DIRETORES = ["A", "B", "C", "D", "E"]
+catalogo = [dict(titulo=f"Filme {i}", genero=random.choice(GENEROS),
+                 diretor=random.choice(DIRETORES)) for i in range(60)]
+
+def gera_usuario():
+    favorito = random.choice(GENEROS)
+    vistos = random.sample(catalogo, 15)
+    return [(f, 5 if f["genero"] == favorito else random.randint(1, 4)) for f in vistos]
+
+usuarios = [gera_usuario() for _ in range(40)]
+          </code>
+        </item>
+        <item>
+          O aleatório sorteia um filme não visto. O ponderado aprende um peso por gênero e por diretor (a nota média que os usuários de <em>treino</em> deram) e recomenda o filme não visto de maior soma de pesos:
+          <code lang="python">
+def nao_vistos(vistos):
+    ja = {f["titulo"] for f, _ in vistos}
+    return [f for f in catalogo if f["titulo"] not in ja]
+
+def recomenda_aleatorio(vistos, pesos=None):
+    return random.choice(nao_vistos(vistos))
+
+def ajusta_pesos(usuarios_treino):
+    soma, conta = {}, {}
+    for vistos in usuarios_treino:
+        for f, nota in vistos:
+            for chave in (("g", f["genero"]), ("d", f["diretor"])):
+                soma[chave] = soma.get(chave, 0) + nota
+                conta[chave] = conta.get(chave, 0) + 1
+    return {k: soma[k] / conta[k] for k in soma}
+
+def recomenda_ponderado(vistos, pesos):
+    return max(nao_vistos(vistos),
+               key=lambda f: pesos[("g", f["genero"])] + pesos[("d", f["diretor"])])
+          </code>
+        </item>
+        <item>
+          A medida compara o gênero recomendado com o gênero mais bem avaliado pelo usuário de teste. Os pesos são ajustados só nos $30$ primeiros usuários; a medida é calculada nos $10$ restantes:
+          <code lang="python">
+def genero_favorito(vistos):
+    soma, conta = {}, {}
+    for f, nota in vistos:
+        g = f["genero"]
+        soma[g] = soma.get(g, 0) + nota
+        conta[g] = conta.get(g, 0) + 1
+    return max(soma, key=lambda g: soma[g] / conta[g])
+
+treino, teste = usuarios[:30], usuarios[30:]
+pesos = ajusta_pesos(treino)
+
+def performance(recomenda):
+    acertos = sum(recomenda(v, pesos)["genero"] == genero_favorito(v) for v in teste)
+    return acertos / len(teste)
+
+print(performance(recomenda_aleatorio), performance(recomenda_ponderado))
+          </code>
+          O aleatório acerta em torno de $1/4$ (há quatro gêneros). O ponderado, com pesos globais, recomenda o mesmo gênero para todo mundo, o mais bem avaliado na população de treino, e acerta a fração dos usuários de teste cujo favorito é esse gênero. Para um recomendador que personalize, os pesos seriam ajustados na primeira metade da lista de cada usuário e a medida calculada na segunda metade, sempre separando o que ajusta do que avalia.
+        </item>
+      </list>
+    </solution>
   </section>
 
   <!-- ==================================================================== -->
@@ -408,6 +504,9 @@ def generate_data(N=10, noise_std=0.1):
           <item>Mostre que $\hat{\beta} x$ é a projeção ortogonal do vetor $y \in \mathbb{R}^4$ sobre a reta gerada por $x \in \mathbb{R}^4$. O que o vetor $y - \hat{\beta}x$ tem de especial?</item>
         </list>
       </exercise>
+      <todo for="rodrigo" by="claude" priority="normal" status="open">
+        Resolver o exercício prático <ref to="exerc:sem_intercepto" /> (cálculo à mão).
+      </todo>
 
       <exercise>
         <title>Verossimilhança é risco empírico</title>
@@ -477,7 +576,14 @@ def generate_data(N=10, noise_std=0.1):
               $$
               R(c) = \frac{1}{N} \sum_{i=1}^{N} |y_i - c|.
               $$
-              A função $R(c)$ é convexa e linear por partes. O minimizador ocorre onde o número de pontos à esquerda de $c$ é igual ao número de pontos à direita, ou seja, em uma mediana dos valores $y_i$. 
+              Cada parcela $|y_i - c|$ é convexa em $c$, logo $R$ é convexa; e $R$ é linear por partes, com vértices nos $y_i$. Para $c$ diferente de todos os $y_i$, $R$ é derivável e
+              $$
+                R'(c) = \frac{1}{N}\Big(\#\{i : y_i \lt c\} - \#\{i : y_i \gt c\}\Big),
+              $$
+              pois $\frac{d}{dc}|y_i - c| = +1$ se $y_i \lt c$ e $-1$ se $y_i \gt c$. Assim $R'(c) \lt 0$ enquanto há mais pontos à direita de $c$ do que à esquerda, e $R'(c) \gt 0$ quando há mais à esquerda. Por convexidade, $R$ é mínima exatamente nos $c$ tais que $\#\{y_i \lt c\} \leq N/2$ e $\#\{y_i \gt c\} \leq N/2$, que é a definição de mediana: para $N$ ímpar é o valor central $y_{(\frac{N+1}{2})}$; para $N$ par, qualquer ponto de $[y_{(N/2)}, y_{(N/2+1)}]$.
+          </item>
+          <item>
+              <b>Robustez.</b> A derivada de $R$ para $\ell_1$ depende só de <em>quantos</em> pontos estão de cada lado de $c$, não de <em>quão longe</em> estão. Levar um $y_i$ para $10^6$ (mantendo-o do mesmo lado da mediana) não altera as contagens e não move o minimizador. Para $\ell_2$, o minimizador $\bar{y}$ se desloca de $\Delta/N$ quando um ponto se desloca de $\Delta$: cresce sem limite com o valor extremo.
           </item>
         </list>
       </solution>
@@ -500,6 +606,45 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (a), some e subtraia $f(X)$, condicione em $X$ e use $\mathbb{E}[Y - f(X) \mid X] = 0$ para matar o termo cruzado.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Escreva $Y - g(X) = \big(Y - f(X)\big) + \big(f(X) - g(X)\big)$ e eleve ao quadrado:
+            $$
+              \big(Y - g(X)\big)^2 = \big(Y - f(X)\big)^2 + \big(f(X) - g(X)\big)^2 + 2\,\big(Y - f(X)\big)\big(f(X) - g(X)\big).
+            $$
+            Tomando esperança, basta mostrar que o termo cruzado tem esperança zero. Condicione em $X$: como $f(X) - g(X)$ é função de $X$, sai da esperança condicional,
+            $$
+              \mathbb{E}\big[(Y - f(X))(f(X) - g(X)) \mid X\big] = \big(f(X) - g(X)\big)\,\mathbb{E}[Y - f(X) \mid X] = \big(f(X) - g(X)\big)\big(\mathbb{E}[Y \mid X] - f(X)\big) = 0,
+            $$
+            porque $f(X) = \mathbb{E}[Y \mid X]$ por definição. Pela propriedade da torre, $\mathbb{E}[\,\cdot\,] = \mathbb{E}\big[\mathbb{E}[\,\cdot \mid X]\big] = 0$. (Todas as esperanças existem: $\mathbb{E}[Y^2] \lt \infty$ dá $\mathbb{E}[f(X)^2] \lt \infty$, e se $\mathbb{E}[g(X)^2] = \infty$ o risco de $g$ é infinito e não há o que comparar.)
+
+            Como $\mathbb{E}[(f(X) - g(X))^2] \geq 0$, segue $\mathbb{E}[(Y - g(X))^2] \geq \mathbb{E}[(Y - f(X))^2]$ para toda $g$, com igualdade se, e só se, $g(X) = f(X)$ com probabilidade $1$. O mínimo é
+            $$
+              \mathbb{E}\big[(Y - f(X))^2\big] = \mathbb{E}\Big[\mathbb{E}\big[(Y - \mathbb{E}[Y \mid X])^2 \mid X\big]\Big] = \mathbb{E}\big[{\rm Var}(Y \mid X)\big],
+            $$
+            o erro irredutível: nenhuma função de $X$ faz melhor.
+          </item>
+          <item>
+            Este é o resultado <em>populacional</em> (esperança sob a lei verdadeira de $(X, Y)$, minimização sobre todas as funções); o <ref to="exerc:media_mediana" /> é a versão <em>empírica</em> (média sobre a amostra, minimização sobre constantes). O minimizador populacional é conhecido em fórmula, mas a fórmula usa a lei de $(X, Y)$, que não temos: só temos a amostra. E o ERM sobre <em>todas</em> as funções na amostra devolve o interpolador (risco empírico zero, qualquer valor fora dos $x_i$), que não aproxima $f$. Restringir $\mathcal{G}$ é o que faz o risco empírico ficar próximo do risco verdadeiro simultaneamente para todas as funções da classe, de modo que minimizar um aproxime minimizar o outro.
+          </item>
+          <item>
+            Fixe $x$ e seja $m = m(x)$ uma mediana condicional: $\mathbb{P}(Y \leq m \mid X = x) \geq 1/2$ e $\mathbb{P}(Y \geq m \mid X = x) \geq 1/2$. Tome $c \gt m$. Para cada $y$,
+            $$
+              |y - c| - |y - m| = \begin{cases} c - m, & y \leq m,\\ c + m - 2y \;\geq\; -(c - m), & m \lt y \lt c,\\ -(c - m), & y \geq c,\end{cases}
+            $$
+            logo $|y - c| - |y - m| \geq (c - m)\big(\mathbb{1}\{y \leq m\} - \mathbb{1}\{y \gt m\}\big)$. Tomando esperança condicional,
+            $$
+              \mathbb{E}\big[|Y - c| - |Y - m| \,\big|\, X = x\big] \geq (c - m)\big(2\,\mathbb{P}(Y \leq m \mid X = x) - 1\big) \geq 0.
+            $$
+            O caso $c \lt m$ é simétrico (use $\mathbb{P}(Y \geq m \mid X = x) \geq 1/2$). Assim $m(x)$ minimiza $c \mapsto \mathbb{E}[|Y - c| \mid X = x]$ para cada $x$, e para qualquer $g$, pela torre,
+            $$
+              \mathbb{E}|Y - g(X)| = \mathbb{E}\Big[\mathbb{E}\big[|Y - g(X)| \mid X\big]\Big] \geq \mathbb{E}\Big[\mathbb{E}\big[|Y - m(X)| \mid X\big]\Big] = \mathbb{E}|Y - m(X)|,
+            $$
+            pois a desigualdade vale ponto a ponto em $X$. ($\mathbb{E}|Y| \lt \infty$ segue de $\mathbb{E}[Y^2] \lt \infty$.)
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>ERM em uma classe finita</title>
@@ -512,6 +657,31 @@ def generate_data(N=10, noise_std=0.1):
           <item>Use-a com $\mathcal{G} = \{ g_\beta(x) = \beta x : \beta \in \{0, 0{,}1, 0{,}2, \dots, 5\} \}$ e os dados do <ref to="exerc:sem_intercepto" />, com $\ell_2$ e com $\ell_1$. Compare com o $\hat{\beta}$ calculado à mão.</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            O ERM em uma classe finita é uma busca exaustiva: calcula o risco empírico de cada $g$ e devolve a de menor risco.
+            <code lang="python">
+def erm(X, y, G, loss):
+    def risco(g):
+        return sum(loss(yi, g(xi)) for xi, yi in zip(X, y)) / len(y)
+    return min(G, key=risco)
+            </code>
+          </item>
+          <item>
+            O argumento padrão <c>b=b</c> congela o valor de $\beta$ em cada função da lista (sem ele, todas as <c>lambda</c> veriam o último $\beta$ do laço).
+            <code lang="python">
+X, y = [1, 2, 3, 4], [3, 4, 8, 10]
+G = [(lambda x, b=b / 10: b * x) for b in range(0, 51)]
+l2 = lambda y, yh: (y - yh) ** 2
+l1 = lambda y, yh: abs(y - yh)
+g2, g1 = erm(X, y, G, l2), erm(X, y, G, l1)
+print(g2(1), g1(1))      # o valor em x = 1 é o próprio beta
+            </code>
+            Com $\ell_2$ sai $\beta = 2{,}5$, que coincide com o valor fechado $\sum x_i y_i / \sum x_i^2 = 75/30$, por sorte um ponto da grade. Com $\ell_1$ também sai $2{,}5$: minimizar $\sum_i |y_i - \beta x_i| = \sum_i x_i\,|y_i/x_i - \beta|$ é achar a mediana <em>ponderada</em> das razões $y_i/x_i = 3,\; 2,\; 8/3,\; 5/2$ com pesos $x_i$, que aqui é $5/2$. A coincidência é destes dados; em geral $\ell_1$ e $\ell_2$ devolvem $\beta$ diferentes.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:knn_reg">
         <title>kNN de regressão</title>
@@ -521,6 +691,24 @@ def generate_data(N=10, noise_std=0.1):
         </meta>
         Implemente, sem bibliotecas além de <c>math</c> e <c>random</c>, <c>knn_reg(X, y, x0, k)</c>, que devolve a média dos $y_i$ dos $k$ pontos mais próximos de <c>x0</c>. Gere $N = 100$ pontos de $y = \sin(2\pi x) + \varepsilon$ em $[0, 1]$ e avalie $\hat{f}$ em uma grade fina para $k \in \{1, 5, 20\}$. Descreva o que muda.
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        Ordenar os índices pela distância a <c>x0</c> e ficar com os $k$ primeiros é tudo o que o kNN faz; a "aprendizagem" é guardar os dados.
+        <code lang="python">
+import math, random
+
+def knn_reg(X, y, x0, k):
+    ordem = sorted(range(len(X)), key=lambda i: abs(X[i] - x0))   # em R^p: math.dist(X[i], x0)
+    vizinhos = ordem[:k]
+    return sum(y[i] for i in vizinhos) / k
+
+N = 100
+X = [random.random() for _ in range(N)]
+y = [math.sin(2 * math.pi * x) + random.gauss(0, 0.3) for x in X]
+grade = [i / 200 for i in range(201)]
+curvas = {k: [knn_reg(X, y, x0, k) for x0 in grade] for k in (1, 5, 20)}
+        </code>
+        Com $k = 1$, $\hat{f}$ é constante por partes com um degrau em cada ponto de treino e passa por todos os $y_i$: reproduz o ruído (risco empírico zero, o interpolador do kNN). Com $k = 5$ a curva já é uma senoide reconhecível, com serrilhado. Com $k = 20$ o serrilhado some, mas os picos ficam achatados e as bordas de $[0, 1]$ ficam viesadas, porque ali todos os vizinhos estão de um lado só: a média inclui pontos onde $f$ é bem diferente de $f(x_0)$. Crescer $k$ troca variância por viés.
+      </solution>
     </subsection>
 
     <!-- ================================================================== -->
@@ -581,6 +769,17 @@ def generate_data(N=10, noise_std=0.1):
         </meta>
         Esboce, em um mesmo gráfico com a flexibilidade de $\mathcal{G}$ no eixo horizontal, as curvas de viés², variância, erro de treino, erro de teste e erro irredutível. Explique a forma de cada curva e por que $\text{erro de teste} = \text{viés}^2 + \text{variância} + \text{irredutível}$. Marque onde ficam o interpolador do <ref to="exerc:interpolar" />, a função constante e a regressão linear.
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        Com a flexibilidade crescendo para a direita:
+        <list>
+          <item><b>Erro irredutível:</b> reta horizontal na altura ${\rm Var}(\varepsilon)$; não depende do método.</item>
+          <item><b>Viés²:</b> decrescente, de um valor alto (classe rígida demais para conter $f$) até perto de zero (classe rica o bastante para aproximar $f$).</item>
+          <item><b>Variância:</b> crescente, de quase zero (a função constante mal se mexe entre amostras) até muito alto (o interpolador segue cada $\varepsilon_i$).</item>
+          <item><b>Erro de teste:</b> soma das três anteriores, logo em U, sempre acima da reta do irredutível; o mínimo fica onde a queda do viés² deixa de compensar a subida da variância.</item>
+          <item><b>Erro de treino:</b> decrescente até zero no interpolador; cruza a reta do irredutível e fica abaixo dela, porque parte do ruído é ajustada (o otimismo do <ref to="exerc:otimismo" />).</item>
+        </list>
+        A igualdade vem das duas decomposições provadas adiante: $\mathbb{E}[(Y - \hat{f})^2] = \mathbb{E}[(f - \hat{f})^2] + {\rm Var}(\varepsilon)$, e $\mathbb{E}[(f - \hat{f})^2] = \text{viés}^2 + {\rm Var}(\hat{f})$. Posições: a função constante no extremo esquerdo (viés máximo, variância ${\rm Var}(\bar{y}) = \sigma^2/N$); a regressão linear um pouco à direita; o interpolador no extremo direito (treino zero, variância enorme).
+      </solution>
 
       <exercise id="exerc:flexivel">
         <title>Flexível ou rígido?</title>
@@ -674,7 +873,7 @@ def generate_data(N=10, noise_std=0.1):
               Vantagens do $k$-fold em relação ao LOOCV incluem menor custo computacional e menor variância na estimativa do erro de teste. O LOOCV pode ter maior variância porque cada ajuste é altamente correlacionado com os outros, já que compartilham quase todos os pontos de treino, o que pode levar a estimativas instáveis do erro.
           </item>
           <item>
-              
+              Cada um dos $k$ ajustes usa $N(1 - 1/k)$ pontos, então a validação cruzada estima o erro do método treinado com <em>esse</em> tamanho de amostra, não com $N$. Como o erro esperado cai com mais dados (a variância cai), a estimativa é enviesada para <em>cima</em>, pessimista, em relação ao modelo final ajustado com os $N$ pontos. O viés diminui com $k$ grande (no LOOCV é quase nulo), o que é o outro lado do trade-off com a variância do item (c).
           </item>
         </list>
       </solution>
@@ -693,6 +892,22 @@ def generate_data(N=10, noise_std=0.1):
           <item>Preencher valores ausentes de uma coluna pela média da coluna inteira antes de separar.</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Há vazamento: a média e o desvio padrão usados para transformar as linhas de treino foram calculados com as linhas de teste, que assim influenciam o ajuste. O sintoma é leve (erro de teste um pouco otimista), mas o princípio é o mesmo dos casos graves: toda transformação deve ser ajustada só no treino e depois aplicada ao teste com os mesmos números.
+          </item>
+          <item>
+            Há vazamento: o conjunto de teste virou conjunto de validação. O erro reportado é o <em>mínimo</em> de várias estimativas ruidosas, logo otimista; em dados realmente novos o desempenho será pior. O certo é escolher $k$ por validação cruzada dentro do treino, ou com uma partição treino/validação/teste, e só então olhar o teste uma vez.
+          </item>
+          <item>
+            Há vazamento: medições da mesma estação compartilham a geologia e as variáveis não medidas, de modo que o ponto de teste é quase uma cópia de um ponto de treino. Sintoma: erro de teste muito menor que o erro em uma estação nova, e métodos que memorizam (kNN com $k = 1$) parecem ótimos. A partição deve ser <em>por estação</em>: todas as medições de uma estação vão para o mesmo lado.
+          </item>
+          <item>
+            Mesmo caso de (a): a média da coluna inteira contém os valores de teste. O sintoma é leve, e a correção é imputar com a média calculada no treino.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>O que a regularização faz</title>
@@ -735,6 +950,9 @@ def generate_data(N=10, noise_std=0.1):
         </interactive>
         Varie o grau do polinômio e registre, em uma tabela, o MSE de treino e de teste para cada grau. Localize o mínimo do erro de teste e explique, em termos de viés e variância, o que acontece à esquerda e à direita dele. Reamostre o ruído com o grau fixo: qual dos dois erros muda mais? Por quê?
       </exercise>
+      <todo for="rodrigo" by="claude" priority="normal" status="open">
+        Resolver o <ref to="exerc:overfit_widget" /> (exige interagir com o widget e tabelar os erros).
+      </todo>
 
       <exercise>
         <title>Erro redutível e irredutível</title>
@@ -748,6 +966,15 @@ def generate_data(N=10, noise_std=0.1):
         $$
         indicando exatamente onde se usa $\mathbb{E}[\varepsilon] = 0$ e onde se usa a independência entre $\varepsilon$ e $\hat{f}(x)$. Por que $\hat{f}(x)$ é uma variável aleatória?
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        Escreva $Y(x) - \hat{f}(x) = \big(f(x) - \hat{f}(x)\big) + \varepsilon$ e eleve ao quadrado:
+        $$
+          \mathbb{E}\big[(Y(x) - \hat{f}(x))^2\big] = \mathbb{E}\big[(f(x) - \hat{f}(x))^2\big] + \mathbb{E}[\varepsilon^2] + 2\,\mathbb{E}\big[(f(x) - \hat{f}(x))\,\varepsilon\big].
+        $$
+        No termo cruzado, $\varepsilon$ é o ruído da observação <em>nova</em> e $\hat{f}(x)$ depende só da amostra de treino, logo são independentes e a esperança do produto fatora: $\mathbb{E}[(f(x) - \hat{f}(x))\varepsilon] = \mathbb{E}[f(x) - \hat{f}(x)]\cdot\mathbb{E}[\varepsilon]$ (<b>independência</b>), que é zero porque $\mathbb{E}[\varepsilon] = 0$ (<b>média zero, primeiro uso</b>). No segundo termo, $\mathbb{E}[\varepsilon^2] = {\rm Var}(\varepsilon) + \mathbb{E}[\varepsilon]^2 = {\rm Var}(\varepsilon)$ (<b>média zero, segundo uso</b>).
+
+        $\hat{f}(x)$ é aleatória porque é função da amostra de treino $(x_1, y_1), \dots, (x_N, y_N)$, e os $y_i = f(x_i) + \varepsilon_i$ carregam os ruídos $\varepsilon_i$ (e os $x_i$ podem ser aleatórios também): outra amostra produziria outra $\hat{f}$ e outro número $\hat{f}(x)$. As esperanças acima são sobre a amostra de treino e sobre o $\varepsilon$ novo, com $x$ fixo.
+      </solution>
 
       <exercise>
         <title>Viés e variância</title>
@@ -762,6 +989,17 @@ def generate_data(N=10, noise_std=0.1):
         Em relação a que distribuição são tomadas essas esperanças?
         <hint>Some e subtraia $\mathbb{E}[\hat{f}(x)]$ dentro do quadrado.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        Seja $\mu = \mathbb{E}[\hat{f}(x)]$, um número (não aleatório). Então $f(x) - \hat{f}(x) = \big(f(x) - \mu\big) + \big(\mu - \hat{f}(x)\big)$ e
+        $$
+          \big(f(x) - \hat{f}(x)\big)^2 = \big(f(x) - \mu\big)^2 + \big(\mu - \hat{f}(x)\big)^2 + 2\big(f(x) - \mu\big)\big(\mu - \hat{f}(x)\big).
+        $$
+        Tomando esperança: a primeira parcela é constante; a segunda tem esperança $\mathbb{E}[(\hat{f}(x) - \mu)^2] = {\rm Var}(\hat{f}(x))$; na terceira, $f(x) - \mu$ é constante e sai, sobrando $\mathbb{E}[\mu - \hat{f}(x)] = \mu - \mu = 0$. Logo
+        $$
+          \mathbb{E}\big[(f(x) - \hat{f}(x))^2\big] = \big(f(x) - \mathbb{E}[\hat{f}(x)]\big)^2 + {\rm Var}(\hat{f}(x)).
+        $$
+        As esperanças são em relação à distribuição da <em>amostra de treino</em>, isto é, dos ruídos $\varepsilon_1, \dots, \varepsilon_N$ (e dos $x_i$, se aleatórios), com o ponto $x$ fixo. O viés diz onde as $\hat{f}(x)$ de infinitas amostras caem em média; a variância, quanto elas se espalham.
+      </solution>
 
       <exercise id="exerc:kfold">
         <title>$k$-fold genérico</title>
@@ -775,6 +1013,50 @@ def generate_data(N=10, noise_std=0.1):
           <item>Use-a para escolher o $k$ do kNN do <ref to="exerc:knn_reg" /> em dados sintéticos. Compare com o $k$ que minimiza o erro de treino.</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Uma permutação aleatória dos índices, cortada em duas fatias:
+            <code lang="python">
+import numpy as np
+rng = np.random.default_rng(0)
+
+def particao_dados(N, frac_teste=0.3):
+    idx = rng.permutation(N)
+    n_teste = int(frac_teste * N)
+    return idx[n_teste:], idx[:n_teste]        # índices de treino, de teste
+            </code>
+          </item>
+          <item>
+            O $k$-fold é a mesma permutação cortada em $k$ fatias; cada fatia é teste uma vez.
+            <code lang="python">
+def k_fold(X, y, k, fit, predict, loss):
+    folds = np.array_split(rng.permutation(len(y)), k)
+    erros = []
+    for j in range(k):
+        teste = folds[j]
+        treino = np.concatenate([folds[i] for i in range(k) if i != j])
+        modelo = fit(X[treino], y[treino])
+        erros.append(np.mean(loss(y[teste], predict(modelo, X[teste]))))
+    return np.mean(erros)
+            </code>
+          </item>
+          <item>
+            Para o kNN, "ajustar" é guardar os dados; a previsão chama <c>knn_reg</c> ponto a ponto.
+            <code lang="python">
+X = rng.random(100); y = np.sin(2 * np.pi * X) + rng.normal(0, 0.3, 100)
+l2 = lambda y, yh: (y - yh) ** 2
+cv = {}
+for kk in range(1, 31):
+    fit = lambda Xt, yt: (Xt, yt)
+    predict = lambda m, X0: np.array([knn_reg(list(m[0]), list(m[1]), x0, kk) for x0 in X0])
+    cv[kk] = k_fold(X, y, 10, fit, predict, l2)
+print(min(cv, key=cv.get))
+            </code>
+            O erro de treino é minimizado em $k = 1$ (vale zero: cada ponto é seu próprio vizinho), o que não diz nada. A validação cruzada escolhe um $k$ intermediário, tipicamente entre $5$ e $15$ para $N = 100$ e ruído $0{,}3$, onde viés e variância se equilibram.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>Simulando viés e variância</title>
@@ -784,6 +1066,22 @@ def generate_data(N=10, noise_std=0.1):
         </meta>
         Fixe $f(x) = \sin(2\pi x)$, $x_0 = 0{,}3$ e ${\rm Var}(\varepsilon) = 0{,}1$. Repita 200 vezes: amostre um conjunto de treino com $N = 50$, ajuste o kNN e calcule $\hat{f}(x_0)$. Com as 200 previsões, estime $\left(f(x_0) - \mathbb{E}[\hat{f}(x_0)]\right)^2$ e ${\rm Var}(\hat{f}(x_0))$. Repita para $k \in \{1, 3, 10, 30, 50\}$ e confira suas respostas ao <ref to="exerc:diagnostico" />(e).
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        A simulação reproduz a esperança da demonstração anterior: as $200$ amostras são as "infinitas amostras", e a média e a variância das $200$ previsões estimam $\mathbb{E}[\hat{f}(x_0)]$ e ${\rm Var}(\hat{f}(x_0))$.
+        <code lang="python">
+f = lambda x: np.sin(2 * np.pi * x)
+x0, sigma, N = 0.3, np.sqrt(0.1), 50
+for k in (1, 3, 10, 30, 50):
+    prev = []
+    for _ in range(200):
+        X = rng.random(N)
+        y = f(X) + rng.normal(0, sigma, N)
+        prev.append(knn_reg(list(X), list(y), x0, k))
+    prev = np.array(prev)
+    print(k, (f(x0) - prev.mean()) ** 2, prev.var())
+        </code>
+        Resultado esperado: com $k = 1$ a variância é próxima de $\sigma^2 = 0{,}1$ (a previsão é um único $y_i$ ruidoso) e o viés² é quase zero; conforme $k$ cresce a variância cai como $\sigma^2/k$ e o viés² sobe, porque a média inclui pontos onde $f$ difere de $f(0{,}3) \approx 0{,}95$. Com $k = 50 = N$ a previsão é $\bar{y}$, que estima a média de $\sin$ em $[0, 1]$, zero: viés² $\approx 0{,}9$ e variância $\approx \sigma^2/N = 0{,}002$. Confirma o <ref to="exerc:diagnostico" />(e): $k = 1$ é o interpolador, $k = N$ é a função constante.
+      </solution>
     </subsection>
 
     <!-- ================================================================== -->
@@ -874,11 +1172,15 @@ def generate_data(N=10, noise_std=0.1):
             Ele atribui a cada ponto de teste a classe com a maior probabilidade condicional.
         </item>
         <item>
-            Calcule o risco como
+            Seja $\hat{Y} = g(X)$ um classificador qualquer. Condicionando em $X$,
             $$
-            R(\hat{Y}) = \mathbb{P}(Y \neq \hat{Y}) = 1 - \mathbb{P}(Y = \hat{Y}) 
+            R(g) = \mathbb{P}(Y \neq g(X)) = \mathbb{E}\big[\mathbb{P}(Y \neq g(X) \mid X)\big] = 1 - \mathbb{E}\big[\mathbb{P}(Y = g(X) \mid X)\big].
             $$
-            Para a probabilidade do lado direito, condicione em $X = x$.
+            Para cada $x$, $g(x)$ é uma das classes, logo $\mathbb{P}(Y = g(x) \mid X = x) \leq \max_j \mathbb{P}(Y = j \mid X = x) = \mathbb{P}(Y = \hat{Y}_{\text{Bayes}}(x) \mid X = x)$. Tomando esperança em $X$ dos dois lados,
+            $$
+            R(g) = 1 - \mathbb{E}\big[\mathbb{P}(Y = g(X) \mid X)\big] \geq 1 - \mathbb{E}\Big[\max_j \mathbb{P}(Y = j \mid X)\Big] = R(\hat{Y}_{\text{Bayes}}).
+            $$
+            O risco mínimo, $1 - \mathbb{E}[\max_j \mathbb{P}(Y = j \mid X)]$, é o erro de Bayes, o análogo do erro irredutível para classificação.
         </item>
         <item>
             O classificador de Bayes não pode ser usado na prática porque as probabilidades condicionais $P(Y = j \mid X = x)$ são desconhecidas e precisam ser estimadas a partir dos dados. Métodos de aprendizado tentam aproximar essas probabilidades para construir classificadores que se aproximem do desempenho do classificador de Bayes.
@@ -932,13 +1234,13 @@ def generate_data(N=10, noise_std=0.1):
               </equation>
           </item>
           <item>
-              Com $K=1$, a previsão é "Contaminada" (observação 5). Com $K=3$, os vizinhos mais próximos são as observações 5, 6 e 4, resultando em uma previsão de "Limpa" por maioria.
+              Em ordem de distância: $5\ (1{,}41)$, $6\ (1{,}73)$, $2\ (2)$, $4\ (2{,}24)$, $1\ (3)$, $3\ (3{,}16)$. Com $K=1$, a previsão é "Contaminada" (observação 5). Com $K=3$, os vizinhos são as observações 5, 6 e 2 (Contaminada, Limpa, Limpa): previsão "Limpa" por maioria.
           </item>
           <item>
               Se a fronteira de Bayes for muito não-linear, o melhor $K$ tende a ser pequeno, pois um $K$ grande suavizaria demais a fronteira, perdendo detalhes importantes da estrutura dos dados.
           </item>
           <item>
-              Com a perda assimétrica do exercício anterior, a decisão com $K=3$ ainda seria "Limpa", mas se errar uma estação contaminada custasse $3$, a decisão poderia mudar para "Contaminada", dependendo da distribuição das classes entre os vizinhos.
+              Com $K = 3$, o kNN estima $\hat{p} = \mathbb{P}(\text{Contaminada} \mid x) = 1/3$. O custo esperado de prever "Limpa" é $2 \cdot \hat{p} = 2/3$; o de prever "Contaminada" é $1 \cdot (1 - \hat{p}) = 2/3$: empate, a decisão fica na fronteira e depende da regra de desempate. Se errar uma contaminada custa $3$, prever "Limpa" custa $3 \cdot 1/3 = 1 \gt 2/3$, e a decisão muda para "Contaminada". Em geral, com custo $c$ para a contaminada, prevê-se "Contaminada" quando $\hat{p} \gt 1/(1 + c)$: o limiar de $1/2$ da perda 0-1 desce para $1/3$ com $c = 2$ e para $1/4$ com $c = 3$.
           </item>
         </list>
       </solution>
@@ -956,19 +1258,19 @@ def generate_data(N=10, noise_std=0.1):
           <item>Para $p = 100$, qual deve ser o lado de um hipercubo centrado no ponto de teste para conter $10\%$ dos dados? Comente.</item>
         </list>
       </exercise>
-      <solution collapsed="true" status="draft" by="rodrigo" for="claude">
+      <solution collapsed="true" status="review" by="claude">
         <list marker="a">
           <item>
-              Ambos os métodos utilizam a proximidade dos pontos de treino para fazer previsões. O kNN de regressão aproxima $\mathbb{E}[Y \mid X = x]$, enquanto o kNN classificador aproxima $\arg\max_j P(Y = j \mid X = x)$.
+              Os dois selecionam os $K$ pontos de treino mais próximos de $x$; o que muda é o que fazem com eles. O de regressão tira a média dos $y_i$, que estima $\mathbb{E}[Y \mid X = x]$, o minimizador populacional da perda quadrática (<ref to="exerc:funcao_regressao" />). O classificador vota: a fração de vizinhos da classe $j$ estima $\mathbb{P}(Y = j \mid X = x)$, e a maioria é o $\arg\max_j$ dessas estimativas, uma aproximação do classificador de Bayes. Em ambos, $K$ controla o quão local é a estimativa.
           </item>
           <item>
-              Para $p=1$, a fração é $0{,}1$ (10%). Para $p=2$, a fração é $0{,}1^2 = 0{,}01$ (1%). Para $p=100$, a fração é $0{,}1^{100}$, que é extremamente pequena, praticamente zero.
+              Com pontos uniformes, a fração esperada dentro de uma região é o seu volume. O hipercubo de lado $0{,}1$ tem volume $0{,}1^p$: $10\%$ para $p = 1$, $1\%$ para $p = 2$ e $10^{-100}$ para $p = 100$. Neste último caso, mesmo com $N = 10^{12}$ pontos, o número esperado dentro do cubo é $10^{-88}$: não há vizinho nenhum.
           </item>
           <item>
-              Isso implica que, com muitos preditores, os vizinhos mais próximos podem estar muito distantes do ponto de teste, aumentando o viés e diminuindo a variância. A densidade de pontos próximos diminui drasticamente à medida que a dimensionalidade aumenta.
+              Para juntar $K$ vizinhos em dimensão alta é preciso alargar a vizinhança até que ela cubra quase toda a extensão de cada coordenada; os "vizinhos" ficam longe e deixam de ser locais. A média sobre eles inclui pontos onde $f$ difere muito de $f(x)$: o viés cresce. A variância, para $K$ fixo, continua da ordem de $\sigma^2/K$; se, em vez disso, insistíssemos numa vizinhança pequena, $K$ seria minúsculo e a variância explodiria. De um jeito ou de outro o kNN piora com $p$: a maldição da dimensionalidade.
           </item>
           <item>
-              Para conter 10% dos dados em $p=100$, o lado do hipercubo deve ser aproximadamente $0{,}794$ (pois $(0{,}794)^{100} \approx 0{,}1$). Isso mostra que mesmo um pequeno aumento na dimensão requer um aumento significativo no volume do espaço para capturar uma fração significativa dos dados.
+              Precisamos de $\ell^{100} = 0{,}1$, ou seja, $\ell = 0{,}1^{1/100} = e^{\ln(0{,}1)/100} = e^{-0{,}023} \approx 0{,}977$. O "vizinho" cobre $97{,}7\%$ da extensão de <em>cada</em> coordenada: a vizinhança é praticamente o cubo inteiro, e a previsão local vira uma média global. Para métodos de vizinhança funcionarem em dimensão alta, ou $N$ cresce exponencialmente em $p$, ou $f$ tem estrutura (depende de poucas direções) que o método explore.
           </item>
         </list>
       </solution>
@@ -981,18 +1283,25 @@ def generate_data(N=10, noise_std=0.1):
         </meta>
         Seja $Y \mid X = x \sim \text{bin}(4, x)$, com $x \in [0, 1]$. Calcule $\hat{Y}_{\text{Bayes}}(x)$ e o erro de Bayes $P(Y \neq \hat{Y}_{\text{Bayes}}(x) \mid X = x)$ para $x \in \{0{,}1;\; 0{,}5;\; 0{,}9\}$. 
       </exercise>
-      <solution collapsed="true" status="draft" by="rodrigo" for="claude">
-        <list marker="a">
-          <item>
-              Para $x=0{,}1$, a distribuição de $Y$ é binomial com parâmetros $n=4$ e $p=0{,}1$. O valor mais provável de $Y$ é 0, então $\hat{Y}_{\text{Bayes}}(0{,}1) = 0$. O erro de Bayes é $P(Y \neq 0 \mid X = 0{,}1) = 1 - P(Y = 0 \mid X = 0{,}1) = 1 - (0{,}9^4) \approx 0{,}3439$.
-          </item>
-          <item>
-              Para $x=0{,}5$, a distribuição de $Y$ é binomial com parâmetros $n=4$ e $p=0{,}5$. O valor mais provável de $Y$ é 2, então $\hat{Y}_{\text{Bayes}}(0{,}5) = 2$. O erro de Bayes é $P(Y \neq 2 \mid X = 0{,}5) = 1 - P(Y = 2 \mid X = 0{,}5) = 1 - (6 * (0{,}5^2) * (0{,}5^2)) = 1 - (6 * 0{,}0625) = 1 - 0{,}375 = 0{,}625$.
-          </item>
-          <item>
-              Para $x=0{,}9$, a distribuição de $Y$ é binomial com parâmetros $n=4$ e $p=0{,}9$. O valor mais provável de $Y$ é 4, então $\hat{Y}_{\text{Bayes}}(0{,}9) = 4$. O erro de Bayes é $P(Y \neq 4 \mid X = 0{,}9) = 1 - P(Y = 4 \mid X = 0{,}9) = 1 - (0{,}9^4) \approx 1 - 0{,}6561 \approx 0{,}3439$.
-          </item>
-        </list>
+      <solution collapsed="true" status="review" by="claude">
+        As classes são $\{0, 1, 2, 3, 4\}$ e $\mathbb{P}(Y = j \mid X = x) = \binom{4}{j} x^j (1 - x)^{4 - j}$. O classificador de Bayes devolve a classe mais provável, a <em>moda</em> da binomial. Para achá-la, compare probabilidades vizinhas:
+        $$
+          \frac{\mathbb{P}(Y = j + 1 \mid x)}{\mathbb{P}(Y = j \mid x)} = \frac{(4 - j)\,x}{(j + 1)(1 - x)} \geq 1 \iff j \leq 5x - 1,
+        $$
+        de modo que as probabilidades crescem até $j = \lfloor 5x \rfloor$ e decrescem depois: $\hat{Y}_{\text{Bayes}}(x) = \lfloor 5x \rfloor$ (quando $5x$ não é inteiro). O erro de Bayes é $1 - \mathbb{P}(Y = \hat{Y}_{\text{Bayes}}(x) \mid x)$.
+        <table>
+          <header>
+            <column align="right" mono="true">$x$</column>
+            <column align="right" mono="true">$5x$</column>
+            <column align="right" mono="true">$\hat{Y}_{\text{Bayes}}(x)$</column>
+            <column align="right" mono="true">$\mathbb{P}(Y = \hat{Y}_{\text{Bayes}} \mid x)$</column>
+            <column align="right" mono="true">erro de Bayes</column>
+          </header>
+          <row><column>0,1</column><column>0,5</column><column>0</column><column>$0{,}9^4 = 0{,}6561$</column><column>0,3439</column></row>
+          <row><column>0,5</column><column>2,5</column><column>2</column><column>$\binom{4}{2} 0{,}5^4 = 6/16 = 0{,}375$</column><column>0,625</column></row>
+          <row><column>0,9</column><column>4,5</column><column>4</column><column>$0{,}9^4 = 0{,}6561$</column><column>0,3439</column></row>
+        </table>
+        Mesmo o melhor classificador possível erra $62{,}5\%$ das vezes em $x = 0{,}5$, porque ali a lei condicional se espalha pelas cinco classes; nos extremos ela se concentra e o erro cai. Esse erro é irredutível: nenhum método, com nenhum $N$, faz melhor.
       </solution>
 
       <exercise>
@@ -1007,6 +1316,9 @@ def generate_data(N=10, noise_std=0.1):
         </interactive>
         Com os pontos já presentes (acrescente mais, se quiser, com alguma sobreposição), observe as fronteiras para $K = 1$, $K = 3$ e $K = 15$. Descreva o que muda e traduza em viés e variância. Acrescente um ponto isolado no meio da outra classe e repita: para qual $K$ ele mais altera a fronteira?
       </exercise>
+      <todo for="rodrigo" by="claude" priority="normal" status="open">
+        Resolver o exercício <i>Fronteiras do kNN</i> (exige interagir com o widget <ref to="in:knn" />).
+      </todo>
 
       
       <exercise>
@@ -1021,10 +1333,49 @@ def generate_data(N=10, noise_std=0.1):
           <item>Gere dados dessa lei e compare, em um conjunto de teste grande, a taxa de erro do kNN (com $k$ escolhido por validação cruzada) com a do classificador de Bayes, para $N \in \{50, 200, 1000, 5000\}$. Para onde a diferença converge?</item>
         </list>
       </exercise>
-      <solution>
-        <todo for="claude" by="rodrigo" priority="high" status="open">
+      <solution collapsed="true" status="review" by="claude">
+        <todo for="claude" by="rodrigo" priority="high" status="done">
           Implementar item (a) usando tag <c><code></c>
         </todo>
+        <list marker="a">
+          <item>
+            A distância é um argumento com a euclidiana como padrão; o desempate escolhe o menor rótulo entre os mais votados. O classificador de Bayes usa $\eta$ diretamente: prevê $1$ quando $\eta(x_0) \gt 1/2$, isto é, quando $x_1 \gt x_2$.
+            <code lang="python">
+import math, random
+
+def knn_class(X, y, x0, k, dist=math.dist):
+    vizinhos = sorted(range(len(X)), key=lambda i: dist(X[i], x0))[:k]
+    votos = {}
+    for i in vizinhos:
+        votos[y[i]] = votos.get(y[i], 0) + 1
+    maior = max(votos.values())
+    return min(r for r, v in votos.items() if v == maior)      # desempate: menor rótulo
+
+def eta(x):
+    return 1 / (1 + math.exp(-10 * (x[0] - x[1])))
+
+def bayes(x0):
+    return 1 if eta(x0) > 0.5 else 0
+
+def amostra(N):
+    X = [(random.random(), random.random()) for _ in range(N)]
+    y = [1 if random.random() < eta(x) else 0 for x in X]
+    return X, y
+            </code>
+          </item>
+          <item>
+            Para cada $N$: gere o treino, escolha $k$ por validação cruzada com a perda 0-1 (o <c>k_fold</c> do <ref to="exerc:kfold" /> serve, com <c>fit</c> guardando os dados), e meça a taxa de erro do kNN e a do Bayes num teste grande, digamos $5000$ pontos, gerado da mesma lei.
+            <code lang="python">
+Xt, yt = amostra(5000)
+erro = lambda prev: sum(p != v for p, v in zip(prev, yt)) / len(yt)
+for N in (50, 200, 1000, 5000):
+    X, y = amostra(N)
+    k = melhor_k_por_cv(X, y)                     # k_fold com perda 0-1 numa grade de k ímpares
+    print(N, erro([knn_class(X, y, x0, k) for x0 in Xt]), erro([bayes(x0) for x0 in Xt]))
+            </code>
+            A taxa de erro do Bayes fica em torno de $0{,}12$ para esta $\eta$ (é $\mathbb{E}[\min(\eta(X), 1 - \eta(X))]$) e não depende de $N$. A do kNN começa bem acima e cai conforme $N$ cresce, com o $k$ escolhido crescendo junto; a diferença converge para zero: com $k \to \infty$ e $k/N \to 0$, a fração de vizinhos da classe $1$ converge para $\eta(x_0)$ e o voto reproduz o classificador de Bayes. A convergência é lenta porque a fronteira $x_1 = x_2$ é onde $\eta \approx 1/2$ e o voto é mais incerto.
+          </item>
+        </list>
       </solution>
     </subsection>
   </section>
@@ -1061,19 +1412,29 @@ def generate_data(N=10, noise_std=0.1):
           <item>O vetor de resíduos $r = y - \hat{y}$ é ortogonal ao vetor de uns e ao vetor $x$. Traduza cada ortogonalidade em uma frase sobre o ajuste.</item>
         </list>
       </exercise>
-      <solution collapsed="true">
+      <solution collapsed="true" status="review" by="claude">
+        <todo for="claude" by="rodrigo" priority="high" status="done">
+          Soluções pouco rigorosas, revisar e detalhar mais.
+        </todo>
         <list marker="a">
           <item>
-              O MSE é mais apropriado para comparar ajustes em conjuntos de tamanhos diferentes, pois ele normaliza a soma dos quadrados pelo número de observações. A RSS aparece naturalmente na verossimilhança, pois ela é proporcional à soma dos quadrados dos resíduos.
+              $\text{RSS} = \sum_{i=1}^N (y_i - \hat{y}_i)^2$ cresce com $N$ mesmo que o ajuste seja igualmente bom em cada ponto: dobrar os dados dobra a RSS. $\text{MSE} = \text{RSS}/N$ é um erro <em>por observação</em>, e é ela que serve para comparar conjuntos de tamanhos diferentes. Na verossimilhança gaussiana, a densidade conjunta é o produto das densidades das $N$ observações independentes, e o logaritmo transforma o produto em soma:
+              $$
+                -\log L(\beta, \sigma^2) = \frac{N}{2}\log(2\pi\sigma^2) + \frac{1}{2\sigma^2}\sum_{i=1}^N (y_i - \beta_0 - \beta_1 x_i)^2 = \frac{N}{2}\log(2\pi\sigma^2) + \frac{\text{RSS}(\beta)}{2\sigma^2}.
+              $$
+              É a soma, não a média, que aparece.
           </item>
           <item>
-              Mínimos quadrados soma distâncias verticais porque o modelo assume que a variável resposta $Y$ é aleatória e sujeita a erro, enquanto $X$ é considerado fixo. Portanto, faz sentido medir o erro na direção de $Y$.
+              No modelo $Y = \beta_0 + \beta_1 X + \varepsilon$, a aleatoriedade está toda em $Y$ para um $x$ dado: $x_i$ é fixo (ou condicionamos nele) e $y_i - (\beta_0 + \beta_1 x_i) = \varepsilon_i$ é exatamente o ruído do modelo. A distância vertical <em>é</em> $\varepsilon_i$, e a RSS é $\sum \varepsilon_i^2$ avaliada em $\beta$; minimizá-la é, pelo <ref to="exerc:media_mediana" /> e pela verossimilhança, a coisa certa a fazer para esse modelo. Distâncias perpendiculares corresponderiam a um modelo com ruído também em $x$ (erro nas duas coordenadas), que é outro modelo, com outra solução. Além disso, o objetivo é prever $Y$ dado $X$, e o erro que importa nessa tarefa é o erro em $Y$.
           </item>
           <item>
-              As unidades de $\hat{\beta}_1$ são as unidades de $Y$ divididas pelas unidades de $X$. Se $\hat{\beta}_1 = 0$, isso não implica necessariamente que $Y$ seja independente de $X$. Tome $X\sim \mathcal{N}(0, 1)$ e $Y = X^2$. Neste caso, $\hat{\beta}_1 = 0$, mas $Y$ depende de $X$.
+              ${\rm Cov}(x, y)$ tem unidades $[x]\cdot[y]$ e ${\rm Var}(x)$ tem $[x]^2$, logo $\hat{\beta}_1$ está em $[y]/[x]$: $\mu$g/L de arsênio por unidade de pH, por exemplo. $\hat{\beta}_1 = 0$ significa covariância amostral nula, o que não é independência: covariância zero só exclui associação <em>linear</em>. Contraexemplo populacional: $X \sim \mathcal{N}(0, 1)$ e $Y = X^2$; então ${\rm Cov}(X, Y) = \mathbb{E}[X^3] - \mathbb{E}[X]\,\mathbb{E}[X^2] = 0$, mas $Y$ é função de $X$. Versão amostral: $x = (-1, 0, 1)$, $y = (1, 0, 1)$ dá $\bar{x} = 0$ e $\sum_i x_i (y_i - \bar{y}) = -\tfrac{1}{3} + 0 + \tfrac{1}{3} = 0$, logo $\hat{\beta}_1 = 0$ com $y$ determinado por $x$.
           </item>
           <item>
-              A ortogonalidade do vetor de resíduos ao vetor de uns significa que a média dos resíduos é zero, indicando que o ajuste não tem viés sistemático. A ortogonalidade ao vetor $x$ significa que não há correlação linear entre os resíduos e os valores preditores, indicando que o modelo capturou toda a relação linear entre $X$ e $Y$.
+              <todo for="claude" by="rodrigo" priority="high">
+                Fazer a conta que de fato mostra as ortogonalidades, e escrever de forma mais rigorosa.
+              </todo>
+              $r \perp \mathbf{1}$ é $\sum_i r_i = 0$: os resíduos têm média zero, a média dos $\hat{y}_i$ é $\bar{y}$ e a reta passa por $(\bar{x}, \bar{y})$; o ajuste não superestima nem subestima sistematicamente. $r \perp x$ é $\sum_i x_i r_i = 0$, que junto com a anterior dá $\sum_i (x_i - \bar{x})\, r_i = 0$: a covariância amostral entre $x$ e os resíduos é zero, não sobrou tendência linear nos resíduos como função de $x$. Uma regressão de $r$ sobre $x$ teria inclinação exatamente zero: a reta capturou tudo o que era linear em $x$. Geometricamente, $r \perp {\rm col}([\mathbf{1}\; x])$ e $\hat{y}$ é a projeção ortogonal de $y$ nesse plano.
           </item>
         </list>
       </solution>
@@ -1093,7 +1454,7 @@ def generate_data(N=10, noise_std=0.1):
         Relacione as respostas com o <ref to="exerc:flexivel" />.
       </exercise>
       <solution collapsed="true">
-        <list marker="a">
+        <list marker="a" status="done">
           <item>
               O polinômio cúbico terá menor RSS de treino, pois ele tem mais parâmetros e pode se ajustar melhor aos dados de treino. A reta é um caso especial do polinômio cúbico com restrições nos coeficientes.
           </item>
@@ -1114,6 +1475,9 @@ def generate_data(N=10, noise_std=0.1):
         </meta>
         Para os dados do <ref to="exerc:sem_intercepto" />, ajuste $Y = \beta_0 + \beta_1 X + \varepsilon$: calcule $\hat{\beta}_0$, $\hat{\beta}_1$ e a RSS. Compare com a RSS do ajuste sem intercepto. Por que a RSS não pode ter aumentado?
       </exercise>
+      <todo for="rodrigo" by="claude" priority="normal" status="open">
+        Resolver o exercício prático <i>Com intercepto, à mão</i>.
+      </todo>
 
       <exercise id="exerc:alavancagem">
         <title>Alavancagem</title>
@@ -1130,6 +1494,9 @@ def generate_data(N=10, noise_std=0.1):
           <item>Acrescente um ponto no centro da nuvem e arraste-o verticalmente; depois faça o mesmo com um ponto na borda. Qual altera mais a reta? Explique com os pesos $(x_i - \bar{x})$ na fórmula de $\hat{\beta}_1$.</item>
         </list>
       </exercise>
+      <todo for="rodrigo" by="claude" priority="normal" status="open">
+        Resolver o <ref to="exerc:alavancagem" /> (exige interagir com o widget <ref to="in:simple_regression" />).
+      </todo>
 
       <exercise id="exerc:normais_p1">
         <title>Equações normais para $p = 1$</title>
@@ -1143,6 +1510,49 @@ def generate_data(N=10, noise_std=0.1):
           <item>No ajuste sem intercepto, mostre que $\hat{y}_i = \sum_{i'} a_{i'} y_{i'}$ e encontre os $a_{i'}$. Em que sentido "a previsão é uma combinação linear dos $y$"? Que $y_{i'}$ pesam mais?</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="done" by="claude">
+        <todo for="claude" by="rodrigo" priority="high" status="done">
+          Solução ruim e errada. Deixar rigoroso.
+        </todo>
+        <list marker="a">
+          <item>
+              $\text{RSS}(\beta_0, \beta_1) = \sum_{i=1}^N (y_i - \beta_0 - \beta_1 x_i)^2$ é um polinômio nas duas variáveis, logo diferenciável, e um mínimo (que existe, veja o exercício seguinte) é ponto crítico. As derivadas parciais são
+              <equation numbered="false">
+                \begin{split}
+                \frac{\partial \text{RSS}}{\partial \beta_0} &= -2\sum_i (y_i - \beta_0 - \beta_1 x_i), \\
+                \frac{\partial \text{RSS}}{\partial \beta_1} &= -2\sum_i x_i\,(y_i - \beta_0 - \beta_1 x_i).
+                \end{split}
+              </equation>
+              Igualando a zero e reorganizando, obtêm-se as <em>equações normais</em>:
+              <equation numbered="false">
+                \begin{split}
+                \text{(N1)}\quad &\sum_i y_i = N\beta_0 + \beta_1 \sum_i x_i, \\
+                \text{(N2)}\quad &\sum_i x_i y_i = \beta_0 \sum_i x_i + \beta_1 \sum_i x_i^2.
+                \end{split}
+              </equation>
+              Dividindo (N1) por $N$: $\beta_0 = \bar{y} - \beta_1 \bar{x}$. Substituindo em (N2), com $\sum_i x_i = N\bar{x}$:
+              $$
+                \sum_i x_i y_i = (\bar{y} - \beta_1 \bar{x})\,N\bar{x} + \beta_1 \sum_i x_i^2
+                \iff \sum_i x_i y_i - N\bar{x}\bar{y} = \beta_1\Big(\sum_i x_i^2 - N\bar{x}^2\Big).
+              $$
+              Agora, $\sum_i (x_i - \bar{x})(y_i - \bar{y}) = \sum_i x_i y_i - \bar{y}\sum_i x_i - \bar{x}\sum_i y_i + N\bar{x}\bar{y} = \sum_i x_i y_i - N\bar{x}\bar{y}$, e do mesmo modo $\sum_i (x_i - \bar{x})^2 = \sum_i x_i^2 - N\bar{x}^2$. Chamando $S_{xy}$ e $S_{xx}$ essas somas, e supondo $S_{xx} \gt 0$ (nem todos os $x_i$ iguais),
+              $$
+                \hat{\beta}_1 = \frac{S_{xy}}{S_{xx}} = \frac{\sum_i (x_i - \bar{x})(y_i - \bar{y})}{\sum_i (x_i - \bar{x})^2}, \qquad \hat{\beta}_0 = \bar{y} - \hat{\beta}_1 \bar{x}.
+              $$
+              Dividindo numerador e denominador por $N$ (ou $N - 1$), $\hat{\beta}_1 = {\rm Cov}(x, y)/{\rm Var}(x)$.
+          </item>
+          <item>
+              Avaliando a reta em $\bar{x}$: $\hat{\beta}_0 + \hat{\beta}_1 \bar{x} = \bar{y} - \hat{\beta}_1\bar{x} + \hat{\beta}_1\bar{x} = \bar{y}$, logo $(\bar{x}, \bar{y})$ está na reta. Com $r_i = y_i - \hat{\beta}_0 - \hat{\beta}_1 x_i$, a equação (N1) avaliada em $(\hat{\beta}_0, \hat{\beta}_1)$ é literalmente $\sum_i r_i = 0$, e (N2) é $\sum_i x_i r_i = 0$. As equações normais <em>são</em> as duas ortogonalidades: $r \perp \mathbf{1}$ e $r \perp x$.
+          </item>
+          <item>
+              Sem intercepto, $\text{RSS}(\beta) = \sum_i (y_i - \beta x_i)^2$, cuja derivada $-2\sum_i x_i (y_i - \beta x_i)$ se anula em $\hat{\beta} = \sum_{i'} x_{i'} y_{i'} \big/ \sum_j x_j^2$ (mínimo, pois a segunda derivada é $2\sum_j x_j^2 \gt 0$). Então
+              $$
+                \hat{y}_i = \hat{\beta}\, x_i = \sum_{i'} a_{i'}\, y_{i'}, \qquad a_{i'} = \frac{x_i\, x_{i'}}{\sum_j x_j^2},
+              $$
+              e os pesos dependem também de $i$: o ponto onde se prevê entra pelo fator $x_i$. "A previsão é linear nos $y$" no sentido de que a aplicação $y \mapsto \hat{y}$ é um operador linear de $\mathbb{R}^N$ (a matriz $H$ com $h_{ii'} = x_i x_{i'}/\sum_j x_j^2$): dobrar todos os $y$ dobra as previsões, e a previsão para $y + y'$ é a soma das previsões. Pesam mais os $y_{i'}$ com $|x_{i'}|$ grande, os pontos longe da origem: são eles que decidem a inclinação (alavancagem). O sinal de $a_{i'}$ é o de $x_i x_{i'}$.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>O ponto crítico é mínimo</title>
@@ -1153,6 +1563,22 @@ def generate_data(N=10, noise_std=0.1):
         Mostre que a Hessiana de $\text{RSS}(\beta_0, \beta_1)$ é definida positiva se, e somente se, existem $i, j$ com $x_i \neq x_j$. O que acontece com $\hat{\beta}$ quando todos os $x_i$ são iguais? Interprete geometricamente.
         <hint>O determinante da Hessiana é $4\left(N\sum x_i^2 - (\sum x_i)^2\right)$; use Cauchy-Schwarz.</hint>
       </exercise>
+      <solution collapsed="true" status="done" by="claude" verified-by="rodrigo">
+        Derivando as parciais do <ref to="exerc:normais_p1" /> mais uma vez,
+        $$
+          \mathcal{H} = \begin{pmatrix} \dfrac{\partial^2 \text{RSS}}{\partial \beta_0^2} & \dfrac{\partial^2 \text{RSS}}{\partial \beta_0 \partial \beta_1} \\[2ex] \dfrac{\partial^2 \text{RSS}}{\partial \beta_1 \partial \beta_0} & \dfrac{\partial^2 \text{RSS}}{\partial \beta_1^2} \end{pmatrix}
+          = 2\begin{pmatrix} N & \sum_i x_i \\ \sum_i x_i & \sum_i x_i^2 \end{pmatrix},
+        $$
+        constante em $\beta$. Uma matriz simétrica $2 \times 2$ é definida positiva se, e só se, o elemento $(1,1)$ e o determinante são positivos. O primeiro é $2N \gt 0$. O determinante é $4\big(N\sum_i x_i^2 - (\sum_i x_i)^2\big)$. Por Cauchy–Schwarz aplicada aos vetores $\mathbf{1} = (1, \dots, 1)$ e $x$,
+        $$
+          \Big(\sum_i x_i \cdot 1\Big)^2 = \langle x, \mathbf{1}\rangle^2 \leq \|x\|^2 \|\mathbf{1}\|^2 = N \sum_i x_i^2,
+        $$
+        com igualdade se, e só se, $x$ e $\mathbf{1}$ são linearmente dependentes, isto é, $x = c\,\mathbf{1}$: todos os $x_i$ iguais. Logo $\det \mathcal{H} \gt 0 \iff$ existem $x_i \neq x_j$. (Equivalentemente, $\det \mathcal{H} = 4N\sum_i (x_i - \bar{x})^2$.)
+
+        Como $\text{RSS}$ é um polinômio de grau $2$, a expansão de Taylor em torno do ponto crítico $\hat{\beta}$ é exata: $\text{RSS}(\hat{\beta} + h) = \text{RSS}(\hat{\beta}) + \tfrac{1}{2} h^T \mathcal{H} h$, porque o gradiente se anula em $\hat{\beta}$. Se $\mathcal{H}$ é definida positiva, $h^T\mathcal{H}h \gt 0$ para todo $h \neq 0$, e $\hat{\beta}$ é o mínimo global, único.
+
+        Se todos os $x_i = c$, a RSS só depende da combinação $\beta_0 + \beta_1 c$: (N1) e (N2) viram a mesma equação, $\beta_0 + \beta_1 c = \bar{y}$, e há uma reta inteira de soluções (a fórmula de $\hat{\beta}_1$ dá $0/0$). Geometricamente, no plano $(x, y)$ os pontos estão numa vertical $x = c$, e qualquer reta que passe por $(c, \bar{y})$, com qualquer inclinação, tem a mesma RSS: a inclinação não é identificável. Em $\mathbb{R}^N$, as colunas $\mathbf{1}$ e $x$ são colineares, ${\rm col}(X)$ é uma reta e não um plano; a projeção $\hat{y}$ é única, mas suas coordenadas $(\beta_0, \beta_1)$ não.
+      </solution>
 
       <exercise id="exerc:var_beta1">
         <title>Média e variância de $\hat{\beta}_1$</title>
@@ -1169,37 +1595,38 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (b), $\hat{\beta}_1$ é uma combinação linear de variáveis independentes; use $\sum_i w_i x_i = 1$.</hint>
       </exercise>
-      <solution collapsed="true" status="draft" by="rodrigo" for="claude">
-        <todo for="claude" by="rodrigo" priority="high" status="open">
+      <solution collapsed="true" status="done" by="claude" verified-by="rodrigo">
+        <todo for="claude" by="rodrigo" priority="high" status="done">
           Solução ruim. Refazer rigorosamente.
         </todo>
+        Escreva $S_{xx} = \sum_j (x_j - \bar{x})^2$ e $w_i = (x_i - \bar{x})/S_{xx}$. Três identidades sobre os pesos, todas porque $\sum_i (x_i - \bar{x}) = 0$:
+        $$
+          \sum_i w_i = 0, \qquad \sum_i w_i x_i = \frac{\sum_i (x_i - \bar{x})x_i}{S_{xx}} = \frac{\sum_i (x_i - \bar{x})(x_i - \bar{x})}{S_{xx}} = 1, \qquad \sum_i w_i^2 = \frac{S_{xx}}{S_{xx}^2} = \frac{1}{S_{xx}}.
+        $$
+        (Na segunda, $\sum_i (x_i - \bar{x})\bar{x} = 0$ permite trocar $x_i$ por $x_i - \bar{x}$.)
         <list marker="a">
           <item>
-              A expressão $\sum_i w_i = 0$ é usada para mostrar que a soma ponderada dos resíduos é zero, o que implica que a estimativa de $\hat{\beta}_1$ é imparcial.
+              Pelo <ref to="exerc:normais_p1" />, $\hat{\beta}_1 = \sum_i (x_i - \bar{x})(y_i - \bar{y})/S_{xx}$. Distribuindo o numerador, $\sum_i (x_i - \bar{x})(y_i - \bar{y}) = \sum_i (x_i - \bar{x})\,y_i - \bar{y}\sum_i (x_i - \bar{x}) = \sum_i (x_i - \bar{x})\,y_i$. Logo $\hat{\beta}_1 = \sum_i w_i y_i$. A identidade $\sum_i w_i = 0$ foi usada para descartar o termo com $\bar{y}$; ela diz que $\hat{\beta}_1$ não enxerga um deslocamento comum dos $y_i$ (somar $c$ a todos os $y_i$ não muda a inclinação).
           </item>
           <item>
-              A esperança de $\hat{\beta}_1$ é calculada como:
+              Os $w_i$ são constantes (os $x_i$ são fixos), e $\mathbb{E}[Y_i] = \beta_0 + \beta_1 x_i$. Então
               $$
-              \mathbb{E}[\hat{\beta}_1] = \sum_i w_i \mathbb{E}[y_i] = \sum_i w_i (\beta_0 + \beta_1 x_i) = \beta_1 \sum_i w_i x_i = \beta_1
+                \mathbb{E}[\hat{\beta}_1] = \sum_i w_i\,\mathbb{E}[Y_i] = \beta_0 \sum_i w_i + \beta_1 \sum_i w_i x_i = \beta_0 \cdot 0 + \beta_1 \cdot 1 = \beta_1.
               $$
-              A variância é:
+              Os $Y_i$ são independentes (funções de $\varepsilon_i$ independentes) com ${\rm Var}(Y_i) = {\rm Var}(\varepsilon_i) = \sigma^2$, e a variância de uma combinação linear de variáveis independentes é a soma das variâncias com os pesos ao quadrado:
               $$
-              {\rm Var}(\hat{\beta}_1) = \sum_i w_i^2 {\rm Var}(y_i) = \sigma^2 \sum_i w_i^2 = \frac{\sigma^2}{\sum_j (x_j - \bar{x})^2}
+                {\rm Var}(\hat{\beta}_1) = \sum_i w_i^2\, {\rm Var}(Y_i) = \sigma^2 \sum_i w_i^2 = \frac{\sigma^2}{\sum_i (x_i - \bar{x})^2}.
               $$
           </item>
           <item>
-              À medida que $N$ cresce, a variância de $\hat{\beta}_1$ diminui, tornando a estimativa mais precisa. Quando os $x_i$ estão mais espalhados, a soma $\sum_i (x_i - \bar{x})^2$ aumenta, o que também reduz a variância de $\hat{\beta}_1$. Isso está relacionado à alavancagem observada no exercício anterior.
+              Se novos $x_i$ chegam com a mesma dispersão, $S_{xx} \approx N s_x^2$ cresce linearmente com $N$, e ${\rm Var}(\hat{\beta}_1) \approx \sigma^2/(N s_x^2)$ cai como $1/N$: o desvio padrão de $\hat{\beta}_1$ cai como $1/\sqrt{N}$. É o que se vê no widget ao reamostrar: com $N = 120$ as retas formam um feixe estreito; com $N = 10$, um leque. Pontos mais espalhados aumentam $S_{xx}$ e também reduzem a variância: são os pontos longe de $\bar{x}$, com $|w_i|$ grande, que "seguram" a inclinação. Pelo mesmo motivo, arrastar um ponto da borda move muito a reta (ele tem peso $w_i$ grande), e arrastar um ponto do centro quase não move ($w_i \approx 0$).
           </item>
           <item>
-              A esperança de $\hat{\beta}_0$ é:
+              $\hat{\beta}_0 = \bar{y} - \hat{\beta}_1 \bar{x}$. Como $\mathbb{E}[\bar{y}] = \tfrac{1}{N}\sum_i (\beta_0 + \beta_1 x_i) = \beta_0 + \beta_1 \bar{x}$, segue $\mathbb{E}[\hat{\beta}_0] = \beta_0 + \beta_1 \bar{x} - \beta_1 \bar{x} = \beta_0$. Para a variância, escreva $\hat{\beta}_0$ como combinação linear dos $Y_i$: $\hat{\beta}_0 = \sum_i \big(\tfrac{1}{N} - \bar{x} w_i\big) Y_i$. Então
               $$
-              \mathbb{E}[\hat{\beta}_0] = \mathbb{E}[\bar{y}] - \mathbb{E}[\hat{\beta}_1] \bar{x} = \beta_0
+                {\rm Var}(\hat{\beta}_0) = \sigma^2 \sum_i \Big(\frac{1}{N} - \bar{x} w_i\Big)^2 = \sigma^2\Big(\sum_i \frac{1}{N^2} - \frac{2\bar{x}}{N}\sum_i w_i + \bar{x}^2 \sum_i w_i^2\Big) = \sigma^2\Big(\frac{1}{N} + \frac{\bar{x}^2}{S_{xx}}\Big),
               $$
-              A variância é:
-              $$
-              {\rm Var}(\hat{\beta}_0) = {\rm Var}(\bar{y}) + {\rm Var}(\hat{\beta}_1) \bar{x}^2 = \frac{\sigma^2}{N} + \frac{\sigma^2 \bar{x}^2}{\sum_i (x_i - \bar{x})^2}
-              $$
-              Centrar os $x_i$ reduz $\bar{x}$, o que diminui a segunda parcela da variância de $\hat{\beta}_0$, tornando a estimativa mais precisa.
+              usando $\sum_i w_i = 0$ e $\sum_i w_i^2 = 1/S_{xx}$. (O termo cruzado nulo é o mesmo que dizer ${\rm Cov}(\bar{y}, \hat{\beta}_1) = \sigma^2 \sum_i \tfrac{1}{N} w_i = 0$.) Centrar os $x_i$ faz $\bar{x} = 0$ e a variância cai ao mínimo, $\sigma^2/N$: o intercepto passa a ser o valor da reta no centro dos dados, onde ela é mais bem determinada. Com $\bar{x}$ longe de zero, $\hat{\beta}_0$ é a reta extrapolada até $x = 0$, e o erro na inclinação é amplificado pelo braço $\bar{x}$.
           </item>
         </list>
       </solution>
@@ -1218,6 +1645,31 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (a), escreva $y_i - \bar{y} = (y_i - \hat{y}_i) + (\hat{y}_i - \bar{y})$ e use $\hat{y}_i - \bar{y} = \hat{\beta}_1 (x_i - \bar{x})$ para mostrar que o termo cruzado é zero.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Com $r_i = y_i - \hat{y}_i$, escreva $y_i - \bar{y} = r_i + (\hat{y}_i - \bar{y})$, eleve ao quadrado e some:
+            $$
+              \text{TSS} = \sum_i r_i^2 + \sum_i (\hat{y}_i - \bar{y})^2 + 2\sum_i r_i (\hat{y}_i - \bar{y}).
+            $$
+            Como $\hat{y}_i = \hat{\beta}_0 + \hat{\beta}_1 x_i$ e $\hat{\beta}_0 = \bar{y} - \hat{\beta}_1 \bar{x}$, tem-se $\hat{y}_i - \bar{y} = \hat{\beta}_1 (x_i - \bar{x})$, e o termo cruzado é
+            $$
+              2\hat{\beta}_1 \sum_i r_i (x_i - \bar{x}) = 2\hat{\beta}_1\Big(\sum_i x_i r_i - \bar{x}\sum_i r_i\Big) = 0
+            $$
+            pelas duas identidades do <ref to="exerc:normais_p1" />(b). Logo $\text{TSS} = \sum_i (\hat{y}_i - \bar{y})^2 + \text{RSS}$. Em $\mathbb{R}^N$, os três vetores são $y - \bar{y}\mathbf{1}$ (hipotenusa), $\hat{y} - \bar{y}\mathbf{1}$ (cateto "explicado", que está em ${\rm col}([\mathbf{1}\; x])$) e $r = y - \hat{y}$ (cateto "resíduo", ortogonal a ${\rm col}([\mathbf{1}\; x])$). O ângulo reto é a ortogonalidade $r \perp (\hat{y} - \bar{y}\mathbf{1})$ recém-verificada.
+          </item>
+          <item>
+            De (a), $\text{TSS} - \text{RSS} = \sum_i (\hat{y}_i - \bar{y})^2 \geq 0$, e $\text{RSS} \geq 0$; logo $0 \leq \text{RSS} \leq \text{TSS}$ e $0 \leq R^2 \leq 1$ (supondo $\text{TSS} \gt 0$). Para $p = 1$, $\sum_i (\hat{y}_i - \bar{y})^2 = \hat{\beta}_1^2 S_{xx} = \dfrac{S_{xy}^2}{S_{xx}^2} S_{xx} = \dfrac{S_{xy}^2}{S_{xx}}$, e então
+            $$
+              R^2 = \frac{\text{TSS} - \text{RSS}}{\text{TSS}} = \frac{S_{xy}^2}{S_{xx} S_{yy}} = {\rm Cor}(x, y)^2.
+            $$
+            $R^2 = 0 \iff S_{xy} = 0 \iff \hat{\beta}_1 = 0$: a reta ajustada é horizontal em $\bar{y}$, não explica nada além da média.
+          </item>
+          <item>
+            Com $x$ e $y$ padronizados, $\bar{x} = \bar{y} = 0$ e $S_{xx} = S_{yy}$ (ambos iguais a $N - 1$ ou a $N$, conforme a convenção; só a razão importa). Então $\hat{\beta}_0 = \bar{y} - \hat{\beta}_1 \bar{x} = 0$ e $\hat{\beta}_1 = S_{xy}/S_{xx} = S_{xy}/\sqrt{S_{xx} S_{yy}} = {\rm Cor}(x, y) =: \rho$. Pela simetria da fórmula, a regressão de $x$ sobre $y$ dá $\hat{x} = \rho\, y$, com o <em>mesmo</em> $\rho$. A inversa de $\hat{y} = \rho x$ seria $x = y/\rho$, que só coincide com $x = \rho y$ quando $|\rho| = 1$: as duas regressões não são inversas uma da outra. Interpretação: um $x$ um desvio padrão acima da média prevê um $y$ apenas $\rho$ desvios acima (com $|\rho| \lt 1$), mais perto da média do que $x$ estava; e o mesmo vale no sentido contrário. Foi essa "regressão à média" (pais altos têm filhos altos, mas menos; e filhos altos têm pais altos, mas menos) que deu nome ao método.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:ols_p1">
         <title>Implementando $p = 1$</title>
@@ -1227,6 +1679,25 @@ def generate_data(N=10, noise_std=0.1):
         </meta>
         Implemente <c>ols_p1(x, y)</c> devolvendo $(\hat{\beta}_0, \hat{\beta}_1)$ pelas fórmulas fechadas. Em dados sintéticos, verifique numericamente as três identidades do <ref to="exerc:normais_p1" />(b).
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <code lang="python">
+import numpy as np
+
+def ols_p1(x, y):
+    xc, yc = x - x.mean(), y - y.mean()
+    b1 = (xc * yc).sum() / (xc * xc).sum()
+    b0 = y.mean() - b1 * x.mean()
+    return b0, b1
+
+rng = np.random.default_rng(0)
+x = rng.uniform(0, 10, 30)
+y = 2 + 1.5 * x + rng.normal(0, 2, 30)
+b0, b1 = ols_p1(x, y)
+r = y - (b0 + b1 * x)
+print(r.sum(), (x * r).sum(), b0 + b1 * x.mean() - y.mean())
+        </code>
+        Os três números saem da ordem de $10^{-13}$, zero a menos de arredondamento de ponto flutuante: use <c>np.isclose(..., 0)</c> em vez de <c>== 0</c>.
+      </solution>
     </subsection>
 
     <!-- ================================================================== -->
@@ -1258,6 +1729,25 @@ def generate_data(N=10, noise_std=0.1):
           <item>Se $N < p + 1$, o que acontece com $X^TX$ e com a RSS mínima? Relacione com o interpolador do <ref to="exerc:interpolar" />.</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="done" by="claude" verified-by="rodrigo">
+        <list marker="a">
+          <item>
+            $X^TX$ é quadrada, logo é invertível se, e só se, seu núcleo é trivial. Se $X^TXv = 0$, então $v^TX^TXv = \|Xv\|^2 = 0$, logo $Xv = 0$; se as colunas são linearmente independentes, isso força $v = 0$. Reciprocamente, se as colunas são dependentes existe $v \neq 0$ com $Xv = 0$, e então $X^TXv = 0$: $X^TX$ é singular. Assim ${\rm ker}(X^TX) = {\rm ker}(X)$, e $X^TX$ é invertível $\iff$ colunas de $X$ linearmente independentes.
+          </item>
+          <item>
+            Nenhum preditor (contando a coluna de uns) é combinação linear exata dos outros: nenhum preditor é constante (seria múltiplo do intercepto), dois preditores não são proporcionais (a mesma grandeza em duas unidades), e não há relação linear exata entre vários (um total e suas parcelas, por exemplo).
+          </item>
+          <item>
+            $X = [\mathbf{1}\;\; x\;\; 2x]$. Se $(\hat{\beta}_0, \hat{\beta}_1, \hat{\beta}_2)$ é solução, então $(\hat{\beta}_0, \hat{\beta}_1 + 2t, \hat{\beta}_2 - t)$ dá o mesmo $X\beta$ para todo $t$: há infinitas soluções, uma reta inteira. O ajuste $\hat{y}$ é único: é a projeção ortogonal de $y$ sobre ${\rm col}(X)$, que é o mesmo plano ${\rm col}([\mathbf{1}\; x])$ (<ref to="exerc:projecao" />(d)).
+          </item>
+          <item>
+            Previsão só precisa de $\hat{y} = X\hat{\beta}$, que é único. Inferência pergunta "qual o efeito de $x$ mantendo $2x$ fixo", o que os dados não podem responder: $x$ nunca variou sem que $2x$ variasse junto. O coeficiente de $x$ pode ser qualquer número; seu erro-padrão é infinito. Mesmas previsões, coeficientes sem significado.
+          </item>
+          <item>
+            ${\rm rank}(X) \leq \min(N, p + 1) = N \lt p + 1$, logo as $p + 1$ colunas são dependentes e $X^TX$ é singular. Se ${\rm rank}(X) = N$, então ${\rm col}(X) = \mathbb{R}^N$ e $\hat{y} = y$: $\text{RSS} = 0$ para infinitos $\beta$. É o regime do interpolador: risco empírico zero sem nada aprendido. O polinômio de grau $N - 1$ é o caso $p + 1 = N$ (Vandermonde), em que a solução com RSS zero é única.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>Cálculo matricial e equações normais</title>
@@ -1271,6 +1761,31 @@ def generate_data(N=10, noise_std=0.1):
           <item>Monte $X^TX$ e $X^Ty$ explicitamente para $p = 1$ e recupere as equações do <ref to="exerc:normais_p1" />.</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="done" by="claude" verified-by="rodrigo">
+        <list marker="a">
+          <item>
+            $v^Tx = \sum_j v_j x_j$, e $\partial/\partial x_k$ dessa soma é $v_k$: o gradiente é $v$. Para a forma quadrática, $x^TAx = \sum_{j,l} A_{jl}\, x_j x_l$, e $x_k$ aparece nos termos com $j = k$ e nos termos com $l = k$:
+            $$
+              \frac{\partial}{\partial x_k}\, x^TAx = \sum_l A_{kl}\, x_l + \sum_j A_{jk}\, x_j = (Ax)_k + (A^Tx)_k = 2(Ax)_k,
+            $$
+            a última igualdade porque $A = A^T$. Logo o gradiente é $2Ax$.
+          </item>
+          <item>
+            Expandindo, e usando que $y^TX\beta$ é um escalar, igual à sua transposta $\beta^TX^Ty$:
+            $$
+              \text{RSS}(\beta) = (y - X\beta)^T(y - X\beta) = y^Ty - 2\,\beta^T X^Ty + \beta^T (X^TX)\beta.
+            $$
+            Por (a), com $v = X^Ty$ e $A = X^TX$ (simétrica), $\nabla \text{RSS}(\beta) = -2X^Ty + 2X^TX\beta$, que se anula se, e só se, $X^TX\beta = X^Ty$. A Hessiana é $2X^TX$, e para todo $v$, $v^T(2X^TX)v = 2\|Xv\|^2 \geq 0$: semidefinida positiva. Logo RSS é convexa e todo ponto crítico é mínimo global; se as colunas são independentes, $\|Xv\|^2 \gt 0$ para $v \neq 0$, a Hessiana é definida positiva e o mínimo é único.
+          </item>
+          <item>
+            Para $p = 1$, $X = [\mathbf{1}\;\; x]$ é $N \times 2$ e
+            $$
+              X^TX = \begin{pmatrix} N & \sum_i x_i \\ \sum_i x_i & \sum_i x_i^2 \end{pmatrix}, \qquad X^Ty = \begin{pmatrix} \sum_i y_i \\ \sum_i x_i y_i \end{pmatrix}.
+            $$
+            As duas linhas de $X^TX\beta = X^Ty$ são $N\beta_0 + \beta_1\sum_i x_i = \sum_i y_i$ e $\beta_0 \sum_i x_i + \beta_1 \sum_i x_i^2 = \sum_i x_i y_i$: exatamente (N1) e (N2) do <ref to="exerc:normais_p1" />. E $2X^TX$ é a Hessiana do exercício <i>O ponto crítico é mínimo</i>.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:projecao">
         <title>$\hat{y}$ é a projeção ortogonal</title>
@@ -1289,6 +1804,32 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (c), expanda $y - X\beta = r + (\hat{y} - X\beta)$ e use (b). Em (e), ${\rm tr}(AB) = {\rm tr}(BA)$. Em (f), $H = H^TH$ dá $h_{ii} = \sum_j h_{ij}^2 \geq h_{ii}^2$.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            $X^TX$ é simétrica, logo sua inversa também é. Então $H^T = \big(X(X^TX)^{-1}X^T\big)^T = X\big((X^TX)^{-1}\big)^TX^T = X(X^TX)^{-1}X^T = H$. Idempotência: $H^2 = X(X^TX)^{-1}\underbrace{X^TX(X^TX)^{-1}}_{I}X^T = H$. Ainda, $HX = X(X^TX)^{-1}(X^TX) = X$, e portanto $(I - H)X = X - X = 0$.
+          </item>
+          <item>
+            $X^Tr = X^T(y - Hy) = X^Ty - X^TX(X^TX)^{-1}X^Ty = X^Ty - X^Ty = 0$. A linha $j$ de $X^T$ é a coluna $j$ de $X$, então cada coluna é ortogonal a $r$. Se $v = Xa \in {\rm col}(X)$, então $v^Tr = a^TX^Tr = 0$. As equações normais $X^TX\hat{\beta} = X^Ty$ são $X^T(y - X\hat{\beta}) = 0$, ou seja, $X^Tr = 0$: são a mesma afirmação. Como $\mathbf{1}$ é uma coluna de $X$, $\mathbf{1}^Tr = \sum_i r_i = 0$: a média dos resíduos é zero.
+          </item>
+          <item>
+            $y - X\beta = (y - \hat{y}) + (\hat{y} - X\beta) = r + X(\hat{\beta} - \beta)$. O segundo vetor está em ${\rm col}(X)$ e $r$ é ortogonal a ${\rm col}(X)$ por (b), logo o produto interno cruzado é zero e
+            $$
+              \|y - X\beta\|^2 = \|r\|^2 + \|X(\hat{\beta} - \beta)\|^2 = \|y - \hat{y}\|^2 + \|\hat{y} - X\beta\|^2.
+            $$
+            Como o segundo termo é $\geq 0$, $\text{RSS}(\beta) \geq \text{RSS}(\hat{\beta})$ para todo $\beta$, com igualdade se, e só se, $X(\hat{\beta} - \beta) = 0$, isto é, $\beta = \hat{\beta}$ (colunas independentes). E como todo $v \in {\rm col}(X)$ é $v = X\beta$ para algum $\beta$, $\|y - v\|^2 \geq \|y - \hat{y}\|^2$: $\hat{y}$ é o ponto de ${\rm col}(X)$ mais próximo de $y$. Nenhuma derivada foi usada.
+          </item>
+          <item>
+            Seja $S = {\rm col}(X)$, um subespaço de dimensão $q = {\rm rank}(X) \lt p + 1$. Existe um ponto de $S$ mais próximo de $y$, e ele é único: tome uma base ortonormal $b_1, \dots, b_q$ de $S$ (Gram–Schmidt nas colunas independentes), $B = [b_1 \cdots b_q]$, e defina $\hat{y} = BB^Ty$. Então $B^T(y - \hat{y}) = B^Ty - B^TBB^Ty = B^Ty - B^Ty = 0$, ou seja, $y - \hat{y} \perp S$. Para qualquer $v \in S$, o mesmo Pitágoras de (c) dá $\|y - v\|^2 = \|y - \hat{y}\|^2 + \|\hat{y} - v\|^2$, mínimo só em $v = \hat{y}$. A projeção depende apenas de $S$, não de como as colunas o geram. Já os coeficientes: $\text{RSS}(\beta) = \|y - X\beta\|^2$ é mínima exatamente quando $X\beta = \hat{y}$, e se $\beta^*$ é uma solução, $\beta^* + {\rm ker}(X)$ são todas; ${\rm ker}(X)$ tem dimensão $p + 1 - q \gt 0$. É o exemplo do <ref to="exerc:identificabilidade" />(c): mesmo plano, mesma projeção, infinitas coordenadas.
+          </item>
+          <item>
+            ${\rm tr}(H) = {\rm tr}\big(X\,(X^TX)^{-1}X^T\big) = {\rm tr}\big((X^TX)^{-1}X^T\,X\big) = {\rm tr}(I_{p+1}) = p + 1$, usando ${\rm tr}(AB) = {\rm tr}(BA)$ com $A = X$ e $B = (X^TX)^{-1}X^T$. Como ${\rm tr}(H) = \sum_i h_{ii}$, a média dos $h_{ii}$ é $(p+1)/N$. No <ref to="exerc:normais_p1" />(c), sem intercepto e com uma só coluna, $h_{ii} = x_i^2/\sum_j x_j^2$ e $\sum_i h_{ii} = 1$: é o caso de uma coluna da fórmula geral, que dá uma unidade de "peso próprio" por coluna de $X$.
+          </item>
+          <item>
+            Por (a), $H = H^2 = H^TH$, logo $h_{ii} = (H^TH)_{ii} = \sum_j h_{ji} h_{ji} = \sum_j h_{ij}^2$ (usando $h_{ji} = h_{ij}$). Isso dá $h_{ii} \geq 0$ e, isolando o termo $j = i$, $h_{ii} \geq h_{ii}^2$, ou seja, $h_{ii}(1 - h_{ii}) \geq 0$, donde $h_{ii} \leq 1$. Se $h_{ii} = 1$, então $\sum_{j \neq i} h_{ij}^2 = h_{ii} - h_{ii}^2 = 0$: $h_{ij} = 0$ para todo $j \neq i$, e $\hat{y}_i = \sum_j h_{ij} y_j = y_i$. A previsão do ponto $i$ é o próprio $y_i$, sejam quais forem os outros dados, e $r_i = 0$ sempre: o ponto determina sozinho o seu ajuste. Para $p = 1$, $h_{ii} = \tfrac{1}{N} + \tfrac{(x_i - \bar{x})^2}{S_{xx}}$, que tende a $1$ quando $x_i$ se afasta dos demais: é o ponto da borda do <ref to="exerc:alavancagem" />, que arrasta a reta consigo.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:rss_monotona">
         <title>A RSS nunca aumenta com mais preditores</title>
@@ -1306,6 +1847,29 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (a), note que $X_2 \binom{\beta}{0} = X_1 \beta$: todo ajuste do modelo menor é um ajuste do maior. Em (c), $\hat{y}_1 \in \text{col}(X_1) \subseteq \text{col}(X_2)$ e $H_2$ fixa $\text{col}(X_2)$.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            $\text{RSS}_1 = \min_{\beta \in \mathbb{R}^q} \|y - X_1\beta\|^2$ e $\text{RSS}_2 = \min_{\gamma \in \mathbb{R}^{q+m}} \|y - X_2\gamma\|^2$. Como $X_2\binom{\beta}{0} = X_1\beta$, o conjunto $\{X_1\beta\}$ está contido em $\{X_2\gamma\}$, e o mínimo sobre um conjunto maior não pode ser maior: $\text{RSS}_2 \leq \text{RSS}_1$.
+          </item>
+          <item>
+            Cada coluna de $X_1$ é coluna de $X_2$, logo ${\rm col}(X_1) \subseteq {\rm col}(X_2)$. Pelo <ref to="exerc:projecao" />(c), $\hat{y}_2$ é o ponto de ${\rm col}(X_2)$ mais próximo de $y$; como $\hat{y}_1 \in {\rm col}(X_1) \subseteq {\rm col}(X_2)$ é um candidato, $\|y - \hat{y}_2\| \leq \|y - \hat{y}_1\|$.
+          </item>
+          <item>
+            $H_2$ fixa ${\rm col}(X_2)$: $H_2 X_2 a = X_2 a$ (pois $H_2X_2 = X_2$). Como $\hat{y}_1 \in {\rm col}(X_2)$, $H_2\hat{y}_1 = \hat{y}_1$. Então $\hat{y}_2 - \hat{y}_1 = H_2 y - H_2 \hat{y}_1 = H_2(y - \hat{y}_1) = H_2 r_1$. Daí $r_2 = y - \hat{y}_2 = r_1 - H_2 r_1 = (I - H_2)r_1$. Os vetores $H_2 r_1 \in {\rm col}(X_2)$ e $(I - H_2)r_1 \perp {\rm col}(X_2)$ são ortogonais, e Pitágoras dá
+            $$
+              \text{RSS}_1 = \|r_1\|^2 = \|(I - H_2)r_1\|^2 + \|H_2 r_1\|^2 = \text{RSS}_2 + \|H_2 r_1\|^2.
+            $$
+            Igualdade $\iff H_2 r_1 = 0 \iff r_1 \perp {\rm col}(X_2) \iff X_2^T r_1 = 0$. Como $X_1^T r_1 = 0$ sempre vale, a condição é $Z^T r_1 = 0$: as novas colunas são ortogonais ao que <em>sobrou</em> por explicar depois de $X_1$. Se $Z$ não tem nada a dizer sobre o resíduo, a RSS não cai.
+          </item>
+          <item>
+            $R^2 = 1 - \text{RSS}/\text{TSS}$ com $\text{TSS}$ fixo (não depende do modelo), e $\text{RSS}$ é não-crescente: $R^2$ é não-decrescente. Por isso RSS e $R^2$ de treino sempre preferem o modelo aninhado maior, seja a coluna nova informativa ou ruído puro: não medem o que interessa. Servem o erro de teste ou de validação cruzada, ou critérios que cobram por parâmetro: $R^2$ ajustado, teste $F$ (<ref to="exerc:f_stat" />), AIC.
+          </item>
+          <item>
+            Não vale para a RSS de teste. No <ref to="exerc:linear_cubico" />, com verdade linear, o cúbico tem RSS de treino menor ou igual, mas RSS de teste esperada <em>maior</em>: a variância subiu e o viés já era zero. Com uma coluna aleatória, a RSS de treino cai de $\|H_2 r_1\|^2 \gt 0$ (uma coluna aleatória não é exatamente ortogonal a $r_1$), mas não foi viés que diminuiu: a coluna não tem relação com $f$, logo $\mathbb{E}[\hat{f}]$ não se aproximou de $f$. O que caiu foi o ajuste ao ruído da amostra, e a variância subiu, exatamente o <ref to="exerc:diagnostico" />(d).
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:gauss_markov">
         <title>Gauss–Markov</title>
@@ -1323,6 +1887,31 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (c), ${\rm Var}(Cy) = \sigma^2 CC^T$; expanda $CC^T$ e use $DX = 0$ para eliminar os termos cruzados.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        Usa-se ao longo de toda a solução: para $A$ fixa, $\mathbb{E}[A\varepsilon] = A\,\mathbb{E}[\varepsilon]$ e ${\rm Var}(A\varepsilon) = A\,{\rm Var}(\varepsilon)\,A^T$.
+        <list marker="a">
+          <item>
+            $\hat{\beta} = (X^TX)^{-1}X^T(X\beta + \varepsilon) = \beta + (X^TX)^{-1}X^T\varepsilon$. Logo $\mathbb{E}[\hat{\beta}] = \beta + (X^TX)^{-1}X^T\mathbb{E}[\varepsilon] = \beta$, e
+            $$
+              {\rm Var}(\hat{\beta}) = (X^TX)^{-1}X^T\,(\sigma^2 I)\,X(X^TX)^{-1} = \sigma^2 (X^TX)^{-1}.
+            $$
+            Para $p = 1$, $X^TX = \begin{pmatrix} N & N\bar{x} \\ N\bar{x} & \sum_i x_i^2\end{pmatrix}$ tem determinante $N\sum_i x_i^2 - N^2\bar{x}^2 = N S_{xx}$ e inversa $\frac{1}{N S_{xx}}\begin{pmatrix} \sum_i x_i^2 & -N\bar{x} \\ -N\bar{x} & N \end{pmatrix}$. As diagonais dão ${\rm Var}(\hat{\beta}_1) = \sigma^2 N/(N S_{xx}) = \sigma^2/S_{xx}$ e ${\rm Var}(\hat{\beta}_0) = \sigma^2 \sum_i x_i^2/(N S_{xx}) = \sigma^2 (S_{xx} + N\bar{x}^2)/(N S_{xx}) = \sigma^2\big(\tfrac{1}{N} + \tfrac{\bar{x}^2}{S_{xx}}\big)$, as fórmulas do <ref to="exerc:var_beta1" />. De brinde, ${\rm Cov}(\hat{\beta}_0, \hat{\beta}_1) = -\sigma^2 \bar{x}/S_{xx}$, nula quando os $x_i$ são centrados.
+          </item>
+          <item>
+            $\mathbb{E}[\tilde{\beta}] = C\,\mathbb{E}[y] = CX\beta$. Não-viesado para todo $\beta$ significa $CX\beta = \beta$ para todo $\beta \in \mathbb{R}^{p+1}$; tomando $\beta = e_j$ para cada vetor da base canônica, a coluna $j$ de $CX$ é $e_j$, logo $CX = I$.
+          </item>
+          <item>
+            $DX = CX - (X^TX)^{-1}X^TX = I - I = 0$. Então
+            $$
+              CC^T = \big[(X^TX)^{-1}X^T + D\big]\big[X(X^TX)^{-1} + D^T\big] = (X^TX)^{-1} + (X^TX)^{-1}(DX)^T + (DX)(X^TX)^{-1} + DD^T = (X^TX)^{-1} + DD^T,
+            $$
+            e ${\rm Var}(\tilde{\beta}) = \sigma^2 CC^T = {\rm Var}(\hat{\beta}) + \sigma^2 DD^T$. Para qualquer $a$, ${\rm Var}(a^T\tilde{\beta}) = a^T{\rm Var}(\tilde{\beta})a = a^T{\rm Var}(\hat{\beta})a + \sigma^2\|D^Ta\|^2 \geq {\rm Var}(a^T\hat{\beta})$. Com $a = e_j$, cada coeficiente de mínimos quadrados tem a menor variância entre os estimadores lineares não-viesados; com $a = x_0$, cada previsão $x_0^T\hat{\beta}$ também.
+          </item>
+          <item>
+            Não contradiz: ridge é linear em $y$, mas é <em>viesado</em> (<ref to="exerc:ridge_dentro" />(c)), e o teorema compara só estimadores não-viesados. Ridge abandona o viés zero e ganha variância menor; o erro de estimação $\mathbb{E}\|\hat{\beta} - \beta\|^2 = \|\text{viés}\|^2 + {\rm tr}\,{\rm Var}$ pode ficar menor que o de mínimos quadrados para $\lambda$ bem escolhido. Gauss–Markov diz que mínimos quadrados é o melhor da sua classe; não diz que a classe dos não-viesados contém o melhor estimador. É o trade-off viés-variância aplicado aos coeficientes.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:otimismo">
         <title>O otimismo do erro de treino</title>
@@ -1340,6 +1929,31 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Para $A$ fixa, $\mathbb{E}[\varepsilon^T A \varepsilon] = \sigma^2\,{\rm tr}(A)$, e ${\rm tr}(I - H) = N - p - 1$. Em (c), escreva $y^\ast - \hat{y} = \varepsilon^\ast - H\varepsilon$ e use a independência.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <b>Lema.</b> Para $A$ fixa $N \times N$, $\mathbb{E}[\varepsilon^TA\varepsilon] = \sigma^2\,{\rm tr}(A)$. De fato, $\varepsilon^TA\varepsilon = \sum_{i,j} A_{ij}\varepsilon_i\varepsilon_j$ e $\mathbb{E}[\varepsilon_i\varepsilon_j] = {\rm Cov}(\varepsilon_i, \varepsilon_j)$ (média zero), que vale $\sigma^2$ se $i = j$ e $0$ caso contrário; sobra $\sigma^2\sum_i A_{ii}$.
+        <list marker="a">
+          <item>
+            $r = (I - H)y = (I - H)(X\beta + \varepsilon) = (I - H)X\beta + (I - H)\varepsilon = (I - H)\varepsilon$, pois $(I - H)X = 0$ (<ref to="exerc:projecao" />(a)). O resíduo é uma função só do ruído.
+          </item>
+          <item>
+            $I - H$ é simétrica e idempotente ($(I - H)^2 = I - 2H + H^2 = I - H$), logo $\text{RSS} = r^Tr = \varepsilon^T(I - H)^T(I - H)\varepsilon = \varepsilon^T(I - H)\varepsilon$. Pelo lema, $\mathbb{E}[\text{RSS}] = \sigma^2\,{\rm tr}(I - H) = \sigma^2(N - {\rm tr}\,H) = \sigma^2(N - p - 1)$, com ${\rm tr}\,H = p + 1$ pelo <ref to="exerc:projecao" />(e). Então $\mathbb{E}[\hat{\sigma}^2] = \mathbb{E}[\text{RSS}]/(N - p - 1) = \sigma^2$, e
+            $$
+              \mathbb{E}[\text{MSE}_{\text{treino}}] = \frac{\mathbb{E}[\text{RSS}]}{N} = \sigma^2\Big(1 - \frac{p + 1}{N}\Big) \lt \sigma^2.
+            $$
+            O ajuste absorve parte do ruído (uma fração $(p+1)/N$ dele), e os resíduos ficam sistematicamente menores que os erros.
+          </item>
+          <item>
+            $y^\ast - \hat{y} = X\beta + \varepsilon^\ast - H(X\beta + \varepsilon) = X\beta + \varepsilon^\ast - X\beta - H\varepsilon = \varepsilon^\ast - H\varepsilon$, usando $HX = X$. Expandindo o quadrado,
+            $$
+              \|\varepsilon^\ast - H\varepsilon\|^2 = \|\varepsilon^\ast\|^2 - 2\,\varepsilon^{\ast T}H\varepsilon + \varepsilon^TH^TH\varepsilon = \|\varepsilon^\ast\|^2 - 2\,\varepsilon^{\ast T}H\varepsilon + \varepsilon^TH\varepsilon.
+            $$
+            $\mathbb{E}\|\varepsilon^\ast\|^2 = N\sigma^2$. Por independência, $\mathbb{E}[\varepsilon^{\ast T}H\varepsilon] = \mathbb{E}[\varepsilon^\ast]^T H\,\mathbb{E}[\varepsilon] = 0$. Pelo lema, $\mathbb{E}[\varepsilon^TH\varepsilon] = \sigma^2\,{\rm tr}(H) = \sigma^2(p + 1)$. Somando e dividindo por $N$: $\sigma^2\big(1 + \tfrac{p+1}{N}\big)$.
+          </item>
+          <item>
+            $\sigma^2\big(1 + \tfrac{p+1}{N}\big) - \sigma^2\big(1 - \tfrac{p+1}{N}\big) = 2\sigma^2\,\tfrac{p + 1}{N}$. Cresce linearmente com $p$ e com $\sigma^2$, e cai com $N$. Cada coluna acrescentada faz a RSS de treino cair (<ref to="exerc:rss_monotona" />) e ao mesmo tempo aumenta o otimismo em $2\sigma^2/N$: o erro de treino pode cair enquanto o de teste sobe. Um critério que só olha a RSS de treino recompensa exatamente o que infla a diferença. O que se pode fazer é corrigir o treino pelo otimismo, $\text{MSE}_{\text{treino}} + 2\hat{\sigma}^2(p+1)/N$, que é a ideia por trás do $C_p$ e do AIC.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:loocv_fechado">
         <title>LOOCV sem reajustar</title>
@@ -1361,6 +1975,35 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (a), compare a RSS do problema modificado com a RSS sem a observação $i$: elas diferem por um único termo, que vale zero em $\hat{\beta}^{(-i)}$.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Seja $z$ o vetor $y$ com $y_i$ trocado por $\hat{y}_i^{(-i)}$. A RSS do problema modificado é
+            $$
+              \text{RSS}_z(\beta) = \sum_{j \neq i} (y_j - x_j^T\beta)^2 + \big(\hat{y}_i^{(-i)} - x_i^T\beta\big)^2 = \text{RSS}^{(-i)}(\beta) + \big(\hat{y}_i^{(-i)} - x_i^T\beta\big)^2,
+            $$
+            em que $\text{RSS}^{(-i)}$ é a RSS sem a observação $i$, minimizada por $\hat{\beta}^{(-i)}$. O termo extra é $\geq 0$ e vale $0$ em $\beta = \hat{\beta}^{(-i)}$, porque $\hat{y}_i^{(-i)} = x_i^T\hat{\beta}^{(-i)}$ por definição. Logo, para todo $\beta$, $\text{RSS}_z(\beta) \geq \text{RSS}^{(-i)}(\beta) \geq \text{RSS}^{(-i)}(\hat{\beta}^{(-i)}) = \text{RSS}_z(\hat{\beta}^{(-i)})$: $\hat{\beta}^{(-i)}$ minimiza $\text{RSS}_z$, e por unicidade (colunas independentes) é o ajuste com todas as observações e o $y_i$ trocado.
+          </item>
+          <item>
+            O ajuste com $z$ é $Hz$ (a matriz $H$ só depende de $X$), e por (a) sua coordenada $i$ é $x_i^T\hat{\beta}^{(-i)} = \hat{y}_i^{(-i)}$:
+            $$
+              \hat{y}_i^{(-i)} = (Hz)_i = \sum_j h_{ij} z_j = \sum_{j \neq i} h_{ij}\, y_j + h_{ii}\, \hat{y}_i^{(-i)}.
+            $$
+            Também $\hat{y}_i = \sum_{j \neq i} h_{ij}\,y_j + h_{ii}\,y_i$. Subtraindo, $\hat{y}_i - \hat{y}_i^{(-i)} = h_{ii}\big(y_i - \hat{y}_i^{(-i)}\big)$. Então
+            $$
+              y_i - \hat{y}_i^{(-i)} = (y_i - \hat{y}_i) + (\hat{y}_i - \hat{y}_i^{(-i)}) = r_i + h_{ii}\big(y_i - \hat{y}_i^{(-i)}\big)
+              \;\implies\; (1 - h_{ii})\big(y_i - \hat{y}_i^{(-i)}\big) = r_i,
+            $$
+            e basta dividir por $1 - h_{ii} \gt 0$.
+          </item>
+          <item>
+            $\text{LOOCV} = \frac{1}{N}\sum_i \big(y_i - \hat{y}_i^{(-i)}\big)^2 = \frac{1}{N}\sum_i \Big(\frac{r_i}{1 - h_{ii}}\Big)^2$. Um único ajuste fornece $r$ e os $h_{ii} = x_i^T(X^TX)^{-1}x_i$, ao custo de $O(Np^2)$ para montar $X^TX$ mais $O(Np^2)$ para os $h_{ii}$; os $N$ ajustes custariam $O(N^2p^2)$. Para $N = 660$, é a diferença entre um ajuste e $660$.
+          </item>
+          <item>
+            Dividir $r_i$ por $1 - h_{ii}$ infla o resíduo dos pontos de alta alavancagem: o ajuste "se dobra" na direção deles, de modo que $r_i$ subestima o erro que se cometeria prevendo-os sem tê-los visto; o LOOCV corrige isso. Se $h_{ii} = 1$, o <ref to="exerc:projecao" />(f) dá $r_i = 0$ e a fórmula vira $0/0$: o ponto determinava sozinho sua previsão, e ao removê-lo $x_i^T\beta$ fica indeterminado (as colunas de $X$ sem a linha $i$ ficam dependentes). $\hat{y}_i^{(-i)}$ não existe, e o erro de prever esse ponto é, de fato, ilimitado.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:fwl">
         <title>Regressão parcial</title>
@@ -1382,6 +2025,23 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (a), parta de $y = X_1\hat{\beta}_1 + x_2\hat{\beta}_2 + r$, aplique $(I - H_1)$ dos dois lados, note que $(I - H_1)r = r$ e que $\tilde{x}_2^T r = x_2^T r = 0$. Em (d), $\hat{\beta}_2$ é o produto interno de $y$ com um vetor fixo.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        Dois fatos sobre $I - H_1$: é simétrica e idempotente (<ref to="exerc:projecao" />(a)), e anula ${\rm col}(X_1)$.
+        <list marker="a">
+          <item>
+            Parta de $y = X_1\hat{\beta}_1 + x_2\hat{\beta}_2 + r$, com $r$ o resíduo da regressão múltipla, e aplique $I - H_1$: o termo $X_1\hat{\beta}_1$ morre porque $(I - H_1)X_1 = 0$; e $(I - H_1)r = r - H_1 r = r$, pois $H_1 r = X_1(X_1^TX_1)^{-1}X_1^Tr$ e $X_1^Tr = 0$ ($r$ é ortogonal a todas as colunas de $X$, em particular às de $X_1$). Sobra $\tilde{y} = \tilde{x}_2\hat{\beta}_2 + r$. Multiplicando por $\tilde{x}_2^T$: $\tilde{x}_2^T\tilde{y} = \hat{\beta}_2\,\|\tilde{x}_2\|^2 + \tilde{x}_2^Tr$, e $\tilde{x}_2^Tr = x_2^T(I - H_1)r = x_2^Tr = 0$. Logo $\hat{\beta}_2 = \tilde{x}_2^T\tilde{y}/\tilde{x}_2^T\tilde{x}_2$, desde que $\tilde{x}_2 \neq 0$, isto é, $x_2 \notin {\rm col}(X_1)$. É a fórmula da regressão simples sem intercepto do <ref to="exerc:normais_p1" />(c).
+          </item>
+          <item>
+            $\hat{\beta}_2$ é a associação entre a parte da turbidez que os outros preditores não explicam e a parte do arsênio que eles não explicam. Suponha que rios de pH alto sejam mais turvos e que seja o pH que eleva o arsênio. A regressão simples de arsênio sobre turbidez capta o efeito do pH por tabela, e o coeficiente sai positivo. Na múltipla, com o pH descontado, sobra só a relação própria da turbidez, que pode ser negativa (partículas em suspensão adsorvem o arsênio, por exemplo). A troca de sinal é confundimento: a regressão simples atribui à turbidez o que era do pH.
+          </item>
+          <item>
+            Se $X_1^Tx_2 = 0$, então $H_1x_2 = X_1(X_1^TX_1)^{-1}X_1^Tx_2 = 0$ e $\tilde{x}_2 = x_2$. Logo $\hat{\beta}_2 = x_2^T(I - H_1)y/\|x_2\|^2 = \big((I - H_1)x_2\big)^Ty/\|x_2\|^2 = x_2^Ty/\|x_2\|^2$, o coeficiente da regressão simples de $y$ sobre $x_2$. Preditores ortogonais (com intercepto em $X_1$: centrados e não-correlacionados com os demais) têm coeficientes que não mudam ao entrar ou sair os outros.
+          </item>
+          <item>
+            Por (a) e pela simetria e idempotência de $I - H_1$, $\hat{\beta}_2 = \tilde{x}_2^T(I - H_1)y/\|\tilde{x}_2\|^2 = \big((I - H_1)\tilde{x}_2\big)^Ty/\|\tilde{x}_2\|^2 = \tilde{x}_2^Ty/\|\tilde{x}_2\|^2 = c^Ty$ com $c = \tilde{x}_2/\|\tilde{x}_2\|^2$ fixo. Então ${\rm Var}(\hat{\beta}_2) = c^T(\sigma^2I)c = \sigma^2\|c\|^2 = \sigma^2/\|\tilde{x}_2\|^2$. Quando $x_2$ é quase combinação linear das colunas de $X_1$, o que sobra depois de descontá-las, $\tilde{x}_2$, é quase zero, e a variância explode; no limite $\|\tilde{x}_2\| = 0$, $X^TX$ é singular (<ref to="exerc:identificabilidade" />) e o coeficiente não existe. É consistente com o <ref to="exerc:gauss_markov" />(a): o elemento diagonal $[(X^TX)^{-1}]_{22}$ vale exatamente $1/\|\tilde{x}_2\|^2$.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:ols">
         <title>Implementando o caso geral</title>
@@ -1395,6 +2055,26 @@ def generate_data(N=10, noise_std=0.1):
           <item>Duplique uma coluna de $X$ e rode de novo. O que acontece? Relacione com o <ref to="exerc:identificabilidade" />.</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            <code lang="python">
+import numpy as np
+
+def ols(X, y):
+    Xd = np.column_stack([np.ones(len(y)), X])       # coluna de uns
+    return np.linalg.solve(Xd.T @ Xd, Xd.T @ y)      # resolve X'X b = X'y
+            </code>
+            Resolver o sistema é mais barato e mais estável numericamente do que formar $(X^TX)^{-1}$ e multiplicar.
+          </item>
+          <item>
+            Com <c>x</c> e <c>y</c> do <ref to="exerc:ols_p1" />: <c>np.allclose(ols(x[:, None], y), ols_p1(x, y))</c> deve dar <c>True</c>.
+          </item>
+          <item>
+            Com <c>X2 = np.column_stack([X, X[:, 0]])</c>, $X^TX$ é singular e <c>np.linalg.solve</c> lança <c>LinAlgError: Singular matrix</c> (ou, se o arredondamento esconder a singularidade, devolve coeficientes gigantes de sinais opostos nas duas colunas iguais). Com <c>np.linalg.lstsq</c> obtém-se uma das infinitas soluções, a de menor norma, e as previsões $X\hat{\beta}$ são as mesmas do modelo sem a coluna duplicada: é o <ref to="exerc:identificabilidade" />(c), ajuste único, coeficientes não.
+          </item>
+        </list>
+      </solution>
     </subsection>
 
     <!-- ================================================================== -->
@@ -1428,6 +2108,28 @@ def generate_data(N=10, noise_std=0.1):
           <item>${\rm SE}(\hat{\beta}_1)$ pequeno significa que o modelo prevê bem? Distinga "conhecer $\beta_1$ com precisão" de "prever $Y$ com precisão".</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Fixos: $\beta_1$ (e $\beta_0$), números desconhecidos, e os $x_i$ (por hipótese, ou porque condicionamos neles). Aleatórios: os $\varepsilon_i$, logo os $y_i$, logo $\hat{\beta}_1$, que é função dos $y_i$. O experimento imaginário: repetir as medições nas <em>mesmas</em> estações (mesmos $x_i$) muitas vezes, com novos ruídos a cada vez; cada repetição dá um $\hat{\beta}_1$, e a "distribuição de $\hat{\beta}_1$" é a distribuição dessa coleção.
+          </item>
+          <item>
+            É a largura do feixe de retas ajustadas que aparece ao reamostrar no widget: o desvio padrão das inclinações do feixe. Ele estima $\sqrt{{\rm Var}(\hat{\beta}_1)} = \sigma/\sqrt{\sum_i (x_i - \bar{x})^2}$, do <ref to="exerc:var_beta1" />(b).
+          </item>
+          <item>
+            Troca-se $\sigma^2$ por $\hat{\sigma}^2 = \text{RSS}/(N - 2)$. A troca é honesta porque $\mathbb{E}[\hat{\sigma}^2] = \sigma^2$ (<ref to="exerc:otimismo" />(b) com $p = 1$). Dividir por $N$ subestimaria $\sigma^2$ pelo fator $1 - 2/N$: os resíduos são menores que os erros porque a reta absorveu parte do ruído.
+          </item>
+          <item>
+            Dobrar $N$ com a mesma dispersão dobra $S_{xx}$: SE cai por $\sqrt{2}$. pH mais variado: $S_{xx}$ cresce, SE diminui. Laboratório mais preciso: $\sigma$ cai, SE diminui. Trocar a unidade do pH ($x \mapsto cx$): $S_{xx} \mapsto c^2S_{xx}$ e SE $\mapsto$ SE$/c$; mas $\hat{\beta}_1 \mapsto \hat{\beta}_1/c$ também, e a razão $t$ não muda. Não é uma melhora, é uma mudança de régua.
+          </item>
+          <item>
+            Sim, num sentido: uma variável relevante nova tira parte de $\varepsilon$ e a coloca em $f$; $\sigma^2$ cai, e com ele o SE de todos os coeficientes. Não, no outro: se a variável nova é correlacionada com o pH, o que sobra do pH depois de descontá-la, $\|\tilde{x}_{\text{pH}}\|$, encolhe, e ${\rm Var}(\hat{\beta}_{\text{pH}}) = \sigma^2/\|\tilde{x}_{\text{pH}}\|^2$ cresce (<ref to="exerc:fwl" />(d)). Variáveis novas nunca aumentam o denominador $S_{xx}$; só amostras novas fazem isso.
+          </item>
+          <item>
+            Não. SE pequeno diz que a inclinação é bem conhecida. A previsão de um $Y$ novo carrega, além do erro em $\hat{\beta}$, o ruído $\varepsilon$ da observação nova: mesmo com $\beta$ conhecido exatamente (SE zero), o erro de previsão é $\sigma^2$. Com $N \to \infty$, SE $\to 0$ e o erro de teste $\to \sigma^2$, que pode ser enorme. Conhecer $\beta_1$ com precisão é inferência; prever $Y$ com precisão exige $\sigma$ pequeno, e $R^2$ pode ser minúsculo com SE minúsculo (<ref to="exerc:se_demo" />(d)).
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:ic">
         <title>Intervalos de confiança</title>
@@ -1445,6 +2147,28 @@ def generate_data(N=10, noise_std=0.1):
           <item>Além do intervalo para $\beta_1$, há um intervalo para $f(x_0) = \beta_0 + \beta_1 x_0$ e outro para uma <em>nova</em> observação $Y$ em $x_0$. Ordene os três por largura e explique qual deles não encolhe quando $N \to \infty$. Qual interessa ao laboratório e qual ao órgão ambiental do <ref to="sec:aprender" />?</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            O intervalo é aleatório: seus extremos $\hat{\beta} \pm 2\,{\rm SE}$ são funções da amostra. $\beta$ é um número fixo. O experimento: repetir a amostragem (novos ruídos nas mesmas estações) muitas vezes e construir um intervalo em cada repetição; $95\%$ desses intervalos contêm $\beta$. Os $95\%$ são uma propriedade do <em>procedimento</em>, não de um intervalo particular.
+          </item>
+          <item>
+            A primeira frase trata $\beta_{\text{pH}}$ como aleatório: depois de observados os dados, $[10{,}3;\; 20{,}1]$ é um intervalo fixo que contém $\beta$ ou não, e não há mais nada aleatório para ter probabilidade $95\%$. A leitura correta é "este intervalo foi produzido por um procedimento que acerta $95\%$ das vezes". A segunda é um erro de outra natureza: $\beta_{\text{pH}}$ é um único número, o mesmo para todas as estações; o intervalo expressa a incerteza sobre esse número, não uma variação de efeito entre estações.
+          </item>
+          <item>
+            Mantidos os outros preditores fixos, uma unidade a mais de pH está associada a algo entre $10{,}3$ e $20{,}1\ \mu$g/L a mais de arsênio: o sinal é claro, a magnitude é incerta por um fator de $2$. O intervalo da turbidez contém o zero: os dados são compatíveis com efeito nulo, mas também com $-5{,}2$ e com $+1{,}0\ \mu$g/L por NTU. Permite concluir que não há evidência de associação ao nível de $5\%$; não permite concluir que a turbidez "não importa" (um efeito de $-5\ \mu$g/L por NTU seria grande, e está dentro do intervalo), nem, em nenhum dos casos, que a associação seja causal.
+          </item>
+          <item>
+            ${\rm Var}(\hat{\beta}_1) = \sigma^2/S_{xx}$ e $S_{xx}$ cresce proporcionalmente a $N$ se a dispersão é a mesma: $N \times 4 \Rightarrow S_{xx} \times 4 \Rightarrow {\rm SE} \div 2$. Cada intervalo fica com metade da largura: cerca de $\pm 2{,}45$ em vez de $\pm 4{,}9$ para o pH, e $\pm 1{,}55$ em vez de $\pm 3{,}1$ para a turbidez, em torno das novas estimativas pontuais (que também mudariam).
+          </item>
+          <item>
+            $\hat{\beta}_1$ tem distribuição aproximadamente normal com média $\beta_1$ e desvio padrão ${\rm SE}$ (exatamente normal se $\varepsilon$ é gaussiano, <ref to="exerc:se_demo" />(e)). Para a normal padrão, $\mathbb{P}(|Z| \leq 1{,}96) = 0{,}95$, e $2 \approx 1{,}96$ é o quantil de $97{,}5\%$. Como $\sigma$ é trocado por $\hat{\sigma}$, a distribuição exata é a $t$ de Student com $N - 2$ graus de liberdade; com $N = 660$ ela é indistinguível da normal. Com $N = 8$, o quantil da $t_6$ é $2{,}45$: "$\pm 2\,{\rm SE}$" cobre só uns $91\%$, e o intervalo de $95\%$ tem de ser mais largo.
+          </item>
+          <item>
+            Os desvios padrão são $\sigma\sqrt{1/N + (x_0 - \bar{x})^2/S_{xx}}$ para $f(x_0)$ (<ref to="exerc:tres_erros" />(d)) e $\sigma\sqrt{1 + 1/N + (x_0 - \bar{x})^2/S_{xx}}$ para a nova observação, que é sempre o mais largo: soma a variância $\sigma^2$ do ruído novo. Os intervalos para $\beta_1$ e para $f(x_0)$ encolhem como $1/\sqrt{N}$ e vão a zero; o de previsão tende a $\pm 2\sigma$ e nunca fica mais estreito que isso. O laboratório, que quer substituir a medição pela previsão, precisa do intervalo de previsão; o órgão ambiental, que pergunta sobre o efeito do pH, precisa do intervalo para $\beta_1$ (e do de $f(x_0)$ para o nível médio numa condição dada).
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:teste">
         <title>Testando $\beta_j = 0$</title>
@@ -1462,6 +2186,31 @@ def generate_data(N=10, noise_std=0.1):
           <item>O valor-$p$ do coeficiente linear de $X$ foi $0{,}8$, mas a relação verdadeira é $Y = X^2 + \varepsilon$ com $X$ simétrico em torno de zero. O teste "errou"? O que exatamente ele testou? Relacione com o <ref to="exerc:poly_rss" />(b).</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            $H_0: \beta_{\text{turb}} = 0$ (nenhuma associação linear com o arsênio, dados os outros preditores) contra $H_1: \beta_{\text{turb}} \neq 0$. Testa-se a ausência porque ela é uma hipótese <em>precisa</em>: sob $\beta = 0$ sabemos calcular a distribuição de $t$ e dizer o que seria surpreendente. "Há efeito" é uma família de hipóteses ($\beta = 0{,}1$, $\beta = -7$, ...) sem uma distribuição única. A lógica é por absurdo: se os dados seriam muito improváveis sem efeito, rejeitamos "sem efeito".
+          </item>
+          <item>
+            $t$ compara a estimativa com a sua própria incerteza: quantos erros-padrão $\hat{\beta}_j$ está longe de zero. $\hat{\beta}_j = 3$ com ${\rm SE} = 0{,}5$ dá $t = 6$, muito improvável sob $H_0$; com ${\rm SE} = 5$ dá $t = 0{,}6$, um valor que o puro ruído produz com facilidade. O SE depende de $N$, da dispersão do preditor e de $\sigma$, que mudam de conjunto para conjunto.
+          </item>
+          <item>
+            Valor-$p$: a probabilidade, <em>supondo $H_0$ verdadeira</em>, de observar uma estatística pelo menos tão extrema quanto a observada, $\mathbb{P}(|T| \geq |t_{\text{obs}}| \mid H_0)$. Críticas: (i) é $\mathbb{P}(\text{dados} \mid H_0)$, não $\mathbb{P}(H_0 \mid \text{dados})$; para a segunda seria preciso uma probabilidade a priori de $H_0$. (ii) É a probabilidade de dados assim <em>se</em> só houvesse acaso; não a probabilidade de que o acaso tenha produzido o resultado. (iii) $p = 0{,}30$ diz que os dados são compatíveis com $H_0$, mas são compatíveis também com muitos efeitos não nulos (o intervalo do <ref to="exerc:ic" /> vai de $-5{,}2$ a $1{,}0$); ausência de evidência não é evidência de ausência, sobretudo com SE grande.
+          </item>
+          <item>
+            Significativo: sim, $p \lt 0{,}001$. Relevante: depende da escala. O coeficiente é $0{,}0007\ \mu$g/L por $\mu$S/cm; se a condutividade varia de $50$ a $1000\ \mu$S/cm entre estações, o efeito ao longo dessa faixa é de $0{,}7\ \mu$g/L, pequeno frente ao limite legal de $10\ \mu$g/L. Falta a dispersão (a faixa) da condutividade e uma referência para "muito arsênio": sem elas, o número $0{,}0007$ não diz nada.
+          </item>
+          <item>
+            Trocar a unidade é $x_j \mapsto c\,x_j$, ou seja, $X \mapsto XD$ com $D$ diagonal e $D_{jj} = c$. As previsões não mudam (mesmo espaço coluna), logo RSS e $\hat{\sigma}$ não mudam. Os coeficientes: $\hat{\beta}' = D^{-1}\hat{\beta}$, isto é, $\hat{\beta}_j \mapsto \hat{\beta}_j/c$. A covariância: $(D X^TX D)^{-1} = D^{-1}(X^TX)^{-1}D^{-1}$, logo $[(X^TX)^{-1}]_{jj} \mapsto [(X^TX)^{-1}]_{jj}/c^2$ e ${\rm SE}_j \mapsto {\rm SE}_j/c$. A razão $t_j = \hat{\beta}_j/{\rm SE}_j$ e o valor-$p$ não mudam. Passar de $\mu$S/cm para mS/cm multiplica o coeficiente por mil sem mudar nada de real: o tamanho do coeficiente é um artefato da unidade, e a importância se julga por $\hat{\beta}_j \times$ (dispersão de $x_j$) ou pelo $t$.
+          </item>
+          <item>
+            Sob $H_0$ cada teste rejeita com probabilidade $0{,}05$: esperam-se $20 \times 0{,}05 = 1$ "significativo", e a chance de pelo menos um é $1 - 0{,}95^{20} \approx 0{,}64$. Isso invalida "algum coeficiente deu significativo, logo o modelo explica alguma coisa": com $20$ testes, um falso positivo é o esperado. A estatística $F$ testa "todos os $\beta_j = 0$" de uma vez, com um único nível de $5\%$ (<ref to="exerc:f_stat" />).
+          </item>
+          <item>
+            O teste não errou. Ele testou $H_0: \beta_1 = 0$ no modelo $\mathbb{E}[Y] = \beta_0 + \beta_1 X$, ou seja, a existência de associação <em>linear</em>. Com $X$ simétrico em torno de zero e $Y = X^2 + \varepsilon$, ${\rm Cov}(X, Y) = \mathbb{E}[X^3] = 0$, e $\beta_1 = 0$ é <em>verdadeiro</em>: $p = 0{,}8$ é a resposta certa à pergunta feita. A pergunta é que era estreita. Pelo <ref to="exerc:poly_rss" />(b), com $x_i$ simétricos as colunas $x$ e $x^2$ são ortogonais: acrescentar $x^2$ não mexe em $\hat{\beta}_1 \approx 0$, e o coeficiente de $x^2$ sairia fortemente significativo.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:tabela">
         <title>Lendo uma tabela de regressão</title>
@@ -1492,6 +2241,9 @@ def generate_data(N=10, noise_std=0.1):
           <item>"A turbidez não é significativa, então retiramos do modelo." Que hipótese essa decisão assume sobre o que aconteceria com os outros coeficientes? Quando ela é falsa (<ref to="exerc:fwl" />(c))?</item>
         </list>
       </exercise>
+      <todo for="rodrigo" by="claude" priority="normal" status="open">
+        Resolver o exercício prático <ref to="exerc:tabela" /> (leitura da tabela e contas à mão).
+      </todo>
 
       <exercise id="exerc:se_demo">
         <title>Erro-padrão, $t$ e $F$ no caso $p = 1$</title>
@@ -1513,6 +2265,29 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (c), $\hat{y}_i - \bar{y} = \hat{\beta}_1 (x_i - \bar{x})$. Em (e), $\hat{\beta}_1$ é uma combinação linear de gaussianas independentes.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Pelo <ref to="exerc:var_beta1" />(b), ${\rm Var}(\hat{\beta}_1) = \sigma^2/S_{xx}$, mas $\sigma^2$ é desconhecido. Pelo <ref to="exerc:otimismo" />(b) com $p = 1$, $\mathbb{E}[\text{RSS}] = \sigma^2(N - 2)$, logo $\hat{\sigma}^2 = \text{RSS}/(N - 2)$ é não-viesado e ${\rm SE}(\hat{\beta}_1)^2 = \hat{\sigma}^2/S_{xx}$ é o "plug-in". O $N - 2$ conta os graus de liberdade que sobram: os $N$ resíduos satisfazem duas restrições lineares, $\sum_i r_i = 0$ e $\sum_i x_i r_i = 0$, então só $N - 2$ deles são livres; dividir por $N$ daria $\mathbb{E} = \sigma^2(1 - 2/N)$, viesado para baixo.
+          </item>
+          <item>
+            $x \mapsto cx$ ($c \gt 0$): $\bar{x} \mapsto c\bar{x}$, $S_{xx} \mapsto c^2S_{xx}$, $S_{xy} \mapsto cS_{xy}$, logo $\hat{\beta}_1 \mapsto \hat{\beta}_1/c$ e $\hat{\beta}_0 = \bar{y} - \hat{\beta}_1\bar{x}$ não muda. Os $\hat{y}_i$ não mudam, nem RSS, nem $\hat{\sigma}$; ${\rm SE} = \hat{\sigma}/\sqrt{c^2S_{xx}} = {\rm SE}/c$. A razão $t$ fica igual. $y \mapsto cy$: $\hat{\beta}_1 \mapsto c\hat{\beta}_1$, $r \mapsto cr$, $\text{RSS} \mapsto c^2\text{RSS}$, $\hat{\sigma} \mapsto c\hat{\sigma}$, ${\rm SE} \mapsto c\,{\rm SE}$, e $t$ fica igual. $t$ é adimensional: não depende de réguas.
+          </item>
+          <item>
+            $t^2 = \hat{\beta}_1^2/{\rm SE}^2 = \hat{\beta}_1^2 S_{xx}/\hat{\sigma}^2$. Pelo <ref to="exerc:pitagoras_r2" />(a), $\sum_i (\hat{y}_i - \bar{y})^2 = \sum_i \hat{\beta}_1^2(x_i - \bar{x})^2 = \hat{\beta}_1^2 S_{xx} = \text{TSS} - \text{RSS}$. Logo
+            $$
+              t^2 = \frac{\hat{\beta}_1^2 S_{xx}}{\text{RSS}/(N - 2)} = \frac{\sum_i (\hat{y}_i - \bar{y})^2}{\text{RSS}/(N - 2)} = \frac{(\text{TSS} - \text{RSS})/1}{\text{RSS}/(N - 2)} = F.
+            $$
+            O numerador é o que a reta explicou (a queda da soma de quadrados ao passar da constante para a reta) por grau de liberdade gasto (um parâmetro a mais); o denominador é o que ficou por explicar, por grau de liberdade restante. $F \approx 1$ quando a reta explica tanto quanto uma coluna de ruído explicaria.
+          </item>
+          <item>
+            Dividindo numerador e denominador de (c) por TSS: $(\text{TSS} - \text{RSS})/\text{TSS} = R^2$ e $\text{RSS}/\text{TSS} = 1 - R^2$, logo $t^2 = (N - 2)\,R^2/(1 - R^2)$. Para $R^2$ fixo, por menor que seja, $t^2$ cresce linearmente com $N$: com $R^2 = 0{,}01$ e $N = 10\,000$, $t \approx 10$ e $p \approx 0$. Significância mede se $N$ é grande o bastante para <em>detectar</em> um $\beta_1 \neq 0$, não o tamanho do efeito nem a qualidade das previsões. Valor-$p$ não é medida de acurácia; $R^2$, RSE e erro de teste são.
+          </item>
+          <item>
+            $\hat{\beta}_1 = \sum_i w_i Y_i = \sum_i w_i(\beta_0 + \beta_1 x_i + \varepsilon_i) = \beta_1 + \sum_i w_i\varepsilon_i$, pelas identidades do <ref to="exerc:var_beta1" />. Uma combinação linear de gaussianas independentes é gaussiana (a função geradora de momentos de $\sum_i w_i\varepsilon_i$ é $\prod_i e^{\sigma^2 w_i^2 s^2/2} = e^{\sigma^2(\sum_i w_i^2)s^2/2}$, a de uma $\mathcal{N}(0, \sigma^2\sum_i w_i^2)$), com média $\beta_1$ e variância $\sigma^2/S_{xx}$. Padronizando, $(\hat{\beta}_1 - \beta_1)/\sqrt{\sigma^2/S_{xx}} \sim \mathcal{N}(0, 1)$. Ao trocar $\sigma$ por $\hat{\sigma}$, o denominador vira aleatório: nas amostras em que $\hat{\sigma}$ sai pequeno por acaso, a razão é inflada, e valores grandes de $|t|$ ficam mais prováveis do que na normal, daí as caudas mais pesadas. (O resultado exato, que fica fora do curso: $(N - 2)\hat{\sigma}^2/\sigma^2 \sim \chi^2_{N-2}$, independente de $\hat{\beta}_1$, e a razão tem distribuição $t_{N-2}$.) Quando $N \to \infty$, $\hat{\sigma} \to \sigma$ pela lei dos grandes números e a $t_{N-2}$ converge para a $\mathcal{N}(0, 1)$.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:se_sim">
         <title>Simulando o erro-padrão e a cobertura</title>
@@ -1528,6 +2303,53 @@ def generate_data(N=10, noise_std=0.1):
           <item>Gere $20$ preditores aleatórios sem relação com $y$, ajuste com <c>ols</c> do <ref to="exerc:ols" /> e conte quantos têm $|t| \gt2$. Repita várias vezes. Confira sua resposta ao <ref to="exerc:teste" />(f).</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Uma função que faz uma repetição e devolve $\hat{\beta}_1$ e o seu SE:
+            <code lang="python">
+rng = np.random.default_rng(1)
+x = rng.uniform(0, 10, 30)
+b0, b1, sigma = 2, 1.5, 2
+Sxx = ((x - x.mean()) ** 2).sum()
+
+def uma_vez(x, b1=b1):
+    y = b0 + b1 * x + rng.normal(0, sigma, len(x))
+    h0, h1 = ols_p1(x, y)
+    r = y - h0 - h1 * x
+    se = np.sqrt((r @ r) / (len(x) - 2) / ((x - x.mean()) ** 2).sum())
+    return h1, se
+
+res = np.array([uma_vez(x) for _ in range(2000)])
+print(res[:, 0].std(), res[:, 1].mean(), sigma / np.sqrt(Sxx))
+            </code>
+            Os três números coincidem a menos do ruído de simulação: o desvio padrão empírico dos $\hat{\beta}_1$ é a variância verdadeira, e a média dos SE a estima.
+          </item>
+          <item>
+            <code lang="python">
+cobertura = np.mean(np.abs(res[:, 0] - b1) <= 2 * res[:, 1])     # ~ 0.95
+            </code>
+            Com $N = 8$ (novo <c>x</c> de tamanho $8$), a cobertura cai para uns $0{,}91$: o quantil correto é o da $t_6$, $2{,}45$, não $2$ (<ref to="exerc:ic" />(e)).
+          </item>
+          <item>
+            Com <c>uma_vez(x, b1=0)</c>, guarde <c>t = h1 / se</c>. A fração de $|t| \gt 2$ sai em torno de $0{,}055$ (para $N = 30$, a $t_{28}$ tem um pouco mais de massa nas caudas que a normal). O histograma é um sino centrado em zero, quase indistinguível da normal padrão.
+          </item>
+          <item>
+            <code lang="python">
+def falsos_positivos(N=100, p=20):
+    X = rng.normal(size=(N, p)); y = rng.normal(size=N)
+    Xd = np.column_stack([np.ones(N), X])
+    beta = ols(X, y); r = y - Xd @ beta
+    s2 = (r @ r) / (N - p - 1)
+    se = np.sqrt(s2 * np.diag(np.linalg.inv(Xd.T @ Xd)))
+    return np.sum(np.abs(beta[1:] / se[1:]) > 2)
+
+print(np.mean([falsos_positivos() for _ in range(500)]))          # ~ 1
+            </code>
+            Em média, um dos $20$ preditores sem relação alguma com $y$ sai "significativo", como previsto no <ref to="exerc:teste" />(f).
+          </item>
+        </list>
+      </solution>
     </subsection>
 
     <!-- ================================================================== -->
@@ -1561,6 +2383,28 @@ def generate_data(N=10, noise_std=0.1):
           <item>$R^2$ de treino igual a $0{,}95$ garante boa previsão em novas estações? O que pode dar errado, e que medida do <ref to="subsec:precisao" /> você olharia antes de acreditar?</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            RSE está na unidade de $y$ ($\mu$g/L); $R^2$ é adimensional, uma fração. $\text{RSE} = 2{,}2\ \mu$g/L: "o desvio típico entre o arsênio observado e o previsto pelo modelo é de uns $2{,}2\ \mu$g/L". Julgar: contra o limite legal ($10\ \mu$g/L; um erro de $2{,}2$ é aceitável para triagem, mas não para decidir uma estação que mede $9$) e contra $\bar{y}$ (erro relativo). Contra $\sigma$ não faz sentido: RSE <em>é</em> a estimativa de $\sigma$; se preditores adicionais não a reduzem, esse é o piso.
+          </item>
+          <item>
+            $\text{RSE}^2 = \text{RSS}/(N - p - 1)$ é não-viesada para $\sigma^2$ (<ref to="exerc:otimismo" />(b)); $\text{MSE}_{\text{treino}} = \text{RSS}/N$ é viesada para baixo pelo fator $1 - (p+1)/N$. A diferença importa quando $p + 1$ não é desprezível frente a $N$: com $p = 19$ e $N = 60$, o MSE de treino subestima $\sigma^2$ em um terço.
+          </item>
+          <item>
+            Depende do problema. Para prever o retorno semanal do Ibovespa, $R^2 = 0{,}30$ seria excepcional (e lucrativo). Para calibrar um instrumento de laboratório, seria inaceitável. E para decidir estações perto do limite legal, pode ser inútil. $R^2 = 1 - \text{RSS}/\text{TSS}$ estima, na população e com o modelo certo, $1 - \sigma^2/{\rm Var}(Y)$: a fração da variação de $Y$ que é sinal, uma propriedade do <em>problema</em> ($\sigma^2$ contra ${\rm Var}(f(X))$), não da qualidade de $\hat{f}$. Com a $f$ verdadeira em mãos, o $R^2$ continuaria sendo $1 - \sigma^2/{\rm Var}(Y)$.
+          </item>
+          <item>
+            $R^2_{\text{aj}} = 1 - \dfrac{\text{RSS}/(N - p - 1)}{\text{TSS}/(N - 1)} = 1 - \hat{\sigma}^2/s_y^2$: troca as somas por estimativas não-viesadas das variâncias. Um preditor inútil faz a RSS cair um pouco, mas faz $N - p - 1$ cair também, e o quociente pode subir: o $R^2$ ajustado penaliza parâmetros. Pode ser negativo quando $\text{RSS}/(N - p - 1) \gt \text{TSS}/(N - 1)$, isto é, quando o modelo, descontados os graus de liberdade, é pior que a média (muitos preditores ruins com $N$ pequeno). Não substitui a validação cruzada: é uma correção <em>dentro da amostra</em> que supõe o modelo linear correto; a validação cruzada mede a previsão em dados não vistos e vale para qualquer método.
+          </item>
+          <item>
+            $R^2$ baixo com tudo significativo: $N = 10^6$ e $\sigma^2$ grande frente ao sinal; cada coeficiente é estimado com precisão ($t$ enorme, <ref to="exerc:se_demo" />(d)), mas o ruído domina ${\rm Var}(Y)$. $R^2$ alto sem nenhum coeficiente significativo: dois preditores quase colineares, ambos ligados a $Y$, com $N$ pequeno. Juntos explicam $Y$ ($R^2$ alto, $F$ grande), mas o coeficiente de cada um, dado o outro, é mal determinado ($\|\tilde{x}_j\| \approx 0$ e SE enorme, <ref to="exerc:fwl" />(d)): os $t$ individuais são pequenos. Outro cenário: $p$ perto de $N$, $R^2$ perto de $1$ por interpolação, com SEs enormes por falta de graus de liberdade.
+          </item>
+          <item>
+            Não. $R^2$ de treino é otimista (<ref to="exerc:otimismo" />), sobe mecanicamente com $p$ (<ref to="exerc:rss_monotona" />), pode vir de vazamento (medições da mesma estação nos dois lados) e não diz nada sobre estações diferentes das de treino (extrapolação). Antes de acreditar: o erro de teste ou de validação cruzada, com a partição feita <em>por estação</em>.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:f_stat">
         <title>A estatística $F$</title>
@@ -1578,6 +2422,31 @@ def generate_data(N=10, noise_std=0.1):
           <item>Por que $F$ pode ser calculada quando $p \gt N$? O que quebra e como isso se relaciona com o <ref to="exerc:identificabilidade" />(e)?</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            $H_0: \beta_1 = \beta_2 = \dots = \beta_p = 0$, todas as inclinações nulas ao mesmo tempo (o modelo não é melhor que a média). Não é o mesmo que $p$ testes $t$: cada $t$ testa "$\beta_j = 0$ <em>dado que os outros estão no modelo</em>", com $5\%$ de erro cada, e a regra "rejeito se algum rejeitar" tem erro tipo I muito maior que $5\%$ (<ref to="exerc:teste" />(f)). A alternativa de $F$ é a negação de $H_0$: "pelo menos um $\beta_j \neq 0$". "$\beta_j = 0$ para <em>algum</em> $j$" é outra afirmação, mais fraca que $H_0$ e que $F$ não testa.
+          </item>
+          <item>
+            Ambos estimam $\sigma^2$. O denominador sempre: $\mathbb{E}[\text{RSS}/(N - p - 1)] = \sigma^2$ (<ref to="exerc:otimismo" />(b)). O numerador sob $H_0$: $\text{TSS} - \text{RSS} = \|\hat{y} - \bar{y}\mathbf{1}\|^2 = \|(H - H_0)y\|^2$, com $H_0 = \mathbf{1}\mathbf{1}^T/N$ a projeção sobre a coluna de uns. Sob $H_0$, $y = \beta_0\mathbf{1} + \varepsilon$ e $(H - H_0)\mathbf{1} = \mathbf{1} - \mathbf{1} = 0$, logo $(H - H_0)y = (H - H_0)\varepsilon$. A matriz $H - H_0$ é simétrica e idempotente (porque $HH_0 = H_0H = H_0$, já que $\mathbf{1} \in {\rm col}(X)$) com traço $(p + 1) - 1 = p$; pelo lema do <ref to="exerc:otimismo" />, $\mathbb{E}[\text{TSS} - \text{RSS}] = \sigma^2 p$. Então $F \approx 1$ sob $H_0$. Sob a alternativa, o numerador ganha a parcela $\|(H - H_0)X\beta\|^2/p \gt 0$: $F$ grande é a RSS caindo muito mais do que o ruído sozinho explicaria.
+          </item>
+          <item>
+            A RSS cai sempre, de $\|H_2 r_1\|^2 \geq 0$ por coluna. Sob $H_0$, a queda esperada por coluna acrescentada é $\sigma^2$ (é o que (b) diz: $p$ colunas de nada valem $\sigma^2 p$ de queda), a mesma conta que dá ao otimismo do <ref to="exerc:otimismo" />(d) o seu $2\sigma^2/N$ por parâmetro. $F$ divide a queda por parâmetro pela estimativa de $\sigma^2$: pergunta se a RSS caiu muito mais do que $\sigma^2$ por coluna, que é o que cairia "por acaso".
+          </item>
+          <item>
+            $$
+              F = \frac{(\text{RSS}_{\text{red}} - \text{RSS}_{\text{comp}})/(p - q)}{\text{RSS}_{\text{comp}}/(N - p - 1)}.
+            $$
+            Numerador: a queda de RSS ao acrescentar os $p - q$ preditores, por preditor. Denominador: $\hat{\sigma}^2$ do modelo completo. É mais adequado que $p - q$ testes $t$ quando os preditores extras são muitos (o problema das comparações múltiplas), quando são correlacionados entre si (cada $t$ pequeno, mas o grupo importa), ou quando só fazem sentido juntos (as variáveis indicadoras de uma categoria, os termos de um polinômio).
+          </item>
+          <item>
+            Com $N = 10^6$, qualquer sinal minúsculo é significativo. Da relação $F = \dfrac{N - p - 1}{p}\cdot\dfrac{R^2}{1 - R^2}$ (a versão múltipla do <ref to="exerc:se_demo" />(d)), $F = 3{,}2$ dá $R^2 \approx 3{,}2\,p/10^6$: praticamente zero. O modelo é "não nulo", mas inútil para prever. $F$ mede evidência contra $H_0$, não o tamanho do efeito nem a acurácia; para isso, RSE, $R^2$ e erro de teste.
+          </item>
+          <item>
+            A fórmula pode ser escrita, mas não significa nada: com $p \geq N - 1$ a RSS é zero (<ref to="exerc:identificabilidade" />(e), interpolação) e $N - p - 1 \leq 0$, de modo que o denominador é $0/0$ ou tem graus de liberdade negativos. O que quebra é a estimativa de $\sigma^2$: não sobrou nenhum grau de liberdade para medir o ruído, porque o modelo absorveu tudo, ruído incluído. Sem $\hat{\sigma}^2$ não há com o que comparar a queda da RSS.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:tres_erros">
         <title>Três fontes de erro em uma previsão</title>
@@ -1595,6 +2464,37 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (d), $\hat{f}(x_0) = \bar{y} + \hat{\beta}_1 (x_0 - \bar{x})$, e $\bar{y}$ e $\hat{\beta}_1$ são não-correlacionados (verifique usando $\sum_i w_i = 0$).</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Seja $f_{\text{lin}}(x) = \beta_0 + \beta_1 x$ a melhor reta (a de mínimos quadrados populacional). Então
+            $$
+              Y_0 - \hat{f}(x_0) = \underbrace{\big[f(x_0) - f_{\text{lin}}(x_0)\big]}_{\text{viés (do modelo)}} + \underbrace{\big[f_{\text{lin}}(x_0) - \hat{f}(x_0)\big]}_{\text{variância (de estimação)}} + \underbrace{\varepsilon_0}_{\text{erro irredutível}}.
+            $$
+            A primeira é o viés: a classe $\mathcal{G}$ das retas pode não conter $f$. A segunda é a variância: $\hat{\beta} \neq \beta$ por causa da amostra finita, e varia de amostra para amostra. A terceira é o ruído da observação nova.
+          </item>
+          <item>
+            O intervalo de confiança para $f(x_0)$ (rigorosamente, para $f_{\text{lin}}(x_0) = \beta_0 + \beta_1 x_0$) captura a segunda parcela. O intervalo de previsão captura a segunda e a terceira. Nenhum dos dois captura a primeira: ambos supõem que a reta é o modelo certo.
+          </item>
+          <item>
+            A segunda cai com $N$ (${\rm Var}(\hat{\beta}) \propto 1/N$). A primeira cai com uma classe mais flexível (polinômios, kNN). A terceira não cai com nada, dentro do problema: só medindo variáveis novas, o que muda o problema e transfere parte de $\varepsilon$ para $f$.
+          </item>
+          <item>
+            $\hat{f}(x_0) = \hat{\beta}_0 + \hat{\beta}_1 x_0 = (\bar{y} - \hat{\beta}_1\bar{x}) + \hat{\beta}_1 x_0 = \bar{y} + \hat{\beta}_1(x_0 - \bar{x})$. Com $\hat{\beta}_1 = \sum_j w_j y_j$ e os $y_i$ independentes,
+            $$
+              {\rm Cov}(\bar{y}, \hat{\beta}_1) = {\rm Cov}\Big(\frac{1}{N}\sum_i y_i,\; \sum_j w_j y_j\Big) = \frac{1}{N}\sum_i w_i\,{\rm Var}(y_i) = \frac{\sigma^2}{N}\sum_i w_i = 0.
+            $$
+            Logo a variância da soma é a soma das variâncias:
+            $$
+              {\rm Var}(\hat{f}(x_0)) = {\rm Var}(\bar{y}) + (x_0 - \bar{x})^2\,{\rm Var}(\hat{\beta}_1) = \sigma^2\Big(\frac{1}{N} + \frac{(x_0 - \bar{x})^2}{\sum_i (x_i - \bar{x})^2}\Big).
+            $$
+            Cresce com o quadrado da distância a $\bar{x}$: o intervalo é estreito no centro dos dados e abre como um leque para os lados. Extrapolar com o modelo certo é perigoso porque o erro na inclinação é multiplicado pelo braço $x_0 - \bar{x}$; ao menos esse erro é quantificado pelo intervalo. Com o modelo errado é pior: fora da faixa dos dados a primeira parcela, o viés, pode ser arbitrariamente grande e é invisível para a amostra, que não tem informação nenhuma sobre $f$ ali.
+          </item>
+          <item>
+            Ao laboratório importa o erro total de prever $Y_0$; com $N$ grande a segunda parcela some e, se a reta é razoável, a terceira domina. A medida que a estima é o erro de teste (ou de validação cruzada) do <ref to="subsec:precisao" />, que soma as três parcelas; dentro do modelo, $\text{RSE}^2 \approx \hat{\sigma}^2$ e o intervalo de previsão dão a mesma informação, mas só se o modelo estiver certo.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:acuracia_pratico">
         <title>Acurácia à mão</title>
@@ -1612,6 +2512,9 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Para $F$ entre modelos aninhados: $\frac{(\text{RSS}_{\text{red}} - \text{RSS}_{\text{comp}})/(p_{\text{comp}} - p_{\text{red}})}{\text{RSS}_{\text{comp}}/(N - p_{\text{comp}} - 1)}$. Valores acima de $4$ costumam ser significativos a $5\%$ com $N$ grande e numerador de poucos graus de liberdade.</hint>
       </exercise>
+      <todo for="rodrigo" by="claude" priority="normal" status="open">
+        Resolver o exercício prático <ref to="exerc:acuracia_pratico" /> (contas à mão de RSE, $R^2$ e $F$).
+      </todo>
 
       <exercise id="exerc:summary_prog">
         <title>Tabela de regressão à mão</title>
@@ -1626,6 +2529,51 @@ def generate_data(N=10, noise_std=0.1):
           <item>Repita (b) $1000$ vezes com todos os $\beta_j = 0$ e faça o histograma de $F$. Que fração ultrapassa o limiar que você usou em (b)?</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Aqui a inversa de $X^TX$ é necessária de fato, porque queremos a sua diagonal. $\Phi$ vem de <c>math.erf</c>.
+            <code lang="python">
+import numpy as np
+from math import erf, sqrt
+
+Phi = lambda z: 0.5 * (1 + erf(z / sqrt(2)))
+
+def summary(X, y):
+    N = len(y)
+    Xd = np.column_stack([np.ones(N), X])
+    p = Xd.shape[1] - 1
+    XtX_inv = np.linalg.inv(Xd.T @ Xd)
+    beta = XtX_inv @ Xd.T @ y
+    r = y - Xd @ beta
+    rss, tss = r @ r, ((y - y.mean()) ** 2).sum()
+    s2 = rss / (N - p - 1)
+    se = np.sqrt(s2 * np.diag(XtX_inv))
+    t = beta / se
+    return dict(beta=beta, se=se, t=t,
+                p=[2 * (1 - Phi(abs(tj))) for tj in t],
+                rse=np.sqrt(s2), r2=1 - rss / tss,
+                r2adj=1 - (rss / (N - p - 1)) / (tss / (N - 1)),
+                F=((tss - rss) / p) / (rss / (N - p - 1)))
+            </code>
+          </item>
+          <item>
+            <code lang="python">
+rng = np.random.default_rng(2)
+X = rng.normal(size=(100, 3))
+y = 1 + 2 * X[:, 0] - 1 * X[:, 1] + 0 * X[:, 2] + rng.normal(0, 1, 100)
+s = summary(X, y)
+            </code>
+            Tipicamente o terceiro coeficiente sai com $|t| \lt 2$ e valor-$p$ grande (em $5\%$ das sementes ele passa de $2$: é o falso positivo do teste); os dois primeiros saem com $t$ enormes e $F$ na casa das centenas.
+          </item>
+          <item>
+            Com <c>X[:, 1] = X[:, 0] + 0.14 * rng.normal(size=100)</c> (correlação $\approx 0{,}99$), os SE de $\hat{\beta}_1$ e $\hat{\beta}_2$ crescem cerca de $7$ vezes (o fator é $1/\sqrt{1 - \rho^2} \approx 7$) e os $t$ caem na mesma proporção, podendo ficar abaixo de $2$; o $F$ quase não muda. É o <ref to="exerc:fwl" />(d): o que sobra de $x_1$ depois de descontar $x_2$, $\|\tilde{x}_1\|$, é pequeno, e ${\rm Var}(\hat{\beta}_1) = \sigma^2/\|\tilde{x}_1\|^2$ explode. Os dois juntos explicam $y$ ($R^2$ e $F$ altos); cada um, dado o outro, não é identificável com precisão: $R^2$ alto sem coeficientes significativos, o cenário do <ref to="exerc:rse_r2" />(e).
+          </item>
+          <item>
+            Com <c>y = rng.normal(size=100)</c> e $1000$ repetições, o histograma de $F$ é assimétrico, concentrado perto de $1$ com cauda à direita (a distribuição $F_{3, 96}$). Se o limiar de (b) foi "$F \gt 4$", cerca de $1\%$ ultrapassa; se foi o quantil de $95\%$ da $F_{3,96}$ (cerca de $2{,}7$), cerca de $5\%$: a taxa de falsos positivos do teste.
+          </item>
+        </list>
+      </solution>
     </subsection>
 
     <!-- ================================================================== -->
@@ -1655,6 +2603,22 @@ def generate_data(N=10, noise_std=0.1):
           <item>Por que se padroniza os preditores antes de aplicar ridge? O que aconteceria com um preditor medido em uma unidade mil vezes menor?</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            "Em relação a mínimos quadrados, ridge é <em>menos</em> flexível e melhora a previsão quando <em>o aumento do viés</em> é menor que <em>a redução da variância</em>." A penalidade restringe os coeficientes, efetivamente encolhendo a classe de funções: o viés sobe (se o modelo linear era correto, de zero para algo positivo) e a variância desce. Como o erro de teste é viés² + variância + irredutível, ridge ganha quando a segunda troca supera a primeira.
+          </item>
+          <item>
+            Erro de treino: aumenta sempre (a RSS em $\hat{\beta}_\lambda$ é não-decrescente em $\lambda$, <ref to="exerc:ridge_dentro" />(e)). Erro de teste: forma de U (em $\lambda = 0$ é mínimos quadrados; $\lambda$ pequeno reduz mais variância do que cria viés; $\lambda \to \infty$ leva ao preditor nulo, só viés). Variância: diminui sempre (<ref to="exerc:ridge_dentro" />(d)). Viés²: aumenta sempre, de zero até o viés do preditor nulo. Erro irredutível: constante.
+          </item>
+          <item>
+            Com $X = I$, $L(\beta) = \sum_j (y_j - \beta_j)^2 + \lambda\sum_j \beta_j^2$ separa em $p$ problemas de uma variável; $\frac{d}{d\beta_j} = -2(y_j - \beta_j) + 2\lambda\beta_j = 0$ dá $\hat{\beta}_j = y_j/(1 + \lambda)$ (mínimo: segunda derivada $2 + 2\lambda \gt 0$). Pela fórmula fechada, $(I + \lambda I)^{-1}I\,y$ dá o mesmo. Mínimos quadrados daria $\hat{\beta}_j = y_j$; ridge multiplica cada coeficiente pelo mesmo fator $1/(1 + \lambda) \in (0, 1)$: <em>encolhe</em> todos na direção de zero, e a zero quando $\lambda \to \infty$. Ligação com (b): ${\rm Var}(\hat{\beta}_j) = \sigma^2/(1 + \lambda)^2$, decrescente; $\mathbb{E}[\hat{\beta}_j] - \beta_j = -\lambda\beta_j/(1 + \lambda)$, crescente em módulo.
+          </item>
+          <item>
+            A penalidade $\sum_j \beta_j^2$ trata todos os coeficientes como comparáveis, mas $\beta_j$ está em unidades de $y$ por unidade de $x_j$. Um preditor medido numa unidade mil vezes menor tem coeficiente mil vezes maior e é penalizado $10^6$ vezes mais: seria encolhido quase a zero, enquanto o mesmo preditor na outra unidade mal seria tocado. A solução ridge depende da unidade, o que não faz sentido. Padronizar (desvio padrão $1$) torna a penalidade livre de unidades: cada $\beta_j$ passa a ser "efeito por desvio padrão de $x_j$".
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>Solução fechada e colunas idênticas</title>
@@ -1669,6 +2633,16 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (a), $v^T(X^TX + \lambda I)v = \|Xv\|^2 + \lambda\|v\|^2$. Em (b), $L$ é estritamente convexa e invariante pela troca dos dois coeficientes.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Expandindo como no exercício de cálculo matricial, $L(\beta) = y^Ty - 2\beta^TX^Ty + \beta^T(X^TX + \lambda I)\beta$, com gradiente $-2X^Ty + 2(X^TX + \lambda I)\beta$, nulo se, e só se, $(X^TX + \lambda I)\beta = X^Ty$. Para $v \neq 0$, $v^T(X^TX + \lambda I)v = \|Xv\|^2 + \lambda\|v\|^2 \geq \lambda\|v\|^2 \gt 0$: a matriz é definida positiva, logo tem núcleo trivial e é invertível, <em>sem</em> nenhuma hipótese sobre as colunas de $X$. A Hessiana $2(X^TX + \lambda I)$ é definida positiva, $L$ é estritamente convexa e o ponto crítico $\hat{\beta}_{\text{ridge}} = (X^TX + \lambda I)^{-1}X^Ty$ é o único mínimo global. Comparação com o <ref to="exerc:identificabilidade" />: mínimos quadrados precisa de colunas independentes para que $\|Xv\|^2 \gt 0$; ridge não, porque a parcela $\lambda\|v\|^2$ cuida das direções em ${\rm ker}(X)$.
+          </item>
+          <item>
+            Sejam $j$ e $k$ as colunas idênticas e $P$ a matriz de permutação que troca as coordenadas $j$ e $k$. Então $XP = X$ (trocar duas colunas iguais não muda $X$) e $\|P\beta\| = \|\beta\|$, logo $L(P\beta) = \|y - XP\beta\|^2 + \lambda\|P\beta\|^2 = L(\beta)$ para todo $\beta$. Se $\hat{\beta}$ é o minimizador, $P\hat{\beta}$ também minimiza; pela unicidade de (a), $P\hat{\beta} = \hat{\beta}$, isto é, $\hat{\beta}_j = \hat{\beta}_k$. Em mínimos quadrados, $(\hat{\beta}_j + t, \hat{\beta}_k - t)$ é solução para todo $t$; ridge escolhe a simétrica, que é também a de menor norma (entre $(a + t, b - t)$, $\|\cdot\|^2$ é mínima quando as duas coordenadas são iguais).
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:ridge_dentro">
         <title>Ridge por dentro</title>
@@ -1687,6 +2661,33 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (a), calcule $\tilde{X}^T\tilde{X}$ e $\tilde{X}^T\tilde{y}$. Em (e), tome $\lambda_1 \lt\lambda_2$ e escreva as duas desigualdades de otimalidade, $L_{\lambda_1}(\hat{\beta}_{\lambda_1}) \leq L_{\lambda_1}(\hat{\beta}_{\lambda_2})$ e $L_{\lambda_2}(\hat{\beta}_{\lambda_2}) \leq L_{\lambda_2}(\hat{\beta}_{\lambda_1})$; some-as.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Multiplicando em blocos, $\tilde{X}^T\tilde{X} = X^TX + (\sqrt{\lambda}I)(\sqrt{\lambda}I) = X^TX + \lambda I$ e $\tilde{X}^T\tilde{y} = X^Ty + \sqrt{\lambda}\,I\cdot 0 = X^Ty$. As equações normais de $(\tilde{X}, \tilde{y})$ são $(X^TX + \lambda I)\beta = X^Ty$: a solução é $\hat{\beta}_\lambda$. Diretamente: $\|\tilde{y} - \tilde{X}\beta\|^2 = \|y - X\beta\|^2 + \|0 - \sqrt{\lambda}\beta\|^2 = \text{RSS}(\beta) + \lambda\|\beta\|^2$. As $p$ observações fictícias dizem: "no ponto $x = \sqrt{\lambda}\,e_j$ observou-se $y = 0$", uma para cada preditor; são uma crença prévia de que os coeficientes são pequenos, com força $\lambda$. Independência: $\tilde{X}v = 0$ significa $Xv = 0$ <em>e</em> $\sqrt{\lambda}v = 0$, logo $v = 0$ para $\lambda \gt 0$.
+          </item>
+          <item>
+            Se $X^TX = I$, então $\hat{\beta}_\lambda = (I + \lambda I)^{-1}X^Ty = X^Ty/(1 + \lambda)$ e $\hat{\beta}_{\text{MQ}} = (X^TX)^{-1}X^Ty = X^Ty$. Logo $\hat{\beta}_\lambda = \hat{\beta}_{\text{MQ}}/(1 + \lambda)$; o <ref to="exerc:ridge_tradeoff" />(c) é o caso $X = I$.
+          </item>
+          <item>
+            $\mathbb{E}[\hat{\beta}_\lambda] = (X^TX + \lambda I)^{-1}X^T\,\mathbb{E}[y] = (X^TX + \lambda I)^{-1}X^TX\,\beta$. Se fosse igual a $\beta$, multiplicando por $X^TX + \lambda I$ viria $X^TX\beta = X^TX\beta + \lambda\beta$, ou seja, $\lambda\beta = 0$: para $\lambda \gt 0$ só se $\beta = 0$. Logo ridge é viesado sempre que $\beta \neq 0$. Quando $\lambda \to \infty$, os autovalores de $(X^TX + \lambda I)^{-1}$, que são $1/(\lambda_j + \lambda)$, vão a zero, logo $\mathbb{E}[\hat{\beta}_\lambda] \to 0$ e o viés vai a $-\beta$: ridge tende ao preditor nulo.
+          </item>
+          <item>
+            $\hat{\beta}_\lambda = Ay$ com $A = (X^TX + \lambda I)^{-1}X^T$ fixa, logo ${\rm Var}(\hat{\beta}_\lambda) = A(\sigma^2I)A^T = \sigma^2(X^TX + \lambda I)^{-1}X^TX(X^TX + \lambda I)^{-1}$. Como $X^TX$ é simétrica e semidefinida positiva, $X^TX = Q\Lambda Q^T$ com $Q$ ortogonal e $\Lambda = {\rm diag}(\lambda_j)$, $\lambda_j \geq 0$. Então $X^TX + \lambda I = Q(\Lambda + \lambda I)Q^T$, cuja inversa é $Q(\Lambda + \lambda I)^{-1}Q^T$, e
+            $$
+              {\rm Var}(\hat{\beta}_\lambda) = \sigma^2\,Q\,(\Lambda + \lambda I)^{-1}\Lambda(\Lambda + \lambda I)^{-1}\,Q^T = Q\,{\rm diag}\Big(\frac{\sigma^2\lambda_j}{(\lambda_j + \lambda)^2}\Big)\,Q^T.
+            $$
+            Cada $\sigma^2\lambda_j/(\lambda_j + \lambda)^2$ tem derivada $-2\sigma^2\lambda_j/(\lambda_j + \lambda)^3 \leq 0$ em $\lambda$: decrescente. Comparando com mínimos quadrados, cuja variância na direção $q_j$ é $\sigma^2/\lambda_j$, o fator de redução é $\lambda_j^2/(\lambda_j + \lambda)^2$: perto de $1$ quando $\lambda_j \gg \lambda$ (direção quase intocada) e perto de $0$ quando $\lambda_j \ll \lambda$. Ridge encolhe mais as direções de $\lambda_j$ <em>pequeno</em>. Com colinearidade, são exatamente essas direções (quase no núcleo de $X$) que têm variância $\sigma^2/\lambda_j$ explosiva em mínimos quadrados (<ref to="exerc:fwl" />(d)); ridge as domestica sem estragar as direções bem determinadas.
+          </item>
+          <item>
+            Escreva $L_\lambda(\beta) = R(\beta) + \lambda P(\beta)$, com $R = \text{RSS}$ e $P = \|\cdot\|^2$, e sejam $b_1 = \hat{\beta}_{\lambda_1}$, $b_2 = \hat{\beta}_{\lambda_2}$ com $\lambda_1 \lt \lambda_2$. Otimalidade de cada um no seu problema:
+            $$
+              R(b_1) + \lambda_1 P(b_1) \leq R(b_2) + \lambda_1 P(b_2), \qquad R(b_2) + \lambda_2 P(b_2) \leq R(b_1) + \lambda_2 P(b_1).
+            $$
+            Somando, os $R$ cancelam e sobra $\lambda_1 P(b_1) + \lambda_2 P(b_2) \leq \lambda_1 P(b_2) + \lambda_2 P(b_1)$, isto é, $(\lambda_2 - \lambda_1)\big(P(b_2) - P(b_1)\big) \leq 0$, donde $P(b_2) \leq P(b_1)$: a norma é não-crescente. Voltando à primeira desigualdade, $R(b_1) \leq R(b_2) + \lambda_1\big(P(b_2) - P(b_1)\big) \leq R(b_2)$: a RSS é não-decrescente. São as curvas do <ref to="exerc:ridge_tradeoff" />(b): o erro de treino sobe monotonicamente com $\lambda$, e a norma que cai é o encolhimento, a perda de flexibilidade.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:ridge_prog">
         <title>Implementando ridge</title>
@@ -1700,6 +2701,43 @@ def generate_data(N=10, noise_std=0.1):
           <item>Escolha $\lambda$ com o <c>k_fold</c> do <ref to="exerc:kfold" />. Ele coincide com o mínimo do MSE de teste?</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Centrar $X$ e $y$ tira o intercepto da penalidade: com dados centrados, a derivada em $\beta_0$ da função objetivo dá $\beta_0 = \bar{y} - \bar{x}^T\beta = 0$ qualquer que seja $\lambda$, e o intercepto original se recupera como $\bar{y} - \bar{x}^T\hat{\beta}$.
+            <code lang="python">
+def ridge(X, y, lam):
+    xm, ym = X.mean(axis=0), y.mean()
+    Xc, yc = X - xm, y - ym
+    p = Xc.shape[1]
+    beta = np.linalg.solve(Xc.T @ Xc + lam * np.eye(p), Xc.T @ yc)
+    return ym - xm @ beta, beta                       # (intercepto, coeficientes)
+            </code>
+          </item>
+          <item>
+            Preditores correlacionados: um fator comum mais ruído pequeno.
+            <code lang="python">
+z = rng.normal(size=(40, 1))
+X = z + 0.1 * rng.normal(size=(40, 5)); Xt = rng.normal(size=(1000, 1)) + 0.1 * rng.normal(size=(1000, 5))
+b = np.array([1, -1, 2, 0, 1.5])
+y, yt = X @ b + rng.normal(0, 1, 40), Xt @ b + rng.normal(0, 1, 1000)
+for lam in np.logspace(-3, 3, 13):
+    b0, beta = ridge(X, y, lam)
+    print(lam, np.linalg.norm(beta),
+          np.mean((y - b0 - X @ beta) ** 2), np.mean((yt - b0 - Xt @ beta) ** 2))
+            </code>
+            Na tabela, $\|\hat{\beta}\|$ decresce com $\lambda$, o MSE de treino cresce e o de teste faz um U, com mínimo em $\lambda$ moderado: com $N = 40$ e cinco colunas quase iguais, mínimos quadrados tem coeficientes enormes de sinais alternados (variância) que ridge encolhe.
+          </item>
+          <item>
+            <code lang="python">
+fit = lambda X, y: ridge(X, y, lam)
+predict = lambda m, X: m[0] + X @ m[1]
+cv = {lam: k_fold(X, y, 5, fit, predict, l2) for lam in np.logspace(-3, 3, 13)}
+            </code>
+            O $\lambda$ escolhido fica perto do mínimo do MSE de teste, mas não exatamente nele: a validação cruzada é uma estimativa ruidosa da curva de teste, feita com $40$ pontos. Como a curva de teste é achatada perto do mínimo, a perda por errar um pouco o $\lambda$ é pequena.
+          </item>
+        </list>
+      </solution>
     </subsection>
 
     <!-- ================================================================== -->
@@ -1731,6 +2769,25 @@ def generate_data(N=10, noise_std=0.1):
           <item>Regressão polinomial de grau $d$ <em>é</em> regressão linear. Então por que ela sobreajusta quando $d$ cresce? O que mede a "flexibilidade" aqui?</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            $\partial\hat{\text{As}}/\partial\,\text{pH} = \beta_1 + \beta_3\,\text{turb}$: o efeito de uma unidade de pH depende da turbidez. $\beta_1$ sozinho é o efeito do pH quando a turbidez é <em>zero</em>, um valor que pode nem existir nos dados; sem $\beta_3$ ele não se interpreta.
+          </item>
+          <item>
+            $\beta_1 + \beta_3\,\text{turb} \gt 0 \iff \text{turb} \gt -\beta_1/\beta_3$ se $\beta_3 \gt 0$, e $\iff \text{turb} \lt -\beta_1/\beta_3$ se $\beta_3 \lt 0$.
+          </item>
+          <item>
+            $\beta_3$ multiplica $\text{pH}\cdot\text{turb}$, cuja escala é o produto das duas. Se a turbidez chega a centenas de NTU, um $\hat{\beta}_3 = 0{,}05$ "pequeno" vale $0{,}05 \times 200 = 10\ \mu$g/L por unidade de pH, tanto quanto o próprio $\beta_1$. Compare $\hat{\beta}_3 \times$ (faixa típica da turbidez) com $\hat{\beta}_1$, ou olhe o $t$, ou padronize antes.
+          </item>
+          <item>
+            $\beta_0 + \beta_1 x + \beta_2 x^2$: linear nos parâmetros, $X = [\mathbf{1}\; x\; x^2]$. $\beta_0 + \beta_1\log x$: linear, $X = [\mathbf{1}\; \log x]$. $\beta_0 e^{\beta_1 x}$: <em>não</em> linear em $\beta_1$ (a derivada em $\beta_1$ depende de $\beta_1$); $\log y = \log\beta_0 + \beta_1 x$ é linear, mas isso muda o ruído, que passa a ser multiplicativo. $\beta_0 + \beta_1 x_1 x_2$: linear, $X = [\mathbf{1}\; x_1 x_2]$.
+          </item>
+          <item>
+            "Linear" é nos parâmetros: o ajuste é uma projeção sobre ${\rm col}(X)$, de dimensão $d + 1$. Mas, como funções de $x$, as classes $\mathcal{G}_d$ dos polinômios de grau $\leq d$ são encaixadas e crescem com $d$, até conter o interpolador em $d = N - 1$. A flexibilidade é a dimensão de ${\rm col}(X)$, o número de parâmetros: ${\rm tr}(H) = d + 1$, otimismo $2\sigma^2(d + 1)/N$, variância crescente em $d$. Sobreajuste é excesso de dimensão, não falta de linearidade.
+          </item>
+        </list>
+      </solution>
 
       <exercise id="exerc:poly_rss">
         <title>Polinômios e a RSS</title>
@@ -1746,6 +2803,19 @@ def generate_data(N=10, noise_std=0.1):
         </list>
         <hint>Em (b), $\sum_i x_i^{a}$ é zero quando $a$ é ímpar. Em (c), compare as colunas $x^{d}$ e $x^{d+1}$ em $[0, 1]$.</hint>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            A matriz design de grau $d + 1$ é $[X_d\;\; x^{d+1}]$: o modelo de grau $d$ está aninhado no de grau $d + 1$, e o <ref to="exerc:rss_monotona" />(a) dá $\text{RSS}(d + 1) \leq \text{RSS}(d)$. Para $d = N - 1$, a matriz design é a Vandermonde $N \times N$, invertível pelo <ref to="exerc:vandermonde" /> porque os $x_i$ são distintos; $\beta = V^{-1}y$ dá $X\beta = y$ e $\text{RSS}(N - 1) = 0$. O widget mostra $\text{RSS}(d)/N_{\text{treino}}$, o MSE de treino: decrescente em $d$, zero quando o grau chega a $N_{\text{treino}} - 1$.
+          </item>
+          <item>
+            O produto interno das colunas $x^a$ e $x^b$ é $\sum_i x_i^{a+b}$. Se $a$ é par e $b$ ímpar, $a + b$ é ímpar; como o conjunto $\{x_i\}$ é simétrico, $x \mapsto -x$ o permuta, e $\sum_i x_i^{a+b} = \sum_i (-x_i)^{a+b} = -\sum_i x_i^{a+b}$, logo a soma é zero. Reordenando as colunas em pares e ímpares, $X^TX$ fica bloco-diagonal e as equações normais se separam em dois sistemas independentes: os coeficientes ímpares só dependem das colunas ímpares e de $X_{\text{ímpar}}^Ty$. De grau $1$ (colunas $\mathbf{1}$, $x$) para grau $2$ (acrescenta $x^2$, par): a coluna nova entra no bloco par, o sistema ímpar continua sendo "$x$ sozinho" e $\hat{\beta}_1 = \sum_i x_i y_i/\sum_i x_i^2$ não muda (o intercepto muda, porque $\mathbf{1}$ e $x^2$ não são ortogonais). De grau $2$ para $3$: $x^3$ é ímpar e entra no sistema de $x$; $\hat{\beta}_1$ muda, em geral.
+          </item>
+          <item>
+            Em $[0, 1]$, $x^d$ e $x^{d+1}$ são quase proporcionais quando $d$ cresce: ambas são quase zero exceto perto de $1$, e a correlação entre as colunas tende a $1$. As colunas ficam quase dependentes, o menor autovalor de $X^TX$ vai a zero e, pelo <ref to="exerc:gauss_markov" />(a), ${\rm Var}(\hat{\beta}) = \sigma^2(X^TX)^{-1}$ ganha um autovalor $\sigma^2/\lambda_{\min}$ que explode: os coeficientes variam violentamente de amostra para amostra, ainda que $\hat{y}$, a projeção, seja estável (a projeção é bem definida; as coordenadas na base $\{x^j\}$ é que são mal condicionadas). Centrar ($x \mapsto x - \bar{x}$) elimina a correlação entre $\mathbf{1}$ e $x$ e, por (b), entre potências pares e ímpares, o que melhora bastante o condicionamento. Não resolve a correlação entre $x^d$ e $x^{d+2}$, que continua alta: para isso usa-se uma base ortogonal de polinômios (Legendre) ou a decomposição QR de $X$.
+          </item>
+        </list>
+      </solution>
 
       <exercise>
         <title>Fechando o ciclo</title>
@@ -1759,6 +2829,34 @@ def generate_data(N=10, noise_std=0.1):
           <item>Escolha o par $(d, \lambda)$ por validação cruzada. Compare o polinômio de grau alto com $\lambda$ bem escolhido ao polinômio de grau ótimo sem regularização. Qual tem menor erro de teste? Explique com viés e variância.</item>
         </list>
       </exercise>
+      <solution collapsed="true" status="review" by="claude">
+        <list marker="a">
+          <item>
+            Como <c>ols</c> e <c>ridge</c> já acrescentam o intercepto, a matriz vai de $x$ a $x^d$. Para ridge, padronize as colunas (as escalas de $x$ e $x^{10}$ são muito diferentes, <ref to="exerc:ridge_tradeoff" />(d)); para <c>ols</c> convém centrar $x$ em $[-1, 1]$ pelo condicionamento (<ref to="exerc:poly_rss" />(c)).
+            <code lang="python">
+def poly_design(x, d):
+    return np.column_stack([x ** j for j in range(1, d + 1)])
+
+x = rng.random(60); y = np.sin(2 * np.pi * x) + rng.normal(0, 0.3, 60)
+xt = rng.random(1000); yt = np.sin(2 * np.pi * xt) + rng.normal(0, 0.3, 1000)
+            </code>
+          </item>
+          <item>
+            <code lang="python">
+def prever(beta, x, d):
+    return np.column_stack([np.ones(len(x)), poly_design(x, d)]) @ beta
+
+for d in range(1, 16):
+    beta = ols(poly_design(x, d), y)
+    print(d, np.mean((y - prever(beta, x, d)) ** 2), np.mean((yt - prever(beta, xt, d)) ** 2))
+            </code>
+            O MSE de treino cai monotonicamente; o de teste cai até $d \approx 5$ a $7$ (o mínimo de uma senoide precisa de um polinômio ímpar de grau razoável) e depois sobe: a curva em U do widget.
+          </item>
+          <item>
+            Percorra uma grade de pares $(d, \lambda)$ com o <c>k_fold</c>, usando <c>fit = lambda X, y: ridge(X, y, lam)</c> sobre <c>poly_design(x, d)</c> padronizada, e fique com o par de menor erro de validação. Tipicamente o polinômio de grau alto ($d = 12$, digamos) com $\lambda$ bem escolhido empata ou ganha do melhor grau sem regularização. Motivo: o grau alto dá uma classe rica (viés baixo), e $\lambda$ controla a variância de modo <em>contínuo</em>, encolhendo as direções mal determinadas (<ref to="exerc:ridge_dentro" />(d)); já $d$ é um botão grosseiro, que só sabe adicionar ou tirar uma coluna inteira. A regularização permite pagar pouco viés por muita redução de variância.
+          </item>
+        </list>
+      </solution>
     </subsection>
   </section>
 </document>
