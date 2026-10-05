@@ -1,0 +1,478 @@
+<document>
+    <team>
+        <member name="rodrigo" id="rodrigo" kind="human" color="purple" />
+        <member name="claude" id="claude" kind="agent" color="orange" />
+    </team>
+    <floating>
+        <toc scope="project" />
+    </floating>
+    <chapter id="ch:logistic">
+        <title>Classificadores <em>plug-in</em></title>
+        <meta>
+            <meta-item key="Autor"> Rodrigo Ribeiro</meta-item>
+            <meta-item key="Instituição"> IMPA Tech </meta-item>
+            <meta-item key="Período"> 2026.2 </meta-item>
+        </meta>
+        <intro>
+            Neste capítulo veremos como a ideia de ter um classificador perfeito como o <ref to="sss:bayes_classifier">classificador de Bayes</ref>, mesmo que utópico, pode guiar nossa busca por bons classificadores. Aqui construiremos diversos classificadores que são amplamente utilizados e quem vêm do conselho para a vida de que <i>vale a pena perseguir a utopia</i>! 
+        </intro>
+        <section>
+            <title>Classificadores são partições</title>
+            Antes de falarmos do método plug-in e construir classificadores a partir dele, vamos discutir a relação entre classificadores e partição do espaço das features.
+
+            O <em>espaço das features</em> $\mathcal{X}$ é o espaço onde vive a entrade $x$. Se em dada situação temos $p$ preditores, então o espaço da features pode ser $\mathbb{R}^p$ (ou algo menor se as entradas satisfazem certas restrições).
+
+            Dado um classificador $C(X)$, podemos induzir uma partição em $\mathcal{X}$ simplesmente tomando os conjuntos $C_k = \{x \in \mathcal{X} \, : \, C(x) = k \}$. Como, a cada ponto, o classificador associa uma, e somente uma, classe. A união em $k$ de $C_k$ particiona $\mathcal{X}$.
+
+            De maneira inversa, dada uma partição $\mathcal{P} = \{\mathcal{P}_1,\dots,\mathcal{P}_k \}$ de $\mathcal{X}$, podemos construir um classificador $C$ a partir dela fazendo $C(x) = i \iff \in \mathcal{P}_i$. Logo, existe uma bijeção entre classificadores e partições do espaço das features. Isso quer dizer que podemos construir classificadores simplesmente desenhando regiões em $\mathcal{X}$. O ambiente <ref to="in:draw_classifier" /> lhe permite criar classificadores usando os dados de treino desenhando curvas em $\mathbb{R}^2$.
+
+            <interactive id="in:draw_classifier">
+                <classviz mode="draw" />
+                <caption>Criar classificadores é partir o espaços das features.</caption>
+            </interactive>
+
+            As fronteiras de um classificador são as fronteiras dos conjuntos das particação que ela induz. É na fronteira que se um ponto a cruza, ele é classificado como de outra classe.
+        </section>
+        <section>
+            <title>O método plug-in</title>
+        Recorde o conteúdo da <ref to="sss:bayes_classifier" />. O classificador de Bayes é um classificador teórico que propõe a seguinte escolha como classificador
+        <equation id="eq:bayes2">
+            \widehat{Y}_{\rm Bayes}(x) = \argmax_k P\left( Y = k \, \middle | \, X= x\right).
+        </equation>
+        Em palavras, ele propõe classificarmos a entrada $x$ com a classe $k_*$ que é aquela que possui a maior chance de ser de fato observada. O classificador é dito teórico porque não conhecemos a probabilidade condicional em questão. Contudo, lembre-se do <ref to="exerc:bayes_optimal" /> que nos diz que o classificador de Bayes é aquele com menor risco de classificação equivocada. Logo, o que podemos, e vamos, fazer é tentar estimar a probabilidade $P\left( Y = k \, \middle | \, X= x\right)$ e escolher como o classificador de Bayes.
+
+        Classificadores que usam essa abordagem são chamados de classificadores <em>plug-in</em>, pois são construídos sobre essa ideia de aproximar uma probabilidade e <b>plugar</b> a aproximação na <ref to="eq:bayes2" />. De modo um pouco mais formal, a estratégia se resume em:
+        <box color="blue" id="box:building_classifiers">
+            <title>Construindo classificadores</title>
+                <list marker="number">
+                    <item>Para cada classe, use os dados para estimar as funções da entrada 
+                    $$
+                        p_k(x) = P\left( Y = k \, \middle | \, X= x\right).
+                    $$
+                    </item>
+                    <item>
+                        Uma vez encontradas, $\widehat{p}_k$, para cada $k$, construímos seguinte classificador 
+                        $$
+                        \widehat{Y}(x) = \argmax_k \widehat{p}_k(x).
+                        $$
+                    </item>
+                </list>
+        </box>
+        </section>
+
+
+        <section id="subsec:prob_with_lr">
+          <title>Um problema de regressão?</title>
+          Perceba que a estratégia acima transforma o problema de classificar em um problema de regressão. Isto é, agora a tarefa é encontrar um estimador para $k$ funções desconhecidas. Ora, mas isso é exatamente o que fazíamos em regressão linear.
+
+          O ponto é que não é nenhuma maluquice estimar $\widehat{p}_k$ via mínimos quadrado
+
+          <example id="ex:linear01">
+            <title>Classificando com regressão linear</title>
+            Considere uma situação em que nossa entrada $x$ é unidimensional, isto é, um número real e que temos apenas duas classes $Y \in \{\text{amerelo}, \text{rosa}\}$. Nesse caso precisamos estimar apenas uma função
+            $$
+            \widehat{p}_1(x) = \widehat{P}(Y = 1\, | \, X=x)
+            $$
+            pois $\widehat{p}_0(x) = 1-\widehat{p}_1(x)$. O gráfico abaixo mostra $\widehat{p}_1(x)$ obtida via mínimos quadrados. O que quer dizer que supomos
+            $$
+                P(Y = 1\, | \, X=x) = \beta_0 + \beta_1X + \varepsilon
+            $$
+            e estimamos $\beta$'s minimizando o erro quadrático médio. No gráfico, traçamos duas linhas horizontais para os dados da classe rosa $Y=1$ e os dados da classe amarela $Y=0$.
+            <classviz mode="linear01" />
+            A maneira de se ler a reta é: marca-se um ponto $x_0$ na escala logo abaixo. A imagem de $x_0$ pela reta é a "probabilidade" de $x_0$ ser rosa.
+          </example>
+          
+        </section>
+        <section id="s:logistic">
+            <title>Regressão Logística</title>
+            O <ref to="ex:linear01" /> deixa claro os problemas de se modelar $p_k(x)$ como uma função linear. Por mais que a ideia possa classificar bem, reportar que a probabilidade de um cliente dar um calote é de $12.75$ é no mínimo estranho. Além disso, pontos claramente pertencente a uma classe, mas que estão longe demais força a reta a persegui-los, alterando, assim, a probabilidade da classe contrária.
+
+            Podemos corrigir esses problemas usando uma <em>sigmoide</em>. Isto é, podemos comprimir o resultado em $[0,1]$. Mais formalmente, ainda supondo apenas duas classes e $x \in \mathbb{R}$,podemos modelar $p_1(x)$ como
+            <equation id="eq:p_exp">
+                \widehat{p}_1(x) = \frac{e^{\widehat{\beta}_0 + \widehat{\beta}_1X}}{1+e^{\widehat{\beta}_0 + \widehat{\beta}_1X}}   
+            </equation>
+            que é exatamente o modelo linear composto com a função $x\mapsto \frac{1}{1+e^{-x}}$. O resultado pode ser visto no ambiente <ref to="in:logistic" /> abaixo.
+            <interactive id="in:logistic">
+                <classviz mode="sigmoid" />
+                <caption>Exemplo de regressão logística e dependência dos parâmetros.</caption>
+            </interactive>
+            Da <ref to="eq:p_exp" /> fica claro como podemos introduzir mais preditores na modelagem das probabilidades:
+            <equation id="eq:p_logistic">
+                \widehat{p}_1(x) = \frac{e^{\widehat{\beta}_0 + \sum_{i=1}^p\widehat{\beta}_iX_i}}{1+e^{\widehat{\beta}_0 + \sum_{i=1}^p\widehat{\beta}_iX_i}}.
+            </equation>
+            <subsection id="subsec:logistic_general_p">
+              <title>Mais de duas classes</title>
+              No caso em que há mais de duas classes, fixamos uma classe, digamos a última $K$, para ser a chamada classe <em>baseline</em>. A razão formal ficará mais clara mais adiante, mas por ora, a ideia é que fixemos uma classe que seja a referência. E assim, os coeficientes introduzidos na modelagem de $p_j(x)$, para $j\neq K$, são interpretados em função do baseline.
+
+              Feita a observação sobre o baseline, o modelo de regressão logística <hint show-icon="false"><title>multinomial</title>Com mais de duas classes. O caso de duas classes chamamos de binário.</hint> é especificado de maneira similar à <ref to="eq:p_logistic" />. Para cada $j \in \{1,2,\dots,K-1\}$, supomos
+              $$
+                p_j(x) = \frac{e^{\beta_{0j}+\sum_{i=1}^p\beta_{ij}x_i}}{1+\sum_{j=1}^{K-1}e^{\beta_{0j}+\sum_{i=1}^p\beta_{ij}x_i}}.
+              $$
+              
+            </subsection>
+            <subsection id="subsec:fit_logistic">
+              <title>Ajustando $\beta$</title>
+              <todo status="open" priority="high" for="rodrigo">
+                Escrever!
+              </todo>
+              
+            </subsection>
+        </section>
+
+        <section>
+            <title>Classificador ingênuo de Bayes</title>
+            Como vimos, classificadores plug-in busca se aproximar do classificador de Bayes encontrando uma aproximação para as funções desconhecidas
+            $$
+                p_k(x) = P(Y=k\,|\, X=x).
+            $$
+            Nesse contexto, a estratégia da regressão logística é modelar $P(Y=k|X=x)$ diretamente. Mas essa não é a única maneira. Podemos manipular a probabilidade condicional usando propriedades da probabilidade a fim de, talvez, encontrar termos que possam ser aproximados mais facilmente ou por algum método específico.
+
+            O classificador ingênuo de Bayes segue essa rota, porém fazendo uma hipótese de independência dos preditores que pode ser considerada <em>ingênua</em>. Veja, para $k$ fixo, usando a definição de probabilidade condicional, podemos reescrever $p_k(x)$ como
+            <equation id="eq:bayes_rule">
+                P(Y=k\,|\, X=x)  = \frac{f_k(x)P(Y=k)}{\sum_{j=1}^K f_j(x)P(Y=j)},
+            </equation>
+            onde $f_j(x)$ é a <hint show-icon="false"><title>densidade</title>ou a função de massa de probabilidade no caso discreto</hint> de $X$ dado $Y=j$.
+
+            Dada a equação acima, podemos tentar aproximar cada termo separadamente. A primeira vantagem dessa abordagem que salta aos olhos é que os termos $P(Y=j)$ para qualquer $j$ são facilmente aproximados contando-se as proporções de pontos em nossos dados da classe $j$. Isto é,
+            <equation id="eq:pi_j">
+                \pi_j := P(Y=j) \approx \frac{\# \{\text{ pontos da classe }j\}}{N}.
+            </equation>
+            Logo, nos falta uma maneira de estimar os termos da forma $f_j(x)$. E é aqui que entra a hipótese ingênua que nos diz que condicionada à classe, os preditores são todos independentes. Mais precisamente, fixados uma entrada $x=(x_1,\dots,x_p)$ e uma classe $j \in \{1,\dots, K\}$, assumimos que $f_j(x)$ pode ser decomposta como o produto das densidades marginais de cada preditor dado a classe, ou seja, 
+            <equation id="eq:naive_hyp">
+                f_j(x) = f_j(x_1,\dots,x_p) = f_{j1}(x_1)\cdots f_{jp}(x_p),
+            </equation>
+            Quanto à estimativa para termos da forma $f_{ji}(x_i)$, adicionamos uma hipótese sobre a distribuição do $i$-ésimo preditor dado que a classe é $j$. Por exemplo, podemos assumir que $X_i \, | \, Y=j$ segue uma distribuição normal com média $\mu_{ij}$ e variância $\sigma_{ij}^2$.
+
+            <example id="ex:naive_sex">
+                <title>Sexo como variável alvo</title>
+                Suponhamos que queremos classificar o sexo de uma pessoa com base em suas características físicas, como altura e peso. Nesse caso, nosso preditor $X$ seria o vetor $(\text{altura}, \text{peso})$, isto é $X_1 = \text{altura}$ (em cm) e $X_2 = \text{peso}$ (em kg), e $Y$ seria binário assumindo $Y = 0$ para masculino e $Y = 1$ para feminino.
+
+                Pela <ref to="eq:bayes_rule" />, para classificar precisamos de três ingredientes: as probabilidades a priori $\pi_0$ e $\pi_1$ e as densidades conjuntas $f_0(x_1,x_2)$ e $f_1(x_1,x_2)$. Estimar uma densidade conjunta é difícil, pois precisaríamos entender como altura e peso variam <em>juntos</em> dentro de cada classe. É aqui que entra a hipótese ingênua da <ref to="eq:naive_hyp" />: assumimos que, dado o sexo da pessoa, altura e peso são independentes. Assim,
+                $$
+                    f_j(x_1, x_2) = f_{j1}(x_1)\, f_{j2}(x_2), \qquad j \in \{0,1\},
+                $$
+                e o problema de estimar duas densidades em $\mathbb{R}^2$ vira o problema de estimar quatro densidades em $\mathbb{R}$, que é bem mais simples.
+
+                A ingenuidade vem do fato de que essa independência é obviamente falsa na prática: mesmo sabendo o sexo, pessoas mais altas tendem a ser mais pesadas. Em palavras, a hipótese diz que, uma vez que sabemos o sexo da pessoa, saber a altura não nos dá nenhuma informação sobre o peso. Mesmo assim, ela simplifica bastante os cálculos e ainda pode fornecer classificações razoavelmente boas.
+
+                Resta escolher um modelo para cada $f_{ji}$. Adicionamos a hipótese de que $X_i \, | \, Y=j \sim \mathcal{N}(\mu_{ij}, \sigma_{ij}^2)$ para $i=1,2$ e $j = 0,1$, ou seja,
+                $$
+                    f_{ji}(x_i) = \frac{1}{\sqrt{2\pi\sigma_{ij}^2}} \exp\left( -\frac{(x_i - \mu_{ij})^2}{2\sigma_{ij}^2} \right).
+                $$
+                Note que assumir essa distribuição não é lá maluquice, pois muitas características físicas seguem aproximadamente uma distribuição normal. Aqui estamos dizendo que dado que sabemos que a pessoa é de um sexo específico, a altura e o peso seguem distribuições normais com médias e variâncias específicas para aquele sexo.
+
+                Agora vamos aos dados. Suponha que temos $N = 10$ pessoas na nossa amostra de treino.
+                <table id="tbl:naive_sex_data">
+                    <header>
+                        <column>Sexo</column>
+                        <column>Alturas (cm)</column>
+                        <column>Pesos (kg)</column>
+                    </header>
+                    <row><column>masculino ($Y=0$)</column><column>173, 176, 182, 185</column><column>70, 76, 82, 88</column></row>
+                    <row><column>feminino ($Y=1$)</column><column>155, 160, 163, 165, 168, 173</column><column>52, 56, 58, 62, 64, 68</column></row>
+                    <caption>Dados de treino do <ref to="ex:naive_sex" />.</caption>
+                </table>
+                <b>Passo 1: as probabilidades a priori.</b> Pela <ref to="eq:pi_j" />, basta contar
+                $$
+                    \widehat{\pi}_0 = \frac{4}{10} = 0.4, \qquad \widehat{\pi}_1 = \frac{6}{10} = 0.6.
+                $$
+                <b>Passo 2: os parâmetros das normais.</b> Cada $\mu_{ij}$ é estimado pela média amostral do preditor $i$ entre as pessoas da classe $j$ e cada $\sigma_{ij}^2$ pela variância amostral correspondente. Se $N_j$ é o número de pontos da classe $j$,
+                $$
+                    \widehat{\mu}_{ij} = \frac{1}{N_j}\sum_{l\,:\,y_l = j} x_{li}, \qquad \widehat{\sigma}_{ij}^2 = \frac{1}{N_j - 1}\sum_{l\,:\,y_l = j} (x_{li} - \widehat{\mu}_{ij})^2.
+                $$
+                Para a altura dos homens, por exemplo, temos $\widehat{\mu}_{10} = (173+176+182+185)/4 = 179$ e
+                $$
+                    \widehat{\sigma}_{10}^2 = \frac{(-6)^2 + (-3)^2 + 3^2 + 6^2}{3} = \frac{90}{3} = 30.
+                $$
+                Fazendo o mesmo para os outros três casos, obtemos
+                <table id="tbl:naive_sex_params">
+                    <header>
+                        <column>Sexo</column>
+                        <column align="right">$\widehat{\mu}$ altura</column>
+                        <column align="right">$\widehat{\sigma}^2$ altura</column>
+                        <column align="right">$\widehat{\mu}$ peso</column>
+                        <column align="right">$\widehat{\sigma}^2$ peso</column>
+                    </header>
+                    <row><column>masculino</column><column align="right">179</column><column align="right">30</column><column align="right">79</column><column align="right">60</column></row>
+                    <row><column>feminino</column><column align="right">164</column><column align="right">39.2</column><column align="right">60</column><column align="right">33.6</column></row>
+                    <caption>Estimativas dos parâmetros das normais.</caption>
+                </table>
+                <b>Passo 3: classificar uma nova pessoa.</b> Suponha que chegou uma pessoa com $x = (175{\rm cm}, 70{\rm kg})$. Avaliamos cada uma das quatro densidades estimadas no ponto correspondente. Por exemplo,
+                $$
+                    \widehat{f}_{01}(175) = \frac{1}{\sqrt{2\pi \cdot 30}} \exp\left( -\frac{(175 - 179)^2}{2\cdot 30} \right) \approx 0.0728 \cdot 0.766 \approx 0.0558.
+                $$
+                Analogamente, $\widehat{f}_{02}(70) \approx 0.0262$, $\widehat{f}_{11}(175) \approx 0.0136$ e $\widehat{f}_{12}(70) \approx 0.0155$. Como só há duas classes, basta calcular a estimativa de uma única classe e checar se ela é maior que $0.5$. Plugando tudo na <ref to="eq:bayes_rule" /> com a hipótese ingênua, calculamos
+
+                <equations id="eq:naive_bayes_classification">
+                    \widehat{p}_1(175, 70) &= \frac{\widehat{\pi}_1 \widehat{f}_{11}(175) \widehat{f}_{12}(70)}{\sum_{j=0}^{1} \widehat{\pi}_j \widehat{f}_{j1}(175) \widehat{f}_{j2}(70)} \\
+                    &\approx \frac{0.6\cdot 0.0136 \cdot 0.0155}{0.4\cdot 0.0558 \cdot 0.0262 + 0.6\cdot 0.0136 \cdot 0.0155}\\ 
+                    &\approx \frac{0.000127}{0.000585 + 0.000127} \approx 0.18.
+                </equations> 
+                Como $\widehat{p}_1(175, 70) < 0.5$, classificamos a pessoa como do sexo masculino. Perceba que, mesmo com $\widehat{\pi}_1 > \widehat{\pi}_0$, os dados da altura e do peso pesaram mais a favor da classe masculina. Já uma pessoa com $x = (165{\rm cm}, 62{\rm kg})$ teria $\widehat{p}_1 \approx 0.998$ e seria classificada como do sexo feminino.
+            </example>
+            Vejamos agora um exemplo em que os preditores são discretos. Nesse caso, as densidades $f_{ji}$ são substituídas por funções massa de probabilidade, que podem ser estimadas simplesmente contando frequências.
+            <example id="ex:naive_email" status="draft">
+                <title>Trabalho, pessoal ou spam?</title>
+                Queremos classificar e-mails em três classes: $Y = 1$ (trabalho), $Y = 2$ (pessoal) e $Y = 3$ (spam). Usaremos dois preditores discretos:
+                <list>
+                    <item>$X_1 \in \{0, 1\}$ indica se a palavra "grátis" aparece no e-mail;</item>
+                    <item>$X_2 \in \{0, 1, 2\}$ é o número de links no e-mail, onde $X_2 = 2$ significa "dois ou mais".</item>
+                </list>
+                Agora, $f_{ji}(x_i) = P(X_i = x_i \, | \, Y = j)$ é uma função massa de probabilidade e a hipótese ingênua diz que
+                $$
+                    P(X_1 = x_1, X_2 = x_2 \, | \, Y = j) = P(X_1 = x_1 \, | \, Y = j)\, P(X_2 = x_2 \, | \, Y = j).
+                $$
+                Diferentemente do <ref to="ex:naive_sex" />, não precisamos supor nenhuma família de distribuições: cada $f_{ji}(x_i)$ é estimada pela proporção de e-mails da classe $j$ que têm $X_i = x_i$, isto é,
+                <equation id="eq:naive_pmf">
+                    \widehat{f}_{ji}(v) = \frac{\#\{\text{e-mails da classe } j \text{ com } X_i = v\}}{N_j}.
+                </equation>
+                Suponha que nossa amostra de treino tem $N = 20$ e-mails, dos quais $10$ são de trabalho, $6$ pessoais e $4$ spam. As contagens estão na tabela abaixo.
+                <table id="tbl:naive_email_counts">
+                    <header>
+                        <column>Classe</column>
+                        <column align="right">$N_j$</column>
+                        <column align="right">$X_1 = 1$</column>
+                        <column align="right">$X_2 = 0$</column>
+                        <column align="right">$X_2 = 1$</column>
+                        <column align="right">$X_2 = 2$</column>
+                    </header>
+                    <row><column>trabalho ($j=1$)</column><column align="right">10</column><column align="right">1</column><column align="right">5</column><column align="right">4</column><column align="right">1</column></row>
+                    <row><column>pessoal ($j=2$)</column><column align="right">6</column><column align="right">2</column><column align="right">3</column><column align="right">2</column><column align="right">1</column></row>
+                    <row><column>spam ($j=3$)</column><column align="right">4</column><column align="right">3</column><column align="right">0</column><column align="right">1</column><column align="right">3</column></row>
+                    <caption>Contagens dos e-mails de treino em cada classe.</caption>
+                </table>
+                Das contagens tiramos as prioris $\widehat{\pi}_1 = 10/20 = 0.5$, $\widehat{\pi}_2 = 6/20 = 0.3$ e $\widehat{\pi}_3 = 4/20 = 0.2$ e, pela <ref to="eq:naive_pmf" />, por exemplo, $\widehat{f}_{31}(1) = 3/4$ e $\widehat{f}_{12}(0) = 5/10$.
+
+                Chega um novo e-mail com a palavra "grátis" e três links, ou seja, $x = (1, 2)$. Para cada classe, calculamos o numerador da <ref to="eq:bayes_rule" />:
+                <equations numbered="false">
+                    \text{trabalho:} & \quad \widehat{\pi}_1 \widehat{f}_{11}(1) \widehat{f}_{12}(2) = 0.5 \cdot \tfrac{1}{10} \cdot \tfrac{1}{10} = 0.005, \\
+                    \text{pessoal:} & \quad \widehat{\pi}_2 \widehat{f}_{21}(1) \widehat{f}_{22}(2) = 0.3 \cdot \tfrac{2}{6} \cdot \tfrac{1}{6} \approx 0.0167, \\
+                    \text{spam:} & \quad \widehat{\pi}_3 \widehat{f}_{31}(1) \widehat{f}_{32}(2) = 0.2 \cdot \tfrac{3}{4} \cdot \tfrac{3}{4} = 0.1125.
+                </equations>
+                O denominador é a soma dos três numeradores, $0.005 + 0.0167 + 0.1125 \approx 0.1342$. Logo,
+                $$
+                    \widehat{p}_1(1,2) \approx 0.037, \qquad \widehat{p}_2(1,2) \approx 0.124, \qquad \widehat{p}_3(1,2) \approx 0.838,
+                $$
+                e o e-mail é classificado como spam. Note que para decidir a classe nem precisaríamos do denominador: ele é comum a todas as classes e basta comparar os numeradores.
+            </example>
+            <remark id="rem:laplace">
+                <title>Frequências nulas</title>
+                No <ref to="ex:naive_email" />, nenhum spam da amostra de treino tem $X_2 = 0$, então $\widehat{f}_{32}(0) = 0$. Isso faz com que <b>qualquer</b> e-mail sem links tenha probabilidade estimada nula de ser spam, não importa o que digam os outros preditores, pois o produto da <ref to="eq:naive_hyp" /> é zerado por um único fator. Uma correção comum é a <em>suavização de Laplace</em>, que soma $1$ a todas as contagens:
+                $$
+                    \widehat{f}_{ji}(v) = \frac{\#\{\text{e-mails da classe } j \text{ com } X_i = v\} + 1}{N_j + m_i},
+                $$
+                onde $m_i$ é o número de valores que $X_i$ pode assumir. Com ela, $\widehat{f}_{32}(0) = (0 + 1)/(4 + 3) = 1/7$.
+            </remark>
+        </section>
+
+        <section id="s:lda_qda">
+            <title>Análise Discriminante</title>
+            Na análise discriminante, diferentemente do classificador ingênuo de Bayes, não assumimos independência entre os preditores dado a classe. Em vez disso, modelamos a distribuição conjunta dos preditores para cada classe como uma distribuição normal multivariada, isto é,
+            <equation id="eq:lda_qda">
+                X \, | \, Y=j \sim \mathcal{N}(\mu_j, \Sigma_j),
+            </equation>
+            onde $\mu_j$ é o vetor de médias da classe $j$ e $\Sigma_j$ é a matriz de covariância da classe $j$.
+
+            Para aqueles que não estão familiarizados com a normal multivariada, vale a pena expandir a subseção abaixo.
+            <subsection numbered="false" collapsed="true">
+                <title>Normal Multivariada</title>
+
+            Dizemos que um vetor aleatório $X \in \mathbb{R}^p$ segue uma distribuição normal multivariada com média $\mu \in \mathbb{R}^p$ e matriz de covariância $\Sigma$, uma matriz $p\times p$ simétrica e positiva definida, se sua densidade é
+            <equation id="eq:mvn_density">
+                \mathcal{N}(x \, | \, \mu, \Sigma) = \frac{1}{(2\pi)^{p/2} \det(\Sigma)^{1/2}} \exp\left(-\frac{1}{2} (x-\mu)^\top \Sigma^{-1} (x-\mu)\right).
+            </equation>
+            Perceba que, para $p = 1$, $\Sigma = \sigma^2$ e recuperamos a densidade da normal que já conhecemos. A quantidade $(x-\mu)^\top \Sigma^{-1} (x-\mu)$ no expoente é a <hint show-icon="false"><title>distância de Mahalanobis</title>ao quadrado</hint> de $x$ até $\mu$: ela mede quão longe $x$ está da média, mas levando em conta que a distribuição pode ser mais espalhada em algumas direções do que em outras.
+
+            Em $\mathbb{R}^2$ fica mais fácil visualizar. Nesse caso, escrevemos
+            <equation id="eq:mvn_r2">
+                \mu = \begin{bmatrix} \mu_1 \\ \mu_2 \end{bmatrix}, \qquad \Sigma = \begin{bmatrix} \sigma_1^2 & \rho\,\sigma_1\sigma_2 \\ \rho\,\sigma_1\sigma_2 & \sigma_2^2 \end{bmatrix},
+            </equation>
+            onde $\sigma_i^2$ é a variância de $X_i$ e $\rho \in (-1,1)$ é a correlação entre $X_1$ e $X_2$. Cada parâmetro tem uma interpretação geométrica:
+            <list>
+                <item>$\mu$ é o centro da distribuição, onde a densidade atinge seu máximo;</item>
+                <item>$\sigma_1$ e $\sigma_2$ controlam o espalhamento da distribuição nas direções dos eixos $x_1$ e $x_2$;</item>
+                <item>$\rho$ controla a inclinação: se $\rho > 0$, valores grandes de $X_1$ tendem a vir acompanhados de valores grandes de $X_2$ e a nuvem de pontos se inclina para cima; se $\rho < 0$, ela se inclina para baixo; e se $\rho = 0$, $X_1$ e $X_2$ são independentes.</item>
+            </list>
+            As curvas de nível da densidade, isto é, os conjuntos onde $\mathcal{N}(x \, | \, \mu, \Sigma)$ é constante, são os conjuntos onde a distância de Mahalanobis é constante. Como $\Sigma^{-1}$ é positiva definida, esses conjuntos são elipses centradas em $\mu$, cujos eixos apontam nas direções dos autovetores de $\Sigma$. Brinque com os parâmetros no ambiente <ref to="in:mvn" /> abaixo.
+            <interactive id="in:mvn">
+                <classviz mode="mvn" />
+                <caption>A normal bivariada: arraste a média e controle a matriz de covariância.</caption>
+            </interactive>
+            Observe que quando $\rho = 0$ e $\sigma_1 = \sigma_2$ as elipses viram círculos e a independência entre os preditores, que era a hipótese do classificador ingênuo de Bayes, é recuperada. A análise discriminante, portanto, é mais flexível: ela permite que os preditores sejam correlacionados dentro de cada classe.
+            </subsection>
+
+            <box id="box:idea_discriminant" type="info">
+                <title>Ideia Principal da Análise Discriminante</title>
+                A ideia principal da análise discriminante é, no caso em que temos $K$ classes, encontrar funções discriminantes $\delta_j(X)$ para cada classe $j$ de forma que a classificação de uma nova observação $X$ seja feita atribuindo-a à classe com a maior função discriminante.
+            </box>
+        <subsection id="ss:lda">
+            <title>LDA</title>
+            Na <em>análise discriminante linear (LDA)</em>, assumimos que todas as classes compartilham a mesma matriz de covariância, ou seja, $\Sigma_j = \Sigma$ para todo $j$. Isso simplifica a modelagem e leva a fronteiras de decisão lineares como veremos nesta seção.
+
+            O modelo então pode ser especificado como
+            <box id="box:lda_model" type="info">
+                <title>Modelo LDA</title>
+                <equation id="eq:lda">
+                    X \, | \, Y=j \sim \mathcal{N}(\mu_j, \Sigma), \forall j \in \{1,\dots,K\},
+                </equation>
+                onde $\Sigma$ é a matriz de covariância comum a todas as classes.
+            </box>
+            Nosso próximo objetivo é derivar as funções discriminantes $\delta_j(X)$ para cada classe $j$. São essas funções que usaremos para classificar novos dados. Para isso fixamos uma entrada $x$ e uma classe $k \in \{1,\dots,K\}$. Usando as especificações do modelo dada acima e a <ref to="eq:bayes_rule" /> temos a seguinte expressão para $P(Y=k \, | \, X=x)$:
+            <equations id="eq:lda_posterior">
+                P(Y=k \, | \, X=x) & = \frac{\pi_k \, \mathcal{N}(x \, | \, \mu_k, \Sigma)}{\sum_{j=1}^K \pi_j \, \mathcal{N}(x \, | \, \mu_j, \Sigma)} \\
+                & =\frac{\pi_k \exp\left(-\frac{1}{2} (x-\mu_k)^\top \Sigma^{-1} (x-\mu_k)\right)}{\sum_{j=1}^K \pi_j \exp\left(-\frac{1}{2} (x-\mu_j)^\top \Sigma^{-1} (x-\mu_j)\right)}.
+            </equations>
+            Note que o LDA é um classificador plug-in, ou seja, queremos classificar escolhendo a classe que maximiza a uma estimativa da expressão acima. Como se trata de uma comparação e para todo $x$ e $k$, podemos ignorar os termos que não dependem da classe e que são comuns a todas elas. 
+            
+            Nesse sentido, podemos simplificar a expressão acima e reduzi-la ao numerador, que é o que realmente importa para a decisão de classificação. Podemos levar essa simplificação adiante tomando o log do numerador e descartando termos que não dependem da classe, o que nos leva à função discriminante para a classe $k$:
+            <equation id="eq:lda_discriminant">
+                \delta_k(x) = x^\top \Sigma^{-1} \mu_k - \frac{1}{2} \mu_k^\top \Sigma^{-1} \mu_k + \log \pi_k,
+            </equation>
+            Se, por alguma razão, as médias $\mu_k$ e a matriz de covariância são conhecidas, podemos usar diretamente as funções discriminantes $\delta_k(x)$ e construir o classificador LDA da seguinte maneira:
+            <equation id="eq:lda_classification">
+                \hat{y}_{\text{LDA}} = \arg\max_k \delta_k(x).
+            </equation>
+            Em contextos práticos, as médias $\mu_k$ e a matriz de covariância $\Sigma$ geralmente não são conhecidas e precisam ser estimadas a partir dos dados de treinamento. Assim como no classificador ingênuo de Bayes, as prioris $\pi_k$ são estimadas pela proporção de pontos de cada classe, como na <ref to="eq:pi_j" />, isto é, $\widehat{\pi}_k = N_k/N$, onde $N_k$ é o número de pontos da classe $k$.
+
+            As médias $\mu_k$ podem ser estimadas pela média amostral dos pontos de cada classe:
+            <equation id="eq:lda_mean_estimator">
+                \widehat{\mu}_k = \frac{1}{N_k} \sum_{i\,:\,y_i = k} x_i.
+            </equation>
+            Note que $\widehat{\mu}_k \in \mathbb{R}^p$ é um vetor e cada uma de suas coordenadas é a média de um preditor entre os pontos da classe $k$.
+
+            A matriz de covariância $\Sigma$ pode ser estimada pela matriz de covariância amostral comum a todas as classes. Aqui há uma sutileza. Como cada classe tem sua própria média, não faz sentido calcular a covariância de todos os pontos em torno de uma única média global. O que fazemos é medir, dentro de cada classe, os desvios dos pontos em relação à média <em>daquela</em> classe e então juntar todos esses desvios:
+            <equation id="eq:lda_cov_estimator">
+                \widehat{\Sigma} = \frac{1}{N - K} \sum_{k=1}^K \sum_{i\,:\,y_i = k} (x_i - \widehat{\mu}_k)(x_i - \widehat{\mu}_k)^\top,
+            </equation>
+            onde vale lembrar que vetores são considerados colunas ($p\times 1$). Logo, cada termo $(x_i - \widehat{\mu}_k)(x_i - \widehat{\mu}_k)^\top$ é uma matriz $p\times p$ cuja entrada $(l,m)$ é o produto dos desvios dos preditores $l$ e $m$. Na diagonal estão os quadrados dos desvios, que estimam as variâncias, e fora da diagonal os produtos cruzados, que estimam as covariâncias.
+
+            Por que dividir por $N-K$ e não por $N$? Pela mesma razão que dividimos por $N-1$ na variância amostral usual: para obter um estimador não viesado. Ao estimar a média $\widehat{\mu}_k$ de cada classe, "gastamos" um grau de liberdade por classe, totalizando $K$. Se $\widehat{\Sigma}_k$ denota a covariância amostral só da classe $k$, isto é,
+            <equation id="eq:class_cov_estimator">
+                \widehat{\Sigma}_k = \frac{1}{N_k - 1} \sum_{i\,:\,y_i = k} (x_i - \widehat{\mu}_k)(x_i - \widehat{\mu}_k)^\top,
+            </equation>
+            então a <ref to="eq:lda_cov_estimator" /> pode ser reescrita como
+            $$
+                \widehat{\Sigma} = \sum_{k=1}^K \frac{N_k - 1}{N - K}\, \widehat{\Sigma}_k,
+            $$
+            ou seja, $\widehat{\Sigma}$ é uma média ponderada das covariâncias de cada classe, em que classes com mais pontos têm peso maior. Por isso, $\widehat{\Sigma}$ é chamada de <em>covariância combinada</em>.
+
+            Com as estimativas em mãos, o classificador LDA é obtido plugando-as na <ref to="eq:lda_discriminant" />:
+            <equation id="eq:lda_plugin">
+                \widehat{\delta}_k(x) = x^\top \widehat{\Sigma}^{-1} \widehat{\mu}_k - \frac{1}{2} \widehat{\mu}_k^\top \widehat{\Sigma}^{-1} \widehat{\mu}_k + \log \widehat{\pi}_k, \qquad \widehat{Y}_{\text{LDA}}(x) = \arg\max_k \widehat{\delta}_k(x).
+            </equation>
+            <subsubsection id="sss:lda_boundary">
+                <title>A fronteira de decisão do LDA</title>
+                Como vimos no início do capítulo, um classificador particiona o espaço das features. A <em>fronteira de decisão</em> entre as classes $k$ e $l$ é o conjunto dos pontos em que o classificador fica "em dúvida" entre elas, isto é, onde as duas classes empatam. No caso do LDA, isso corresponde a
+                $$
+                    \{ x \in \mathbb{R}^p \, : \, \delta_k(x) = \delta_l(x) \}.
+                $$
+                De um lado desse conjunto, $\delta_k > \delta_l$ e preferimos a classe $k$; do outro, preferimos a classe $l$. É aqui que o LDA ganha o seu nome.
+                <proposition id="prop:lda_boundary">
+                    Sob o modelo LDA da <ref to="eq:lda" />, a fronteira de decisão entre as classes $k$ e $l$ é o hiperplano
+                    <equation id="eq:lda_boundary">
+                        w^\top x + b = 0, \quad \text{onde} \quad w = \Sigma^{-1}(\mu_k - \mu_l) \quad \text{e} \quad b = -\frac{1}{2}\left(\mu_k^\top \Sigma^{-1} \mu_k - \mu_l^\top \Sigma^{-1} \mu_l\right) + \log\frac{\pi_k}{\pi_l}.
+                    </equation>
+                    Em particular, as fronteiras de decisão do LDA são lineares.
+                </proposition>
+                <proof>
+                    Começamos justificando a <ref to="eq:lda_discriminant" />. Como o denominador da <ref to="eq:lda_posterior" /> não depende de $k$ e o log é crescente, maximizar $P(Y=k \, | \, X=x)$ em $k$ é o mesmo que maximizar
+                    $$
+                        \log\left( \pi_k \, \mathcal{N}(x \, | \, \mu_k, \Sigma) \right) = \log \pi_k - \frac{p}{2}\log(2\pi) - \frac{1}{2}\log\det(\Sigma) - \frac{1}{2} (x-\mu_k)^\top \Sigma^{-1} (x-\mu_k).
+                    $$
+                    Os termos $-\frac{p}{2}\log(2\pi)$ e $-\frac{1}{2}\log\det(\Sigma)$ são iguais para todas as classes e podem ser descartados. Expandindo a forma quadrática e usando que $\Sigma^{-1}$ é simétrica, temos
+                    $$
+                        (x-\mu_k)^\top \Sigma^{-1} (x-\mu_k) = x^\top \Sigma^{-1} x - 2\, x^\top \Sigma^{-1} \mu_k + \mu_k^\top \Sigma^{-1} \mu_k.
+                    $$
+                    O ponto crucial é que o termo $x^\top \Sigma^{-1} x$, o único quadrático em $x$, também não depende de $k$, pois $\Sigma$ é a mesma para todas as classes. Descartando-o, sobra exatamente $\delta_k(x)$ da <ref to="eq:lda_discriminant" />.
+
+                    Agora, a fronteira é dada por $\delta_k(x) - \delta_l(x) = 0$. Subtraindo as expressões,
+                    <equations id="eq:lda_boundary_derivation">
+                        \delta_k(x) - \delta_l(x) & = x^\top \Sigma^{-1} \mu_k - x^\top \Sigma^{-1} \mu_l - \frac{1}{2} \mu_k^\top \Sigma^{-1} \mu_k + \frac{1}{2} \mu_l^\top \Sigma^{-1} \mu_l + \log \pi_k - \log \pi_l \\
+                        & = \left(\Sigma^{-1}(\mu_k - \mu_l)\right)^\top x - \frac{1}{2}\left(\mu_k^\top \Sigma^{-1} \mu_k - \mu_l^\top \Sigma^{-1} \mu_l\right) + \log\frac{\pi_k}{\pi_l},
+                    </equations>
+                    onde usamos novamente a simetria de $\Sigma^{-1}$ para escrever $x^\top \Sigma^{-1} (\mu_k - \mu_l) = (\Sigma^{-1}(\mu_k - \mu_l))^\top x$. A última expressão é $w^\top x + b$, com $w$ e $b$ como no enunciado. Como $w^\top x + b$ é uma função afim de $x$, o conjunto onde ela se anula é um hiperplano.
+                </proof>
+                Em $\mathbb{R}^2$, a fronteira é uma reta. Para ganhar intuição, considere o caso particular em que $\Sigma = \sigma^2 I$ e $\pi_k = \pi_l$. Então $w = (\mu_k - \mu_l)/\sigma^2$ e, após algumas contas, a <ref to="eq:lda_boundary" /> se torna
+                $$
+                    (\mu_k - \mu_l)^\top \left( x - \frac{\mu_k + \mu_l}{2} \right) = 0,
+                $$
+                ou seja, a fronteira é a mediatriz do segmento que liga $\mu_k$ a $\mu_l$: classificamos $x$ na classe cuja média está mais próxima. Quando as prioris são diferentes, o termo $\log(\pi_k/\pi_l)$ desloca a reta em direção à classe menos provável, dando mais espaço à classe mais frequente. E quando $\Sigma$ não é múltiplo da identidade, a reta deixa de ser perpendicular ao segmento $\mu_k\mu_l$, pois a "proximidade" passa a ser medida pela distância de Mahalanobis.
+
+                No ambiente <ref to="in:lda" /> abaixo, as duas classes têm a mesma matriz de covariância. Arraste as médias, altere $\rho$ e o tamanho da amostra e compare a fronteira do LDA ajustado com a fronteira de Bayes.
+                <interactive id="in:lda">
+                    <classviz mode="lda" />
+                    <caption>Fronteira de decisão do LDA ajustado a partir de uma amostra de treino.</caption>
+                </interactive>
+            </subsubsection>
+        </subsection>
+        <subsection id="ss:qda">
+            <title>QDA</title>
+            Na <em>análise discriminante quadrática (QDA)</em>, abandonamos a hipótese de que todas as classes compartilham a mesma matriz de covariância. Cada classe tem a sua própria $\Sigma_k$, exatamente como na <ref to="eq:lda_qda" />. Isso permite, por exemplo, que uma classe seja mais espalhada que outra ou que os preditores sejam positivamente correlacionados em uma classe e negativamente em outra.
+
+            O modelo então pode ser especificado como
+            <box id="box:qda_model" type="info">
+                <title>Modelo QDA</title>
+                <equation id="eq:qda">
+                    X \, | \, Y=j \sim \mathcal{N}(\mu_j, \Sigma_j), \forall j \in \{1,\dots,K\},
+                </equation>
+                onde $\Sigma_j$ é a matriz de covariância da classe $j$.
+            </box>
+            Seguindo o mesmo roteiro do LDA, fixadas uma entrada $x$ e uma classe $k$, a <ref to="eq:bayes_rule" /> nos dá
+            <equation id="eq:qda_posterior">
+                P(Y=k \, | \, X=x) = \frac{\pi_k \, \det(\Sigma_k)^{-1/2} \exp\left(-\frac{1}{2} (x-\mu_k)^\top \Sigma_k^{-1} (x-\mu_k)\right)}{\sum_{j=1}^K \pi_j \, \det(\Sigma_j)^{-1/2} \exp\left(-\frac{1}{2} (x-\mu_j)^\top \Sigma_j^{-1} (x-\mu_j)\right)}.
+            </equation>
+            Note que agora o fator $\det(\Sigma_k)^{-1/2}$ não se cancela, pois depende da classe. Novamente, descartamos o denominador e tomamos o log do numerador. A diferença em relação ao LDA é que <b>nenhum</b> termo da forma quadrática pode ser descartado, já que $x^\top \Sigma_k^{-1} x$ depende de $k$. Ficamos com a função discriminante
+            <equation id="eq:qda_discriminant">
+                \delta_k(x) = -\frac{1}{2} \log\det(\Sigma_k) - \frac{1}{2} (x-\mu_k)^\top \Sigma_k^{-1} (x-\mu_k) + \log \pi_k,
+            </equation>
+            que é uma função quadrática de $x$, daí o nome do método. Em palavras, $\delta_k(x)$ penaliza a distância de Mahalanobis de $x$ até $\mu_k$, medida com a geometria da própria classe $k$, e penaliza classes muito espalhadas por meio de $\log\det(\Sigma_k)$.
+
+            Assim como no LDA, as prioris e as médias são estimadas por $\widehat{\pi}_k = N_k/N$ e pela <ref to="eq:lda_mean_estimator" />. A diferença é que agora cada $\Sigma_k$ é estimada usando apenas os pontos da sua classe, pela <ref to="eq:class_cov_estimator" />. O classificador QDA é então
+            <equation id="eq:qda_classification">
+                \widehat{Y}_{\text{QDA}}(x) = \arg\max_k \left[ -\frac{1}{2} \log\det(\widehat{\Sigma}_k) - \frac{1}{2} (x-\widehat{\mu}_k)^\top \widehat{\Sigma}_k^{-1} (x-\widehat{\mu}_k) + \log \widehat{\pi}_k \right].
+            </equation>
+            <subsubsection id="sss:qda_boundary">
+                <title>A fronteira de decisão do QDA</title>
+                A fronteira entre as classes $k$ e $l$ continua sendo $\{x \, : \, \delta_k(x) = \delta_l(x)\}$. Expandindo as formas quadráticas como fizemos na prova da <ref to="prop:lda_boundary" />, obtemos
+                <equations id="eq:qda_boundary">
+                    \delta_k(x) - \delta_l(x) & = x^\top A x + w^\top x + b, \quad \text{onde} \\
+                    A & = -\frac{1}{2}\left(\Sigma_k^{-1} - \Sigma_l^{-1}\right), \\
+                    w & = \Sigma_k^{-1}\mu_k - \Sigma_l^{-1}\mu_l, \\
+                    b & = -\frac{1}{2}\left(\mu_k^\top \Sigma_k^{-1} \mu_k - \mu_l^\top \Sigma_l^{-1} \mu_l\right) - \frac{1}{2}\log\frac{\det(\Sigma_k)}{\det(\Sigma_l)} + \log\frac{\pi_k}{\pi_l}.
+                </equations>
+                Logo, a fronteira é o conjunto dos zeros de um polinômio de grau $2$ em $x$, isto é, uma <em>quádrica</em>. Em $\mathbb{R}^2$, ela é uma cônica: pode ser uma elipse, uma hipérbole, uma parábola ou um par de retas. Perceba que, se $\Sigma_k = \Sigma_l$, então $A = 0$, o termo de $\log\det$ some e recuperamos exatamente a <ref to="eq:lda_boundary" />. Ou seja, o LDA é um caso particular do QDA.
+
+                No ambiente <ref to="in:qda" /> abaixo, as classes têm covariâncias diferentes. Compare as fronteiras do LDA e do QDA ajustados com a fronteira de Bayes. Marque $\Sigma_0 = \Sigma_1$ para ver o que acontece quando a hipótese do LDA é verdadeira.
+                <interactive id="in:qda">
+                    <classviz mode="qda" methods="lda,qda" />
+                    <caption>Fronteiras de decisão do LDA e do QDA quando as covariâncias das classes são diferentes.</caption>
+                </interactive>
+            </subsubsection>
+            <subsubsection id="sss:lda_vs_qda">
+                <title>LDA ou QDA?</title>
+                Se o QDA generaliza o LDA, por que não usar sempre o QDA? A resposta está no número de parâmetros que precisamos estimar. Com $p$ preditores, uma matriz de covariância simétrica tem $p(p+1)/2$ entradas livres. Logo,
+                <table id="tbl:lda_vs_qda">
+                    <header>
+                        <column></column>
+                        <column>LDA</column>
+                        <column>QDA</column>
+                    </header>
+                    <row><column>Covariância</column><column>$\Sigma_j = \Sigma$ para todo $j$</column><column>uma $\Sigma_j$ por classe</column></row>
+                    <row><column>Função discriminante</column><column>linear em $x$</column><column>quadrática em $x$</column></row>
+                    <row><column>Fronteira de decisão</column><column>hiperplano</column><column>quádrica</column></row>
+                    <row><column>Parâmetros de covariância</column><column>$p(p+1)/2$</column><column>$K\,p(p+1)/2$</column></row>
+                    <row><column>Flexibilidade</column><column>menor (mais viés)</column><column>maior (mais variância)</column></row>
+                    <caption>Principais diferenças entre LDA e QDA.</caption>
+                </table>
+                Para ter uma ideia, com $p = 50$ preditores e $K = 3$ classes, o LDA estima $1275$ parâmetros de covariância, enquanto o QDA estima $3825$. Com poucos dados, essas estimativas ficam ruins e o QDA tende a sobreajustar. Em resumo, temos mais um exemplo do equilíbrio entre viés e variância:
+                <list>
+                    <item>o LDA é preferível quando temos poucos dados de treino ou quando é razoável supor que as classes têm covariâncias parecidas;</item>
+                    <item>o QDA é preferível quando temos muitos dados de treino ou quando as covariâncias das classes são claramente diferentes, situação em que a fronteira linear do LDA é rígida demais.</item>
+                </list>
+            </subsubsection>
+        </subsection>
+        </section>
+
+    </chapter>
+
+</document>

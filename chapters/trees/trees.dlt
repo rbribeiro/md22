@@ -1,0 +1,18 @@
+<document>
+    <team>
+        <member name="rodrigo" id="rodrigo" kind="human" color="purple" />
+        <member name="claude" id="claude" kind="agent" color="orange" />
+    </team>
+    <floating>
+        <toc scope="project" />
+    </floating>
+    <chapter id="ch:trees">
+        <title>Métodos Baseados em Árvores</title>
+        <meta>
+            <meta-item key="Autor">Rodrigo Ribeiro</meta-item>
+            <meta-item key="Instituição">IMPA Tech</meta-item>
+            <meta-item key="Período">2026.2</meta-item>
+        </meta>
+        <todo for="rodrigo" priority="high">Revisar e completar o capítulo sobre métodos baseados em árvores.</todo>
+    </chapter>
+</document>
