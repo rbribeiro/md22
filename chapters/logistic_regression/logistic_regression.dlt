@@ -106,7 +106,7 @@
 
               Feita a observação sobre o baseline, o modelo de regressão logística <hint show-icon="false"><title>multinomial</title>Com mais de duas classes. O caso de duas classes chamamos de binário.</hint> é especificado de maneira similar à <ref to="eq:p_logistic" />. Para cada $j \in \{1,2,\dots,K-1\}$, supomos
               $$
-                p_j(x) = \frac{e^{\beta_{0j}+\sum_{i=1}^p\beta_{ij}x_i}}{1+\sum_{j=1}^{K-1}e^{\beta_{0j}+\sum_{i=1}^p\beta_{ij}x_i}}.
+                p_j(x) = \frac{e^{\beta_{0j}+\sum_{i=1}^p\beta_{ij}x_i}}{1+\sum_{r=1}^{K-1}e^{\beta_{0r}+\sum_{i=1}^p\beta_{ir}x_i}}.
               $$
               
             </subsection>
