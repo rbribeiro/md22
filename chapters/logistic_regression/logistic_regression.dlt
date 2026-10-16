@@ -115,7 +115,96 @@
               <todo status="open" priority="high" for="rodrigo">
                 Escrever!
               </todo>
-              
+
+              <subsubsection id="sss:fisher_scoring" collapsible="true" collapsed="true" numbered="false">
+                <title>Aprofundamento opcional: método de scoring de Fisher</title>
+                <intro>
+                  A ideia desse método é encontrar estimativas de máxima verossimilhança para os parâmetros $\beta$ usando um algoritmo iterativo semelhante ao de Newton-Raphson, mas baseado na informação de Fisher.
+                </intro>
+
+                <box id="box:fisher_covariance" type="info">
+                  Sob condições razoáveis (curiosos clicar aqui -> <hint show-icon="false">
+                    <title>*</title>
+                    <list>
+                      <item>
+                        <b>Condições de regularidade.</b>
+                        <list marker="number">
+                          <item>
+                            Observamos $X_1,\ldots,X_n$, em que $X_i\sim f(x\mid\theta)$ são i.i.d.
+                          </item>
+                          <item>
+                            O parâmetro é identificável; isto é, se $\theta\neq\theta'$, então $f(x\mid\theta)\neq f(x\mid\theta')$.
+                          </item>
+                          <item>
+                            As densidades $f(x\mid\theta)$ têm suporte comum, isto é, seu suporte não depende de $\theta$.
+                          </item>
+                          <item>
+                            O espaço paramétrico $\Omega$ contém um conjunto aberto $\omega$ do qual o verdadeiro valor do parâmetro, $\theta_0$, é um ponto interior.
+                          </item>
+                          <item>
+                            Para todo $x\in\mathcal X$, a densidade $f(x\mid\theta)$ é três vezes diferenciável em relação a $\theta$, a terceira derivada é contínua em $\theta$, e $\int f(x\mid\theta)\,dx$ pode ser diferenciada três vezes sob o sinal de integral.
+                          </item>
+                          <item>
+                            Para qualquer $\theta_0\in\Omega$, existem um número positivo $c$ e uma função $M(x)$, ambos podendo depender de $\theta_0$, tais que
+                            $$
+                              \left|
+                              \frac{\partial^3}{\partial\theta^3}\log f(x\mid\theta)
+                              \right|
+                              \le M(x)
+                              \quad
+                              \text{para todo }x\in\mathcal X,\qquad
+                              \theta_0-c<\theta<\theta_0+c,
+                            $$
+                            com $\mathbb E_{\theta_0}[M(X)]<\infty$.
+                          </item>
+                        </list>
+                        <b>Fonte:</b> CASELLA, George; BERGER, Roger L. <em>Statistical Inference</em>. 2ª ed., seção 10.6.2, p. 516.
+                      </item>
+                    </list>
+                  </hint> ), seja $\widehat{\beta}_N$ o MLE com $N$ observações. Definimos a matriz de informação de Fisher de uma observação $X$, com densidade ou função de massa $f(x;\beta)$, por
+                  <equation id="eq:fisher_definition">
+                    F(\beta)
+                    =
+                    \mathbb{E}_{\beta}\!\left[
+                    \nabla_{\beta}\log f(X;\beta)\,
+                    \nabla_{\beta}\log f(X;\beta)^\top
+                    \right].
+                  </equation>
+                  Sob as condições de regularidade, também podemos escrevê-la como<hint show-icon="false">
+                    <title>*</title>
+                    <b>Reescrita de $F(\beta)$.</b>
+                    <!-- Escreva aqui as condições para a igualdade entre as duas expressões da informação de Fisher. -->
+                  </hint>
+                  <equation id="eq:fisher_hessian">
+                    F(\beta)
+                    =
+                    -\mathbb{E}_{\beta}\!\left[
+                    \nabla_{\beta}^{2}\log f(X;\beta)
+                    \right].
+                  </equation>
+                  Se $\beta^\star$ é o parâmetro verdadeiro e $F(\beta^\star)$ é invertível, então
+                  <equation id="eq:mle_asymptotic_normality">
+                    \sqrt{N}(\widehat{\beta}_N-\beta^\star)
+                    \xrightarrow{d}
+                    \mathcal{N}\!\left(0,F(\beta^\star)^{-1}\right).
+                  </equation>
+                  Assim, para amostras grandes,
+                  <equation id="eq:fisher_covariance">
+                    \widehat{\beta}_N
+                    \overset{\text{aprox.}}{\sim}
+                    \mathcal{N}\!\left(
+                    \beta^\star,\frac{1}{N}F(\beta^\star)^{-1}
+                    \right).
+                  </equation>
+
+                  Isso implica que, caso consigamos um método numérico para maximizar a verossimilhança, temos uma garantia de que, caso nossas hipóteses estejam corretas, estamos ficando arbitrariamente perto do verdadeiro beta. E, ainda mais forte que isso, pelo teorema de Cramér–Rao<hint show-icon="false">
+                    <title>*</title>
+                    <b>Limite de Cramér–Rao.</b>
+                    <!-- Escreva aqui as hipóteses do limite e sua relação com a eficiência assintótica do MLE. -->
+                  </hint>, essa variância é a mínima possível para qualquer estimador.
+                </box>
+              </subsubsection>
+
             </subsection>
         </section>
 
