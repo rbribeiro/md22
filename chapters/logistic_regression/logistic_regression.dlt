@@ -122,12 +122,64 @@
                   A ideia desse método é encontrar estimativas de máxima verossimilhança para os parâmetros $\beta$ usando um algoritmo iterativo semelhante ao de Newton-Raphson, mas baseado na informação de Fisher.
                 </intro>
 
+                Definindo a função score como
+                <equation id="eq:logistic_score_definition">
+                  S_N(\beta)
+                  =\nabla_\beta\ell_N(\beta)
+                  =\nabla_\beta\sum_{i=1}^{N}\log f(X_i;\beta).
+                </equation>
+
+                Para uma observação $X$, o score é $s(\beta)=\nabla_\beta\log f(X;\beta)$. Definimos a matriz de informação de Fisher como
+                <equation id="eq:fisher_definition">
+                  F(\beta)
+                  =
+                  \mathbb{E}_{\beta}\!\left[
+                  s(\beta)\,s(\beta)^\top
+                  \right].
+                </equation>
+
+                Note que a função score é o gradiente da log-verossimilhança, então, para atingir um máximo em um ponto interior, precisamos de
+                <equation id="eq:logistic_score_zero">
+                  S_N(\widehat{\beta}_N)=\mathbf0.
+                </equation>
+
+                Assim, podemos buscar o MLE por um método numérico resolvendo essa equação.
+
+                Na regressão logística especificamente, a log-verossimilhança é côncava, então, se acharmos um zero do score, ele será um ponto de máximo global.
+
                 <box id="box:fisher_covariance" type="info">
-                  Sob condições razoáveis (curiosos clicar aqui -> <hint show-icon="false">
-                    <title>*</title>
+                  Sob condições razoáveis, seja $\widehat{\beta}_N$ o MLE com $N$ observações.
+                  Podemos escrevê-la como
+                  <equation id="eq:fisher_hessian">
+                    F(\beta)
+                    =
+                    -\mathbb{E}_{\beta}\!\left[
+                    \frac{\partial s(\beta)}{\partial\beta^\top}
+                    \right].
+                  </equation>
+                  Se $\beta^\star$ é o parâmetro verdadeiro e $F(\beta^\star)$ é invertível, então
+                  <equation id="eq:mle_asymptotic_normality">
+                    \sqrt{N}(\widehat{\beta}_N-\beta^\star)
+                    \xrightarrow{d}
+                    \mathcal{N}\!\left(0,F(\beta^\star)^{-1}\right).
+                  </equation>
+                  Assim, para amostras grandes,
+                  <equation id="eq:fisher_covariance">
+                    \widehat{\beta}_N
+                    \overset{\text{aprox.}}{\sim}
+                    \mathcal{N}\!\left(
+                    \beta^\star,\frac{1}{N}F(\beta^\star)^{-1}
+                    \right).
+                  </equation>
+
+                  Isso implica que, caso consigamos um método numérico para maximizar a verossimilhança, temos uma garantia de que, com as hipóteses corretas, estamos ficando arbitrariamente perto do verdadeiro beta. E, ainda mais forte que isso, pelo teorema de Cramér–Rao, essa variância é assintóticamente a mínima possível para qualquer estimador.
+                </box>
+
+                  <subsubsection id="sss:fisher_regularity" collapsible="true" collapsed="true" numbered="false">
+                    <title>Condições de regularidade</title>
                     <list>
                       <item>
-                        <b>Condições de regularidade.</b>
+
                         <list marker="number">
                           <item>
                             Observamos $X_1,\ldots,X_n$, em que $X_i\sim f(x\mid\theta)$ são i.i.d.
@@ -161,48 +213,110 @@
                         <b>Fonte:</b> CASELLA, George; BERGER, Roger L. <em>Statistical Inference</em>. 2ª ed., seção 10.6.2, p. 516.
                       </item>
                     </list>
-                  </hint> ), seja $\widehat{\beta}_N$ o MLE com $N$ observações. Definimos a matriz de informação de Fisher de uma observação $X$, com densidade ou função de massa $f(x;\beta)$, por
-                  <equation id="eq:fisher_definition">
-                    F(\beta)
-                    =
-                    \mathbb{E}_{\beta}\!\left[
-                    \nabla_{\beta}\log f(X;\beta)\,
-                    \nabla_{\beta}\log f(X;\beta)^\top
-                    \right].
-                  </equation>
-                  Sob as condições de regularidade, também podemos escrevê-la como<hint show-icon="false">
-                    <title>*</title>
-                    <b>Reescrita de $F(\beta)$.</b>
-                    <!-- Escreva aqui as condições para a igualdade entre as duas expressões da informação de Fisher. -->
-                  </hint>
-                  <equation id="eq:fisher_hessian">
-                    F(\beta)
-                    =
-                    -\mathbb{E}_{\beta}\!\left[
-                    \nabla_{\beta}^{2}\log f(X;\beta)
-                    \right].
-                  </equation>
-                  Se $\beta^\star$ é o parâmetro verdadeiro e $F(\beta^\star)$ é invertível, então
-                  <equation id="eq:mle_asymptotic_normality">
-                    \sqrt{N}(\widehat{\beta}_N-\beta^\star)
-                    \xrightarrow{d}
-                    \mathcal{N}\!\left(0,F(\beta^\star)^{-1}\right).
-                  </equation>
-                  Assim, para amostras grandes,
-                  <equation id="eq:fisher_covariance">
-                    \widehat{\beta}_N
-                    \overset{\text{aprox.}}{\sim}
-                    \mathcal{N}\!\left(
-                    \beta^\star,\frac{1}{N}F(\beta^\star)^{-1}
-                    \right).
-                  </equation>
 
-                  Isso implica que, caso consigamos um método numérico para maximizar a verossimilhança, temos uma garantia de que, caso nossas hipóteses estejam corretas, estamos ficando arbitrariamente perto do verdadeiro beta. E, ainda mais forte que isso, pelo teorema de Cramér–Rao<hint show-icon="false">
-                    <title>*</title>
-                    <b>Limite de Cramér–Rao.</b>
+              </subsubsection>
+
+                  <subsubsection id="sss:fisher_identity_proof" collapsible="true" collapsed="true" numbered="false">
+                    <title>Reescrita de $F(\beta)$</title>
+
+                    Pela definição da matriz de Fisher,
+                    $$
+                      F(\beta)
+                      =\mathbb E_\beta\!\left[
+                      s(\beta)\,s(\beta)^\top
+                      \right],\qquad \beta\in\mathbb R^n.
+                    $$
+
+                    Escrevendo $s(x;\beta)=\nabla_\beta\log f(x;\beta)$ e $s(\beta)=s(X;\beta)$, vamos primeiro mostrar que
+                    $$
+                      \mathbb E_\beta[s(\beta)]=\mathbf 0.
+                    $$
+
+                    Escrevendo o valor esperado como integral e derivando o logaritmo,
+                    $$
+                      \begin{aligned}
+                      \mathbb E_\beta[s(\beta)]
+                      &=\int_{\mathcal X}s(x;\beta)\,f(x;\beta)\,dx\\
+                      &=\int_{\mathcal X}\frac{\nabla_\beta f(x;\beta)}{f(x;\beta)}\,f(x;\beta)\,dx
+                      &&\text{por 5)}\\
+                      &=\int_{\mathcal X}\nabla_\beta f(x;\beta)\,dx.
+                      \end{aligned}
+                    $$
+
+                    Como o suporte não depende de $\beta$, podemos trocar integral e derivada de posição e, além disso, temos uma distribuição, cuja densidade integra $1$. Logo,
+                    $$
+                      \mathbb E_\beta[s(\beta)]
+                      =\nabla_\beta\int_{\mathcal X}f(x;\beta)\,dx
+                      =\nabla_\beta 1=\mathbf 0
+                      \qquad\text{por 3), 5)}.
+                    $$
+
+                    Vamos agora pegar dois índices $i,j\in\{1,\ldots,n\}$. Como cada coordenada do valor esperado do score é zero, podemos derivar a coordenada $i$ em relação a $\beta_j$:
+                    $$
+                      \begin{aligned}
+                      0
+                      &=\frac{\partial}{\partial\beta_j}
+                      \mathbb E_\beta\!\left[s_i(\beta)\right]\\
+                      &=\frac{\partial}{\partial\beta_j}
+                      \int_{\mathcal X}s_i(x;\beta)\,f(x;\beta)\,dx\\
+                      &=\int_{\mathcal X}\frac{\partial}{\partial\beta_j}
+                      \left[s_i(x;\beta)\,f(x;\beta)\right]dx
+                      \qquad\text{por 3), 5)}.
+                      \end{aligned}
+                    $$
+
+                    Aplicando a regra do produto,
+                    $$
+                      \implies\quad 0=\int_{\mathcal X}\left[
+                      \frac{\partial s_i(x;\beta)}{\partial\beta_j}\,f(x;\beta)
+                      +s_i(x;\beta)
+                      \frac{\partial f(x;\beta)}{\partial\beta_j}
+                      \right]dx.
+                    $$
+                    $$
+                      s_j(x;\beta)
+                      =\frac{1}{f(x;\beta)}\frac{\partial f(x;\beta)}{\partial\beta_j}
+                      \implies
+                      \frac{\partial f(x;\beta)}{\partial\beta_j}
+                      =f(x;\beta)\,s_j(x;\beta).
+                    $$
+
+                    Substituindo,
+                    $$
+                      \begin{aligned}
+                      0&=\int_{\mathcal X}
+                      \frac{\partial s_i(x;\beta)}{\partial\beta_j}\,f(x;\beta)\,dx\\
+                      &\quad+\int_{\mathcal X}
+                      s_i(x;\beta)\,s_j(x;\beta)\,f(x;\beta)\,dx
+                      \end{aligned}
+                    $$
+                    $$
+                      \implies\quad 0=
+                      \mathbb E_\beta\!\left[
+                      \frac{\partial s_i(\beta)}{\partial\beta_j}
+                      \right]+F_{ij}(\beta)
+                    $$
+                    $$
+                      \implies\quad F_{ij}(\beta)=
+                      -\mathbb E_\beta\!\left[
+                      \frac{\partial s_i(\beta)}{\partial\beta_j}
+                      \right].
+                    $$
+
+                    Como isso vale para quaisquer índices $i,j$,
+                    $$
+                      \boxed{F(\beta)=-\mathbb E_\beta\!\left[\frac{\partial s(\beta)}{\partial\beta^\top}\right].}
+                      \quad\square
+                    $$
+
+                  </subsubsection>
+
+                  <subsubsection id="sss:fisher_cramer_rao" collapsible="true" collapsed="true" numbered="false">
+                    <title>Limite de Cramér–Rao</title>
+
                     <!-- Escreva aqui as hipóteses do limite e sua relação com a eficiência assintótica do MLE. -->
-                  </hint>, essa variância é a mínima possível para qualquer estimador.
-                </box>
+
+                  </subsubsection>
               </subsubsection>
 
             </subsection>
