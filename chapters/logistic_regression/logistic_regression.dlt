@@ -118,17 +118,20 @@
 
               <subsubsection id="sss:fisher_scoring" collapsible="true" collapsed="true" numbered="false">
                 <title>Aprofundamento opcional: método de scoring de Fisher</title>
-                <intro>
-                  A ideia desse método é encontrar estimativas de máxima verossimilhança para os parâmetros $\beta$ usando um algoritmo iterativo semelhante ao de Newton-Raphson, mas baseado na informação de Fisher.
-                </intro>
+                A ideia desse método é encontrar estimativas de máxima verossimilhança para os parâmetros $\beta$ usando um algoritmo iterativo semelhante ao de Newton-Raphson, mas baseado na informação de Fisher.
 
+                <definition id="def:logistic_score">
+                  <title>Função score</title>
                 Definindo a função score como
                 <equation id="eq:logistic_score_definition">
                   S_N(\beta)
                   =\nabla_\beta\ell_N(\beta)
                   =\nabla_\beta\sum_{i=1}^{N}\log f(X_i;\beta).
                 </equation>
+                </definition>
 
+                <definition id="def:fisher_information">
+                  <title>Matriz de informação de Fisher</title>
                 Para uma observação $X$, o score é $s(\beta)=\nabla_\beta\log f(X;\beta)$. Definimos a matriz de informação de Fisher como
                 <equation id="eq:fisher_definition">
                   F(\beta)
@@ -137,6 +140,7 @@
                   s(\beta)\,s(\beta)^\top
                   \right].
                 </equation>
+                </definition>
 
                 Note que a função score é o gradiente da log-verossimilhança, então, para atingir um máximo em um ponto interior, precisamos de
                 <equation id="eq:logistic_score_zero">
@@ -147,7 +151,8 @@
 
                 Na regressão logística especificamente, a log-verossimilhança é côncava, então, se acharmos um zero do score, ele será um ponto de máximo global.
 
-                <box id="box:fisher_covariance" type="info">
+                <theorem id="box:fisher_covariance">
+                  <title>Normalidade assintótica do MLE</title>
                   Sob condições razoáveis, seja $\widehat{\beta}_N$ o MLE com $N$ observações.
                   Podemos escrevê-la como
                   <equation id="eq:fisher_hessian">
@@ -173,154 +178,280 @@
                   </equation>
 
                   Isso implica que, caso consigamos um método numérico para maximizar a verossimilhança, temos uma garantia de que, com as hipóteses corretas, estamos ficando arbitrariamente perto do verdadeiro beta. E, ainda mais forte que isso, pelo teorema de Cramér–Rao, essa variância é assintóticamente a mínima possível para qualquer estimador.
-                </box>
+                </theorem>
 
-                  <subsubsection id="sss:fisher_regularity" collapsible="true" collapsed="true" numbered="false">
-                    <title>Condições de regularidade</title>
-                    <list>
-                      <item>
+                <subsubsection id="sss:fisher_regularity" collapsible="true" collapsed="true" numbered="false">
+                  <title>Condições de regularidade</title>
+                  <list marker="number">
+                    <item>
+                      Observamos $X_1,\ldots,X_n$, em que $X_i\sim f(x\mid\theta)$ são i.i.d.
+                    </item>
+                    <item>
+                      O parâmetro é identificável; isto é, se $\theta\neq\theta'$, então $f(x\mid\theta)\neq f(x\mid\theta')$.
+                    </item>
+                    <item>
+                      As densidades $f(x\mid\theta)$ têm suporte comum, isto é, seu suporte não depende de $\theta$.
+                    </item>
+                    <item>
+                      O espaço paramétrico $\Omega$ contém um conjunto aberto $\omega$ do qual o verdadeiro valor do parâmetro, $\theta_0$, é um ponto interior.
+                    </item>
+                    <item>
+                      Para todo $x\in\mathcal X$, a densidade $f(x\mid\theta)$ é três vezes diferenciável em relação a $\theta$, a terceira derivada é contínua em $\theta$, e $\int f(x\mid\theta)\,dx$ pode ser diferenciada três vezes sob o sinal de integral.
+                    </item>
+                    <item>
+                      Para qualquer $\theta_0\in\Omega$, existem um número positivo $c$ e uma função $M(x)$, ambos podendo depender de $\theta_0$, tais que
+                      $$
+                      \left|
+                      \frac{\partial^3}{\partial\theta^3}\log f(x\mid\theta)
+                      \right|
+                      \le M(x)
+                      \quad
+                      \text{para todo }x\in\mathcal X,\qquad
+                      \theta_0-c<\theta<\theta_0+c,
+                      $$
+                      com $\mathbb E_{\theta_0}[M(X)]<\infty$.
+                    </item>
+                  </list>
+                  <b>Fonte:</b> CASELLA, George; BERGER, Roger L. <em>Statistical Inference</em>. 2ª ed., seção 10.6.2, p. 516.
+                </subsubsection>
 
-                        <list marker="number">
-                          <item>
-                            Observamos $X_1,\ldots,X_n$, em que $X_i\sim f(x\mid\theta)$ são i.i.d.
-                          </item>
-                          <item>
-                            O parâmetro é identificável; isto é, se $\theta\neq\theta'$, então $f(x\mid\theta)\neq f(x\mid\theta')$.
-                          </item>
-                          <item>
-                            As densidades $f(x\mid\theta)$ têm suporte comum, isto é, seu suporte não depende de $\theta$.
-                          </item>
-                          <item>
-                            O espaço paramétrico $\Omega$ contém um conjunto aberto $\omega$ do qual o verdadeiro valor do parâmetro, $\theta_0$, é um ponto interior.
-                          </item>
-                          <item>
-                            Para todo $x\in\mathcal X$, a densidade $f(x\mid\theta)$ é três vezes diferenciável em relação a $\theta$, a terceira derivada é contínua em $\theta$, e $\int f(x\mid\theta)\,dx$ pode ser diferenciada três vezes sob o sinal de integral.
-                          </item>
-                          <item>
-                            Para qualquer $\theta_0\in\Omega$, existem um número positivo $c$ e uma função $M(x)$, ambos podendo depender de $\theta_0$, tais que
-                            $$
-                              \left|
-                              \frac{\partial^3}{\partial\theta^3}\log f(x\mid\theta)
-                              \right|
-                              \le M(x)
-                              \quad
-                              \text{para todo }x\in\mathcal X,\qquad
-                              \theta_0-c<\theta<\theta_0+c,
-                            $$
-                            com $\mathbb E_{\theta_0}[M(X)]<\infty$.
-                          </item>
-                        </list>
-                        <b>Fonte:</b> CASELLA, George; BERGER, Roger L. <em>Statistical Inference</em>. 2ª ed., seção 10.6.2, p. 516.
-                      </item>
-                    </list>
-
-              </subsubsection>
-
-                  <subsubsection id="sss:fisher_identity_proof" collapsible="true" collapsed="true" numbered="false">
-                    <title>Reescrita de $F(\beta)$</title>
+                <subsubsection id="sss:fisher_identity_proof" collapsible="true" collapsed="true" numbered="false">
+                  <title>Reescrita de $F(\beta)$</title>
+                  <proposition id="prop:fisher_score_identity">
+                    $$
+                    F(\beta)=-\mathbb E_\beta\!\left[\frac{\partial s(\beta)}{\partial\beta^\top}\right].
+                    $$
+                  </proposition>
+                  <proof of="prop:fisher_score_identity">
 
                     Pela definição da matriz de Fisher,
                     $$
-                      F(\beta)
-                      =\mathbb E_\beta\!\left[
-                      s(\beta)\,s(\beta)^\top
-                      \right],\qquad \beta\in\mathbb R^n.
+                    F(\beta)
+                    =\mathbb E_\beta\!\left[
+                    s(\beta)\,s(\beta)^\top
+                    \right],\qquad \beta\in\mathbb R^n.
                     $$
 
                     Escrevendo $s(x;\beta)=\nabla_\beta\log f(x;\beta)$ e $s(\beta)=s(X;\beta)$, vamos primeiro mostrar que
                     $$
-                      \mathbb E_\beta[s(\beta)]=\mathbf 0.
+                    \mathbb E_\beta[s(\beta)]=\mathbf 0.
                     $$
 
                     Escrevendo o valor esperado como integral e derivando o logaritmo,
                     $$
-                      \begin{aligned}
-                      \mathbb E_\beta[s(\beta)]
-                      &=\int_{\mathcal X}s(x;\beta)\,f(x;\beta)\,dx\\
-                      &=\int_{\mathcal X}\frac{\nabla_\beta f(x;\beta)}{f(x;\beta)}\,f(x;\beta)\,dx
-                      &&\text{por 5)}\\
-                      &=\int_{\mathcal X}\nabla_\beta f(x;\beta)\,dx.
-                      \end{aligned}
+                    \begin{aligned}
+                    \mathbb E_\beta[s(\beta)]
+                    &=\int_{\mathcal X}s(x;\beta)\,f(x;\beta)\,dx\\
+                    &=\int_{\mathcal X}\frac{\nabla_\beta f(x;\beta)}{f(x;\beta)}\,f(x;\beta)\,dx
+                    &&\text{por 5)}\\
+                    &=\int_{\mathcal X}\nabla_\beta f(x;\beta)\,dx.
+                    \end{aligned}
                     $$
 
                     Como o suporte não depende de $\beta$, podemos trocar integral e derivada de posição e, além disso, temos uma distribuição, cuja densidade integra $1$. Logo,
                     $$
-                      \mathbb E_\beta[s(\beta)]
-                      =\nabla_\beta\int_{\mathcal X}f(x;\beta)\,dx
-                      =\nabla_\beta 1=\mathbf 0
-                      \qquad\text{por 3), 5)}.
+                    \mathbb E_\beta[s(\beta)]
+                    =\nabla_\beta\int_{\mathcal X}f(x;\beta)\,dx
+                    =\nabla_\beta 1=\mathbf 0
+                    \qquad\text{por 3), 5)}.
                     $$
 
                     Vamos agora pegar dois índices $i,j\in\{1,\ldots,n\}$. Como cada coordenada do valor esperado do score é zero, podemos derivar a coordenada $i$ em relação a $\beta_j$:
                     $$
-                      \begin{aligned}
-                      0
-                      &=\frac{\partial}{\partial\beta_j}
-                      \mathbb E_\beta\!\left[s_i(\beta)\right]\\
-                      &=\frac{\partial}{\partial\beta_j}
-                      \int_{\mathcal X}s_i(x;\beta)\,f(x;\beta)\,dx\\
-                      &=\int_{\mathcal X}\frac{\partial}{\partial\beta_j}
-                      \left[s_i(x;\beta)\,f(x;\beta)\right]dx
-                      \qquad\text{por 3), 5)}.
-                      \end{aligned}
+                    \begin{aligned}
+                    0
+                    &=\frac{\partial}{\partial\beta_j}
+                    \mathbb E_\beta\!\left[s_i(\beta)\right]\\
+                    &=\frac{\partial}{\partial\beta_j}
+                    \int_{\mathcal X}s_i(x;\beta)\,f(x;\beta)\,dx\\
+                    &=\int_{\mathcal X}\frac{\partial}{\partial\beta_j}
+                    \left[s_i(x;\beta)\,f(x;\beta)\right]dx
+                    \qquad\text{por 3), 5)}.
+                    \end{aligned}
                     $$
 
                     Aplicando a regra do produto,
                     $$
-                      \implies\quad 0=\int_{\mathcal X}\left[
-                      \frac{\partial s_i(x;\beta)}{\partial\beta_j}\,f(x;\beta)
-                      +s_i(x;\beta)
-                      \frac{\partial f(x;\beta)}{\partial\beta_j}
-                      \right]dx.
+                    \implies\quad 0=\int_{\mathcal X}\left[
+                    \frac{\partial s_i(x;\beta)}{\partial\beta_j}\,f(x;\beta)
+                    +s_i(x;\beta)
+                    \frac{\partial f(x;\beta)}{\partial\beta_j}
+                    \right]dx.
                     $$
                     $$
-                      s_j(x;\beta)
-                      =\frac{1}{f(x;\beta)}\frac{\partial f(x;\beta)}{\partial\beta_j}
-                      \implies
-                      \frac{\partial f(x;\beta)}{\partial\beta_j}
-                      =f(x;\beta)\,s_j(x;\beta).
+                    s_j(x;\beta)
+                    =\frac{1}{f(x;\beta)}\frac{\partial f(x;\beta)}{\partial\beta_j}
+                    \implies
+                    \frac{\partial f(x;\beta)}{\partial\beta_j}
+                    =f(x;\beta)\,s_j(x;\beta).
                     $$
 
                     Substituindo,
                     $$
-                      \begin{aligned}
-                      0&=\int_{\mathcal X}
-                      \frac{\partial s_i(x;\beta)}{\partial\beta_j}\,f(x;\beta)\,dx\\
-                      &\quad+\int_{\mathcal X}
-                      s_i(x;\beta)\,s_j(x;\beta)\,f(x;\beta)\,dx
-                      \end{aligned}
+                    \begin{aligned}
+                    0&=\int_{\mathcal X}
+                    \frac{\partial s_i(x;\beta)}{\partial\beta_j}\,f(x;\beta)\,dx\\
+                    &\quad+\int_{\mathcal X}
+                    s_i(x;\beta)\,s_j(x;\beta)\,f(x;\beta)\,dx
+                    \end{aligned}
                     $$
                     $$
-                      \implies\quad 0=
-                      \mathbb E_\beta\!\left[
-                      \frac{\partial s_i(\beta)}{\partial\beta_j}
-                      \right]+F_{ij}(\beta)
+                    \implies\quad 0=
+                    \mathbb E_\beta\!\left[
+                    \frac{\partial s_i(\beta)}{\partial\beta_j}
+                    \right]+F_{ij}(\beta)
                     $$
                     $$
-                      \implies\quad F_{ij}(\beta)=
-                      -\mathbb E_\beta\!\left[
-                      \frac{\partial s_i(\beta)}{\partial\beta_j}
-                      \right].
+                    \implies\quad F_{ij}(\beta)=
+                    -\mathbb E_\beta\!\left[
+                    \frac{\partial s_i(\beta)}{\partial\beta_j}
+                    \right].
                     $$
 
                     Como isso vale para quaisquer índices $i,j$,
                     $$
-                      \boxed{F(\beta)=-\mathbb E_\beta\!\left[\frac{\partial s(\beta)}{\partial\beta^\top}\right].}
-                      \quad\square
+                    \boxed{F(\beta)=-\mathbb E_\beta\!\left[\frac{\partial s(\beta)}{\partial\beta^\top}\right].}
                     $$
 
-                  </subsubsection>
+                  </proof>
+                </subsubsection>
 
-                  <subsubsection id="sss:fisher_cramer_rao" collapsible="true" collapsed="true" numbered="false">
-                    <title>Limite de Cramér–Rao</title>
+                <subsubsection id="sss:fisher_cramer_rao" collapsible="true" collapsed="true" numbered="false">
+                  <title>Limite de Cramér–Rao</title>
+                  <theorem id="thm:fisher_cramer_rao">
 
-                    <!-- Escreva aqui as hipóteses do limite e sua relação com a eficiência assintótica do MLE. -->
+                    Seja $\beta\in\mathbb R^p$ e $W(\mathbf X)\in\mathbb R^p$ um estimador não viesado de $\beta$, com covariância finita, em que valem as hipóteses anteriores. Queremos mostrar que
+                    $$
+                    \operatorname{Cov}_\beta(W)\succeq F_N(\beta)^{-1}.
+                    $$
 
-                  </subsubsection>
+                    Esse símbolo é similar a um maior ou igual, mas quer dizer que a diferença entre as matrizes é semidefinida positiva,
+                    $$
+                    a^\top\!\left[\operatorname{Cov}_\beta(W)-F_N(\beta)^{-1}\right]a\geq0,
+                    \qquad \forall a\in\mathbb R^p.
+                    $$
+                  </theorem>
+                  <proof of="thm:fisher_cramer_rao">
+
+                    Chamando a densidade de $f(\mathbf x,\beta)$, leve como lema os resultados anteriores:
+                    $$
+                    S_N(\beta)=\nabla_\beta\log f(\mathbf X,\beta),
+                    $$
+                    $$
+                    \mathbb E_\beta[S_N(\beta)]=\mathbf0,
+                    \qquad
+                    \operatorname{Cov}_\beta(S_N(\beta))
+                    =\mathbb E_\beta[S_N(\beta)S_N(\beta)^\top]
+                    =F_N(\beta).
+                    $$
+
+                    Como $W$ é não viesado, para quaisquer $i,j$,
+                    $$
+                    \mathbb E_\beta[W_i]=\beta_i
+                    \implies
+                    \frac{\partial}{\partial\beta_j}\mathbb E_\beta[W_i]
+                    =\delta_{ij}.
+                    $$
+
+                    Escrevendo a esperança explicitamente e usando as hipóteses,
+                    $$
+                    \begin{aligned}
+                    \delta_{ij}
+                    &=\frac{\partial}{\partial\beta_j}
+                    \int_{\mathcal X}W_i(\mathbf x)f(\mathbf x,\beta)\,d\mathbf x\\
+                    &=\int_{\mathcal X}W_i(\mathbf x)
+                    \frac{\partial f(\mathbf x,\beta)}{\partial\beta_j}\,d\mathbf x\\
+                    &=\int_{\mathcal X}W_i(\mathbf x)
+                    \frac{\partial\log f(\mathbf x,\beta)}{\partial\beta_j}
+                    f(\mathbf x,\beta)\,d\mathbf x\\
+                    &=\mathbb E_\beta[W_iS_{N,j}(\beta)].
+                    \end{aligned}
+                    $$
+
+                    Como o score tem esperança zero,
+                    $$
+                    \operatorname{Cov}_\beta(W_i,S_{N,j}(\beta))
+                    =\mathbb E_\beta[W_iS_{N,j}(\beta)]
+                    =\delta_{ij}
+                    \implies
+                    \operatorname{Cov}_\beta(W,S_N(\beta))=I_p.
+                    $$
+
+                    Agora definimos
+                    $$
+                    U=W-\beta-F_N(\beta)^{-1}S_N(\beta).
+                    $$
+
+                    Usando as propriedades da covariância<hint show-icon="false">
+                      <title>*</title>
+                      <b>Propriedades da covariância.</b>
+                      Sejam $A,B$ vetores aleatórios e $C$ uma matriz constante.
+                      $$
+                      \begin{aligned}
+                      \operatorname{Cov}(A-CB)
+                      &=\operatorname{Cov}(A)
+                      -\operatorname{Cov}(A,B)C^\top\\
+                      &\quad-C\operatorname{Cov}(B,A)
+                      +C\operatorname{Cov}(B)C^\top.
+                      \end{aligned}
+                      $$
+                    </hint>,
+                    $$
+                    \begin{aligned}
+                    \operatorname{Cov}_\beta(U)
+                    &=\operatorname{Cov}_\beta(W)
+                    -\operatorname{Cov}_\beta(W,S_N)F_N^{-1}
+                    -F_N^{-1}\operatorname{Cov}_\beta(S_N,W)\\
+                    &\quad+F_N^{-1}\operatorname{Cov}_\beta(S_N)F_N^{-1}\\
+                    &=\operatorname{Cov}_\beta(W)
+                    -I_pF_N^{-1}
+                    -F_N^{-1}I_p
+                    +F_N^{-1}F_NF_N^{-1}\\
+                    &=\operatorname{Cov}_\beta(W)-F_N(\beta)^{-1}.
+                    \end{aligned}
+                    $$
+
+                    Como uma matriz de covariância é semidefinida positiva,
+                    $$
+                    \operatorname{Cov}_\beta(U)\succeq0
+                    \implies
+                    \boxed{\operatorname{Cov}_\beta(W)\succeq F_N(\beta)^{-1}.}
+                    $$
+
+                    Para $N$ observações i.i.d., $F_N(\beta)=NF(\beta)$<hint show-icon="false">
+                      <title>*</title>
+                      <b>Informação de Fisher para $N$ observações i.i.d..</b>
+                      Pela independência, a densidade é o produto de todas as densidades, então o score da amostra de tamanho $N$ é só a soma dos scores:
+                      $$
+                      S_N(\beta)
+                      =\nabla_\beta\log\prod_{k=1}^N f(X_k,\beta)
+                      =\sum_{k=1}^N s_k(\beta),
+                      \qquad
+                      s_k(\beta)=\nabla_\beta\log f(X_k,\beta).
+                      $$
+
+                      Como os scores são independentes com valor esperado zero, os termos cruzados somem,
+                      $$
+                      \begin{aligned}
+                      F_N(\beta)
+                      &=\mathbb E_\beta[S_N(\beta)S_N(\beta)^\top]\\
+                      &=\sum_{k=1}^N\mathbb E_\beta[s_k(\beta)s_k(\beta)^\top]\\
+                      &=NF(\beta).
+                      \end{aligned}
+                      $$
+                      e então $F_N=NF$.
+                    </hint>. Portanto,
+                    $$
+                    \boxed{\operatorname{Cov}_\beta(W)\succeq\frac1N F(\beta)^{-1}.}
+                    $$
+
+                  </proof>
+                </subsubsection>
               </subsubsection>
 
             </subsection>
-        </section>
+          </section>
+
 
         <section>
             <title>Classificador ingênuo de Bayes</title>
